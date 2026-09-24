@@ -1,5 +1,26 @@
 # @docx-editor.dev/core
 
+## 2.23.0
+
+### Minor Changes
+
+- bf776f2: Numbered paragraphs now start their first line at a tab stop between the number and the text indent, so the line wraps with the width it has. Documents that set `w:doNotUseIndentAsNumberingTabStop` use the first tab stop past the number instead of the text indent.
+- 6794f4d: Odd-page and even-page sections, and sections that restart page numbering when odd and even pages differ, now start on a page of the correct parity, with one empty sheet inserted when needed and marked by `PageRecord.parityBlank`. Sheets after section-end note sheets or a continuous section now continue the running page number, and `w:evenAndOddHeaders` with the value `off` now turns different odd and even pages off.
+
+### Patch Changes
+
+- 0e42c85: A continuous section with a different header or footer height, or with a different first page, now continues on the sheet where the previous section ended instead of starting a new sheet.
+- ab460dc: Keep headings with following paragraphs when widow control or keep-lines moves those paragraphs to the next page.
+- e633def: A plain paragraph that starts with a manual page break and has text after the break no longer adds a blank page when it follows a full page.
+- cee5764: A paragraph that contains a line break outside a run now renders and stays editable, and the misplaced break is saved unchanged.
+- 390c177: A field nested inside another field's instruction no longer adds its saved result, including line breaks, to the displayed text, Find, or text reads.
+- ae1afe0: Preserve no-break space behavior across formatting runs and keep figure spaces attached to adjacent East Asian text.
+- d6c75d2: A manual page break followed by an empty section-break paragraph no longer adds a blank page before a section that starts on a new page.
+- 2eea4de: A character style on a paragraph mark now sets the height of an empty paragraph and formats the paragraph's list number, so headers and footers with styled empty paragraphs leave the correct space for body text. Text typed into such a paragraph takes the same character style.
+- e040ff8: Runs, paragraphs, tables, and pictures written with indented XML under `xml:space="preserve"` now open as editable content, so their no-break spaces, tabs, and text appear in the layout instead of disappearing.
+- 9afb832: An empty section-break paragraph with a page break before it no longer adds a blank page after the content of its section, also when the paragraph holds only bookmarks, proofing marks, permission or comment range markers, or empty text.
+- @docx-editor.dev/i18n@2.23.0
+
 ## 2.22.0
 
 ### Minor Changes
