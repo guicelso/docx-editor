@@ -158,8 +158,13 @@ function wrapRangeInContentControl(
   const index = paragraphOffsetIndex(reloaded);
   const wrapped: OoxmlNode[] = [];
   let covered = false;
+  // A field's chrome sits at ZERO length at the field's offset and belongs to its atom, as on
+  // the caret path below: skipping it left the instruction and the end marker outside the
+  // control, cutting the field in two.
+  const atomSpanOf = atomSpanLookup(index);
   for (const child of reloaded.children) {
-    const span = index.spanOf(child);
+    const own = index.spanOf(child);
+    const span = own && own.start !== own.end ? own : (atomSpanOf(child) ?? own);
     if (!span || span.start === span.end) continue;
     if (span.start >= op.start && span.end <= op.end) {
       wrapped.push(child);

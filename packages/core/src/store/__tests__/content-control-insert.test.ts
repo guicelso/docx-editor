@@ -283,6 +283,41 @@ describe('insertContentControl refuses a position nothing can divide', () => {
     expect(xml.indexOf('instrText')).toBeLessThan(xml.indexOf('<w:sdt>'));
   });
 
+  test('a range over an atomic field wraps every node the field is spelt with', () => {
+    const part = parseDoc(
+      `<w:p><w:r><w:t>ab</w:t></w:r>` +
+        `<w:r><w:fldChar w:fldCharType="begin"/></w:r>` +
+        `<w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>` +
+        `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
+        `<w:r><w:t>1</w:t></w:r>` +
+        `<w:r><w:fldChar w:fldCharType="end"/></w:r>` +
+        `<w:r><w:t>cd</w:t></w:r></w:p>`
+    );
+    const next = apply(part, {
+      op: 'insertContentControl',
+      paragraphId: paragraphs(part)[0]!.id,
+      start: 2,
+      end: 3,
+      type: 'richText',
+      tag: 'around-field',
+    });
+    const xml = serializeOoxmlPart(next);
+    const open = xml.indexOf('<w:sdtContent>');
+    const close = xml.indexOf('</w:sdtContent>');
+    for (const piece of [
+      'fldCharType="begin"',
+      'instrText',
+      'fldCharType="separate"',
+      'fldCharType="end"',
+    ]) {
+      expect(xml.indexOf(piece)).toBeGreaterThan(open);
+      expect(xml.indexOf(piece)).toBeLessThan(close);
+    }
+    expect(paragraphTextOf(next, paragraphs(next)[0]!.id)).toBe(
+      paragraphTextOf(part, paragraphs(part)[0]!.id)
+    );
+  });
+
   test('forms protection refuses an insertion, which is not filling in a field', () => {
     const part = parseDoc(`<w:p><w:r><w:t>plain text here</w:t></w:r></w:p>`);
     const settings = readOoxmlPart(

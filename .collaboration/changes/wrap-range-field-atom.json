@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Wrapping a range that covered a complex field skipped the field's zero-width chrome (begin, instruction, separator, end), so the new content control held only the field result and cut the field in two.",
+  "after": "wrapRangeInContentControl resolves each paragraph child by its atom span, as the caret-insert path already does, so a range over a field wraps every node the field is spelt with.",
+  "reason": "The op still reduces to the same canonical tree primitives the journal replicates; only which existing children land under the new w:sdtContent changes. Released participants read the resulting shared state unchanged.",
+  "tests": ["packages/core/src/store/__tests__/content-control-insert.test.ts"],
+  "changeset": "wrap-range-field-atom",
+  "migration": null
+}
