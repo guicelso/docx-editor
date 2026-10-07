@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A painted field result said only that it was a field (data-field-atom); a host could not style its own kinds of field differently.",
+  "after": "Field atoms carry their instruction in the layout record, and surface.setFieldTones lets a host name each field from it; the paint publishes the name as data-field-tone. Changing the function repaints without laying anything out.",
+  "reason": "Paint only: nothing reaches the document, an operation, the journal or an export, so released participants are unaffected.",
+  "tests": [
+    "packages/core/src/output/__tests__/field-tone-paint.test.ts",
+    "packages/core/src/editor/__tests__/content-control-tags-surface.test.ts"
+  ],
+  "changeset": "field-tones",
+  "migration": null
+}

@@ -82,7 +82,7 @@ describe('a FORMCHECKBOX field', () => {
     expect(box).toMatchObject({ start: 1, end: 2, projected: true });
     // The atom also carries the control state, so paint and the surface need not read the
     // glyph back to know what a press should write.
-    expect(box.fieldAtom).toEqual({
+    expect(box.fieldAtom).toMatchObject({
       formField: true,
       formControl: { kind: 'checkbox', checked: false, accessibleName: 'Check1' },
     });
@@ -212,7 +212,7 @@ describe('a FORMCHECKBOX field', () => {
     ]);
     // The editable result shades as a form field; the instruction-phase spill does not.
     expect(pieces[0]!.fieldAtom).toBeUndefined();
-    expect(pieces[1]!.fieldAtom).toEqual({ formField: true });
+    expect(pieces[1]!.fieldAtom).toMatchObject({ formField: true });
   });
 });
 
@@ -223,7 +223,7 @@ describe('a FORMDROPDOWN field', () => {
     );
     expect(pieces.map((piece) => piece.text)).toEqual(['Cached']);
     expect(pieces[0]).toMatchObject({ start: 0, end: 1, projected: true });
-    expect(pieces[0]!.fieldAtom).toEqual({
+    expect(pieces[0]!.fieldAtom).toMatchObject({
       formField: true,
       formControl: {
         kind: 'dropdown',
@@ -241,7 +241,7 @@ describe('a FORMDROPDOWN field', () => {
     expect(pieces.map((piece) => piece.text)).toEqual(['A', 'Green']);
     const entry = pieces[1]!;
     expect(entry).toMatchObject({ start: 1, end: 2, projected: true });
-    expect(entry.fieldAtom).toEqual({
+    expect(entry.fieldAtom).toMatchObject({
       formField: true,
       formControl: {
         kind: 'dropdown',

@@ -907,6 +907,8 @@ export function mountPaginatedSurface(
   let contentControlTags:
     | import('../layout/content-control-tags.ts').ContentControlTagDisplay
     | undefined;
+  /** The host's name for each field, from its instruction, published for its stylesheet. */
+  let fieldTone: import('../output/semantic-paint.ts').FieldTone | undefined;
   /**
    * The caret slot a press or an arrow CHOSE at a tagged edge, valid while the caret stays at
    * that position. Without one, a tagged edge uses its default slot (see `caretSlot`).
@@ -2641,6 +2643,7 @@ export function mountPaginatedSurface(
         ariaHidden: false,
         drawingStrings,
         ...(options.fieldShading ? { fieldShading: options.fieldShading } : {}),
+        ...(fieldTone ? { fieldTone } : {}),
         ...(revisionStyles !== undefined ? { revisionStyles } : {}),
         revisionMarkup: markupSettings.current(),
         facingPages: revisionFacingPages(settingsPartOf(session.currentPackage())),
@@ -5472,6 +5475,12 @@ export function mountPaginatedSurface(
     },
 
     revisionAuthors: () => reviewAuthors.get().value,
+    setFieldTones(tone) {
+      if (destroyed || fieldTone === (tone ?? undefined)) return;
+      fieldTone = tone ?? undefined;
+      // Paint only: the tone never changes what a line measures.
+      render();
+    },
     setContentControlTags(display) {
       if (destroyed) return;
       // The token names the labeling: the same one answers the same labels, so nothing to lay out.

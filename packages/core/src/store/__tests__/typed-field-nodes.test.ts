@@ -564,7 +564,7 @@ describe('inertness and security', () => {
     expect(pieces.map((p) => p.text)).toEqual(['4']);
     // Recognised as a form field for SHADING — from the element's presence alone. Nothing
     // reads into it, which is the point: the payload is macro names.
-    expect(pieces[0]?.fieldAtom).toEqual({ formField: true });
+    expect(pieces[0]?.fieldAtom).toMatchObject({ formField: true });
   });
 
   test('hasLegacyFormFieldData asks only whether ffData is there', () => {

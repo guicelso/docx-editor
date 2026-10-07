@@ -57,6 +57,7 @@ import {
   appendModelRange,
   applyEastAsiaFontSlots,
   positionalTabOf,
+  type FieldAtomMarker,
   type FieldAwarePiece,
   type FieldLinkProjector,
   type HyperlinkProjector,
@@ -267,7 +268,7 @@ export function unmergedPiecesOfParagraphForDisplay(
     // `w:hyperlink` captured into `resultLink` wins, exactly as it does for every other field.
     // Resolved LAZILY (and memoized): a field that paints nothing — empty result, no synthesized
     // glyph — must never reach `projectFieldLink`, or it mints a registry id no piece ever uses.
-    const { resultLink, linkSpec, formField } = pending;
+    const { resultLink, linkSpec, formField, instruction } = pending;
     const captured = capturedResultAttribution(pending);
     const formControl = formControlMarkerOf(pending);
     let carriedMemo: PieceEmitExtras | undefined;
@@ -281,7 +282,11 @@ export function unmergedPiecesOfParagraphForDisplay(
       carriedMemo = {
         ...captured,
         ...(carriedLink ? { linkOverride: carriedLink } : {}),
-        fieldAtom: { formField, ...(formControl ? { formControl } : {}) },
+        fieldAtom: {
+          formField,
+          ...(instruction !== undefined ? { instruction } : {}),
+          ...(formControl ? { formControl } : {}),
+        },
       };
       return carriedMemo;
     };
@@ -302,7 +307,7 @@ export function unmergedPiecesOfParagraphForDisplay(
           ? {
               ...extras,
               fieldAtom: {
-                formField: pending.formField,
+                ...extras.fieldAtom!,
                 ...(synthesis.pageField ? { pageField: synthesis.pageField } : {}),
                 ...(synthesis.pageRefField ? { pageRef: synthesis.pageRefField } : {}),
               },
@@ -590,6 +595,8 @@ export function unmergedPiecesOfParagraphForDisplay(
           // Nesting overflow refuses exactly as PAGE projection does: a >4-deep hostile field
           // must not synthesize output from whatever outer fragments the buffer kept.
           const effective = effectiveFieldInstruction(field);
+          if (!effective.overflow && !field.nestingOverflow)
+            pending.instruction = effective.instruction;
           if (!pending.kind && !effective.overflow && !field.nestingOverflow) {
             captureInstructionSpecs(pending, effective.instruction);
           }
@@ -617,6 +624,7 @@ export function unmergedPiecesOfParagraphForDisplay(
         if (outermostEnd && pending?.atomic && field.phase === 'instruction') {
           const effective = effectiveFieldInstruction(field);
           if (!effective.overflow && !field.nestingOverflow) {
+            pending.instruction = effective.instruction;
             captureInstructionSpecs(pending, effective.instruction);
           }
         }
@@ -693,7 +701,7 @@ export function unmergedPiecesOfParagraphForDisplay(
             projected: true,
             ...symAttribution,
             ...(currentLink ? { link: currentLink } : {}),
-            fieldAtom: { formField: pending.formField },
+            fieldAtom: fieldAtomOf(pending),
           });
           continue;
         }
@@ -800,7 +808,7 @@ export function unmergedPiecesOfParagraphForDisplay(
           ...(currentLink ? { link: currentLink } : {}),
           // EVERY buffered result piece is a field's displayed result — a demoted
           // (unterminated) field's cache shades exactly like a FORMTEXT's editable one.
-          fieldAtom: { formField: pending.formField },
+          fieldAtom: fieldAtomOf(pending),
         });
         offset += modelWidth;
         pending.bufferOffset = offset;
@@ -909,6 +917,8 @@ export function unmergedPiecesOfParagraphForDisplay(
     push(projected.text, projected.props, projected.style, true, start, start + 1, {
       fieldAtom: {
         formField: false,
+        instruction:
+          simple.attributes.find((attribute) => attribute.localName === 'instr')?.value ?? '',
         ...(projected.pageField ? { pageField: projected.pageField } : {}),
         ...(projected.pageRef ? { pageRef: projected.pageRef } : {}),
       },
@@ -1038,3 +1048,14 @@ export function unmergedPiecesOfParagraphForDisplay(
 }
 
 export { piecesOfParagraphForDisplay } from './field-projection-display.ts';
+
+/** The marker a field's displayed result carries: form or not, and the field's instruction. */
+function fieldAtomOf(pending: {
+  readonly formField: boolean;
+  readonly instruction?: string;
+}): FieldAtomMarker {
+  return {
+    formField: pending.formField,
+    ...(pending.instruction !== undefined ? { instruction: pending.instruction } : {}),
+  };
+}

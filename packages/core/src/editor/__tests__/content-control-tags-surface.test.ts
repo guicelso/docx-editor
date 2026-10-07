@@ -73,3 +73,28 @@ describe('content-control tags on the surface', () => {
     expect(surface.selectedText()).toBe('CPF RG');
   });
 });
+
+describe('field tones on the surface', () => {
+  const FIELD =
+    '<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+    '<w:r><w:instrText xml:space="preserve"> MERGEFIELD "field:a" </w:instrText></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>«cpf»</w:t></w:r>' +
+    '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>';
+
+  test('installing tones repaints the fields without laying anything out', () => {
+    const opened = mount(FIELD);
+    mounted.push(opened.surface);
+    const laidOut = opened.surface.layout();
+    opened.surface.setFieldTones((instruction) =>
+      instruction.includes('"field:') ? 'variable' : undefined
+    );
+    expect(opened.surface.layout()).toBe(laidOut);
+    expect(
+      opened.container.querySelector<HTMLElement>('[data-field-atom]')?.dataset.fieldTone
+    ).toBe('variable');
+    opened.surface.setFieldTones(null);
+    expect(
+      opened.container.querySelector<HTMLElement>('[data-field-atom]')?.dataset.fieldTone
+    ).toBeUndefined();
+  });
+});
