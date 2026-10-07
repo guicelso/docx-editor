@@ -331,9 +331,6 @@ const TREE_OP_REACH: {
 } = {
   // A caller that NAMES the control it is writing into has said where the text goes, so that is
   // the control the refusals are resolved against — the offset no longer decides.
-  // A write BESIDE a control lands as its sibling, inside whatever holds it: the control's own
-  // lock does not apply, and its ancestors' do — exactly what naming the control as a whole node
-  // resolves.
   insertText: (op) =>
     op.beside !== undefined
       ? whole(op.beside.controlId)

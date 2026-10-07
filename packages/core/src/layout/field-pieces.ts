@@ -670,3 +670,14 @@ export function applyEastAsiaFontSlots(
   }
   return out;
 }
+
+/** The marker a field's displayed result carries: form or not, and the field's instruction. */
+export function fieldAtomOf(pending: {
+  readonly formField: boolean;
+  readonly instruction?: string;
+}): FieldAtomMarker {
+  return {
+    formField: pending.formField,
+    ...(pending.instruction !== undefined ? { instruction: pending.instruction } : {}),
+  };
+}

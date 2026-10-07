@@ -19,6 +19,7 @@ import { blockStoryContainerChildren, storyRootsOf } from '../store/package/stor
 import {
   MAX_CONTENT_CONTROL_NESTING as MAX_SDT_NESTING,
   contentControlContentChildren,
+  controlIdsWithin,
   isContentControl,
 } from '../store/package/content-control-walk.ts';
 import {
@@ -553,31 +554,6 @@ function fragmentsForBlockControl(
       const box = unionLayoutBoxes(boxes);
       return box ? [{ pageIndex, box }] : [];
     });
-}
-
-/**
- * The control and every control nested in it, by id: a tag at a shared edge belongs to the
- * outline of its own control and its ancestors, never to a sibling's that touches the same offset.
- */
-const controlIdsWithinMemo = new WeakMap<OoxmlElement, ReadonlySet<string>>();
-
-function controlIdsWithin(control: OoxmlElement): ReadonlySet<string> {
-  const cached = controlIdsWithinMemo.get(control);
-  if (cached) return cached;
-  const ids = new Set<string>([control.id]);
-  const walk = (nodes: readonly OoxmlNode[], depth: number): void => {
-    if (depth >= MAX_INLINE_CONTAINER_DEPTH) return;
-    for (const child of nodes) {
-      if (child.kind === 'textValue') continue;
-      if (isContentControl(child)) {
-        ids.add(child.id);
-        walk(contentControlContentChildren(child), depth + 1);
-      } else if (isInlineRunContainer(child)) walk(child.children, depth + 1);
-    }
-  };
-  walk(contentControlContentChildren(control), 0);
-  controlIdsWithinMemo.set(control, ids);
-  return ids;
 }
 
 function fragmentsForInlineControl(

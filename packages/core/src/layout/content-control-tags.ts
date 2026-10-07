@@ -6,6 +6,7 @@
 
 import type { OoxmlElement } from '@docx-editor.dev/core/store';
 import { contentControlPropertiesOf, propertyVal } from './content-control-properties.ts';
+import type { FieldAwarePiece } from './field-pieces.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
 /** Room inside the chip, measured by layout so paint never draws wider than the line reserved. */
@@ -70,6 +71,30 @@ const TAG_MIN_PT = 7;
 /** The tone a chip may publish, or undefined: the host's string lands in an attribute. */
 export function contentControlTagToneOf(label: ContentControlTagLabel): string | undefined {
   return label.tone !== undefined && TONE.test(label.tone) ? label.tone : undefined;
+}
+
+/**
+ * The piece a tag lays out as: its text over a ZERO-WIDTH range at the control's edge, so it
+ * measures and paints like a word and never moves an offset. None for an empty label.
+ */
+export function contentControlTagPiece(
+  mark: Omit<ContentControlTagMark, 'tone'>,
+  label: ContentControlTagLabel,
+  run: ResolvedRunStyle,
+  offset: number
+): FieldAwarePiece | null {
+  if (label.text.length === 0) return null;
+  const tone = contentControlTagToneOf(label);
+  return {
+    // A tag is one unit: line breaking must never open a line inside it.
+    text: contentControlTagText(label),
+    props: [],
+    style: contentControlTagStyle(run),
+    start: offset,
+    end: offset,
+    projected: true,
+    contentControlTag: tone === undefined ? mark : { ...mark, tone },
+  };
 }
 
 export function contentControlTagSubjectOf(control: OoxmlElement): ContentControlTagSubject {
