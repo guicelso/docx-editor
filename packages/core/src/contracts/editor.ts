@@ -23,6 +23,7 @@ export type {
 import type { EditorHighlights, HighlightRect } from './editor-highlights.ts';
 export type {
   EditorHighlights,
+  HighlightBlend,
   HighlightHit,
   HighlightOptions,
   HighlightRange,

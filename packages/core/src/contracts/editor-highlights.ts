@@ -44,7 +44,17 @@ export interface HighlightOptions {
    * The built-in Find pane uses the set name `search` with priority `10`.
    */
   readonly priority?: number;
+  /**
+   * How the marks composite over the page. `'tint'` multiplies over light paper and screens
+   * over dark paper, so the glyphs under a mark keep their color — a highlighter. `'cover'`
+   * paints the color as is, over every tint set, so an opaque or page-colored fill hides or
+   * dims the text — a redaction or a focus veil. Default: `'tint'`.
+   */
+  readonly blend?: HighlightBlend;
 }
+
+/** How a highlight set composites over the page; see {@link HighlightOptions.blend}. @public */
+export type HighlightBlend = 'tint' | 'cover';
 
 /** What `setHighlights()` resolved against the open document. @public */
 export interface HighlightResult {

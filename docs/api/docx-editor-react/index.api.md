@@ -76,6 +76,7 @@ import { FontUrlSource } from '@docx-editor.dev/core/editor';
 import { ForwardRefExoticComponent } from 'react';
 import { generateRulerTicks } from '@docx-editor.dev/core/editor';
 import { HIGHLIGHT_REFRESH_MS } from '@docx-editor.dev/core/editor';
+import { HighlightBlend } from '@docx-editor.dev/core/contracts/editor';
 import { HighlightHit } from '@docx-editor.dev/core/contracts/editor';
 import { HighlightOptions } from '@docx-editor.dev/core/contracts/editor';
 import { HighlightRange } from '@docx-editor.dev/core/contracts/editor';
@@ -1690,6 +1691,8 @@ export { generateRulerTicks }
 export type HeaderFooterState = Exclude<ReturnType<Editor['getHeaderFooterState']>, null>;
 
 export { HIGHLIGHT_REFRESH_MS }
+
+export { HighlightBlend }
 
 export { HighlightHit }
 

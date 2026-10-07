@@ -265,6 +265,45 @@ describe('setHighlights', () => {
     expect(order).toEqual(['bottom', 'b', 'a', 'top']);
   });
 
+  test('a cover set paints over every tint set, in its own blend group', () => {
+    const { editor, host } = mount();
+    const matches = editor.findMatches('Supplier');
+    editor.setHighlights('veil', matches, { blend: 'cover', priority: -5 });
+    editor.setHighlights('search', matches, { priority: 10 });
+    const groups = [...host.querySelectorAll<HTMLElement>('[data-highlight-blend]')];
+    const setsIn = (group: HTMLElement) =>
+      [...group.querySelectorAll<HTMLElement>('[data-highlight-set]')].map(
+        (sheet) => sheet.dataset.highlightSet
+      );
+    expect(groups.map((group) => group.dataset.highlightBlend)).toEqual(['tint', 'cover']);
+    expect(groups.map(setsIn)).toEqual([['search'], ['veil']]);
+  });
+
+  test('getHighlightsAt reports a cover mark above the tint marks it covers', () => {
+    const { editor, marks, host } = mount();
+    const matches = editor.findMatches('Supplier');
+    editor.setHighlights('veil', matches, { blend: 'cover' });
+    editor.setHighlights('search', matches, { priority: 10 });
+    host.querySelector<HTMLElement>('.docx-text-highlight-overlay')!.getBoundingClientRect = () =>
+      ({ left: 0, top: 0 }) as DOMRect;
+    const [mark] = marks('veil');
+    const hits = editor.getHighlightsAt(
+      Number.parseFloat(mark!.style.left) + 1,
+      Number.parseFloat(mark!.style.top) + 1
+    );
+    expect(hits.map((hit) => hit.name)).toEqual(['veil', 'search']);
+  });
+
+  test('refuses a blend it does not know', () => {
+    const { editor } = mount();
+    const matches = editor.findMatches('Supplier');
+    expect(() =>
+      editor.setHighlights('veil', matches, {
+        blend: 'screen' as unknown as 'cover',
+      })
+    ).toThrow(TypeError);
+  });
+
   test('clearHighlights removes one set or all of them', () => {
     const { editor, marks } = mount();
     const matches = editor.findMatches('Supplier');
