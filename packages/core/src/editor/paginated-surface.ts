@@ -155,6 +155,11 @@ import {
   type SemanticLayout,
   type SemanticPosition,
   type SemanticSelection,
+  caretSlotsAt,
+  sameCaretSlotNeighbour,
+  type CaretSlot,
+  type CaretSlotNeighbour,
+  type SemanticHitTag,
 } from '@docx-editor.dev/core/layout';
 import { attachListResolveChangeEvidence } from '../layout/list-resolve.ts';
 import { refreshSurfaceRefFieldResults } from './surface-ref-field-refresh.ts';
@@ -302,6 +307,7 @@ import { resolveNotesPart } from '../store/package/note-references.ts';
 import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { overlaySheet, sizeOverlaySheets } from './surface-overlay-sheet.ts';
 import type { SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
+import type { ContentControlSurfaceState } from './surface-content-control-contract.ts';
 
 export type {
   ContentControlOps,
@@ -476,6 +482,7 @@ export function mountPaginatedSurface(
         layout: editingLayout(),
         selection: hiddenMarks.shownSelection(selection),
         measurer,
+        slot: caretSlot(),
         ...(armedAtCaret()
           ? {
               typingStyle: () => {
@@ -896,6 +903,15 @@ export function mountPaginatedSurface(
   let contentControlTags:
     | import('../layout/content-control-tags.ts').ContentControlTagDisplay
     | undefined;
+  /**
+   * The caret slot a press or an arrow CHOSE at a tagged edge, valid while the caret stays at
+   * that position. Without one, a tagged edge uses its default slot (see `caretSlot`).
+   */
+  let chosenSlot: {
+    readonly at: SemanticPosition;
+    readonly left: CaretSlotNeighbour | null;
+    readonly right: CaretSlotNeighbour | null;
+  } | null = null;
   const reviewView = createReviewViewState(
     options.revisionDisplayMode,
     !!options.reviewModel,
@@ -1821,6 +1837,61 @@ export function mountPaginatedSurface(
     setHoveredTocControlId(null);
   }
 
+  /** The slots at a collapsed caret, or none: no tags, a range, or no chip there. */
+  function slotsAtCaret(): readonly CaretSlot[] {
+    if (!contentControlTags || !isCollapsedSelection(selection)) return [];
+    return caretSlotsAt(editingLayout(), selection.head);
+  }
+
+  /**
+   * The slot the caret stands in. A chosen slot holds while the caret stays put; otherwise the
+   * slot touching the text on the RIGHT — the place a programmatic caret, an undo or a
+   * Home/End lands, and the one that types into the content the caret is in front of.
+   */
+  function caretSlot(slots: readonly CaretSlot[] = slotsAtCaret()): CaretSlot | null {
+    const chosen = chosenSlot;
+    const kept =
+      chosen && samePosition(chosen.at, selection.head)
+        ? slots.find(
+            (slot) =>
+              sameCaretSlotNeighbour(slot.left, chosen.left) &&
+              sameCaretSlotNeighbour(slot.right, chosen.right)
+          )
+        : undefined;
+    return kept ?? slots[slots.length - 1] ?? null;
+  }
+
+  function chooseSlot(slot: CaretSlot): void {
+    chosenSlot = { at: selection.head, left: slot.left, right: slot.right };
+    caret.update();
+    options.onChange?.(currentState());
+  }
+
+  /** The slot beside the chip a plain click landed on, on the half it landed on. */
+  function chooseSlotOfTag(tag: SemanticHitTag): void {
+    const slot = slotsAtCaret().find((candidate) =>
+      sameCaretSlotNeighbour(tag.side === 'before' ? candidate.right : candidate.left, tag)
+    );
+    if (slot) chooseSlot(slot);
+  }
+
+  /**
+   * Where text typed in a slot goes, exactly: an opening tag on the right means in front of that
+   * control; a closing one on the left, behind it; otherwise the start or the end of the control
+   * whose tag is beside the slot.
+   */
+  function slotPlacementOf(
+    slot: CaretSlot
+  ):
+    | { readonly beside: { readonly controlId: string; readonly side: 'before' | 'after' } }
+    | { readonly inside: string } {
+    if (slot.right?.edge === 'open')
+      return { beside: { controlId: slot.right.controlId, side: 'before' } };
+    if (slot.left?.edge === 'close')
+      return { beside: { controlId: slot.left.controlId, side: 'after' } };
+    return { inside: (slot.left ?? slot.right)!.controlId };
+  }
+
   function contentControlChromeOptions():
     | {
         readonly showAll?: boolean;
@@ -2484,6 +2555,7 @@ export function mountPaginatedSurface(
         showAll: showAllContentControls,
         formFill: formFillMode,
         activeControlId: contentControlAtCaret()?.id ?? null,
+        caretSlot: slotNeighboursOf(caretSlot()),
       },
       contextTocId,
       formatPainter: formatPainter.state(),
@@ -3234,6 +3306,8 @@ export function mountPaginatedSurface(
     const previousActive = contentControlAtCaret()?.id ?? null;
     const previousToc = tocAtPosition(session.part(), selection.head)?.id;
     retireActivationPin();
+    if (chosenSlot && !(isCollapsedSelection(next) && samePosition(next.head, chosenSlot.at)))
+      chosenSlot = null;
     selection = next;
     // Any plain selection cancels a rectangle. A caret placed by a click, a keystroke or an
     // edit is a text selection by definition, and leaving the rectangle behind would keep
@@ -4506,8 +4580,22 @@ export function mountPaginatedSurface(
       const pendingOps = consumePendingFormatOps(target.paragraphId, target.offset, text.length);
       // The caret's own control OWNS the insert: at a control's trailing edge the store's
       // default lands beside it (right for a link), but Word keeps typing inside a control.
-      const inside = plan.ops.length === 0 ? insertOwnerOf(contentControlAtCaret()) : undefined;
-      const insertOps: TreeDocOp[] = [...plan.ops, typedInsertText(target, text, inside)];
+      // At a tagged edge the SLOT names the destination exactly (`slotPlacementOf`).
+      const slot = plan.ops.length === 0 ? caretSlot() : null;
+      const inside =
+        plan.ops.length === 0 && !slot ? insertOwnerOf(contentControlAtCaret()) : undefined;
+      const insertOps: TreeDocOp[] = [
+        ...plan.ops,
+        slot
+          ? {
+              op: 'insertText',
+              paragraphId: target.paragraphId,
+              offset: target.offset,
+              text,
+              ...slotPlacementOf(slot),
+            }
+          : typedInsertText(target, text, inside),
+      ];
       // Typing at a prompt's edge replaces the prompt, so the text lands where the prompt
       // began; a caret counted from the pressed offset sat past the paragraph's new end.
       const landing = promptInsertionLanding(
@@ -4527,6 +4615,15 @@ export function mountPaginatedSurface(
           ),
         () => collapsedAt({ paragraphId: target.paragraphId, offset: landing })
       );
+      // In front of a control the next keystroke is still in front of it: its start edge moved
+      // by what was typed, and the default slot there would carry the text inside.
+      if (
+        slot?.right?.edge === 'open' &&
+        samePosition(selection.head, { paragraphId: target.paragraphId, offset: landing })
+      ) {
+        chosenSlot = { at: selection.head, left: null, right: slot.right };
+        caret.update();
+      }
     },
     proposeTextChange: (kind, text, author) => commitProposedTextChange(kind, text, author),
 
@@ -4768,6 +4865,20 @@ export function mountPaginatedSurface(
       // Arrow keys move from the caret AFTER the typed text, over the layout
       // that includes it.
       flushPendingInputAndLayout();
+      // At a tagged edge one offset shows several slots: a plain arrow walks them before it
+      // moves the offset.
+      const stepsSlots = !extend && (command === 'left' || command === 'right');
+      if (stepsSlots && isCollapsedSelection(selection)) {
+        const slots = slotsAtCaret();
+        const current = caretSlot(slots);
+        const nextSlot = current
+          ? slots[slots.indexOf(current) + (command === 'right' ? 1 : -1)]
+          : undefined;
+        if (nextSlot) {
+          chooseSlot(nextSlot);
+          return;
+        }
+      }
       if (
         !extend &&
         (command === 'left' || command === 'right') &&
@@ -4871,6 +4982,12 @@ export function mountPaginatedSurface(
       const absorbed = !extend && !selectionsEqual(next, target);
       const before = selection;
       setSelection(next, true, absorbed ? 'none' : 'head');
+      // Arriving at a tagged edge from the left stops first in the slot touching the text left
+      // behind; from the right, the default slot already touches the text it came from.
+      if (stepsSlots && command === 'right') {
+        const [first] = slotsAtCaret();
+        if (first) chooseSlot(first);
+      }
       // Landed, like every other reveal here: a form field holding an invalid value refuses
       // the write and pins the caret where the reader has to fix it.
       if (absorbed && (selection !== before || selectionsEqual(selection, next))) {
@@ -5006,7 +5123,7 @@ export function mountPaginatedSurface(
     ...structure,
     ...format,
 
-    setSelection: (next) => {
+    setSelection: (next, slot) => {
       // An explicit host write that MOVES the caret is an intentional selection — a test or
       // an automation host addressing a drawing's anchor means the drawing. A same-position
       // write stays inert: the font-load remount restores the saved caret through here
@@ -5014,6 +5131,7 @@ export function mountPaginatedSurface(
       // (the carried initialDrawingSelectionIntent already preserves a real one).
       if (!selectionsEqual(next, selection)) setDrawingIntent({ kind: 'programmatic' }, false);
       setSelection(next);
+      if (slot) caretSlots.chooseBeside(slot);
     },
 
     selectDrawing(drawingNodeId, hostParagraphId) {
@@ -6133,7 +6251,10 @@ export function mountPaginatedSurface(
       selection: () => hiddenMarks.shownSelection(selection),
       // `none`: a press lands where the reader LOOKS, and moving the paper under a double
       // click sent its second press elsewhere — a blank footer band never opened.
-      setSelection: (next) => setSelection(next, false, 'none'),
+      setSelection: (next, tag) => {
+        setSelection(next, false, 'none');
+        if (tag) chooseSlotOfTag(tag);
+      },
       cellSelection: () => cellSelection,
       setCellSelection: (next) => setCellSelection(next),
       // `preventScroll`: the pages layer is the WHOLE document tall, and focusing it scrolls
@@ -6313,4 +6434,17 @@ export function mountPaginatedSurface(
   );
   registerRefreshComposition(surface, () => selectionSync.isComposing());
   return { ok: true, surface };
+}
+
+function isCollapsedSelection(selection: SemanticSelection): boolean {
+  return samePosition(selection.anchor, selection.head);
+}
+
+function samePosition(a: SemanticPosition, b: SemanticPosition): boolean {
+  return a.paragraphId === b.paragraphId && a.offset === b.offset;
+}
+
+/** What a host reads of a slot: its two neighbours, not its geometry. */
+function slotNeighboursOf(slot: CaretSlot | null): ContentControlSurfaceState['caretSlot'] {
+  return slot ? { left: slot.left, right: slot.right } : null;
 }

@@ -106,6 +106,18 @@ export interface SemanticHit {
   readonly contentControlId: string | null;
   /** Non-null when the hit resolved to an inline drawing atom. */
   readonly drawing: SemanticHitDrawing | null;
+  /**
+   * The view-only content-control tag under the point, and which half of it was hit: the left
+   * half asks for the caret slot in front of the chip, the right half for the one behind it.
+   */
+  readonly contentControlTag?: SemanticHitTag;
+}
+
+/** A chip under the point, and the side of it the point is on. @public */
+export interface SemanticHitTag {
+  readonly controlId: string;
+  readonly edge: 'open' | 'close';
+  readonly side: 'before' | 'after';
 }
 
 /**
@@ -523,7 +535,19 @@ function resolveParagraph(
     // Filled by {@link hitTestPage} once the point is known; keep null on the inner path.
     contentControlId: null,
     drawing: resolved.drawing && resolved.withinSpan ? drawingHitIdentity(resolved.drawing) : null,
+    ...tagAtX(line, point.x),
   };
+}
+
+/** The view-only tag the x falls on, with the half it falls in. */
+function tagAtX(line: LineRecord, x: number): { contentControlTag?: SemanticHitTag } {
+  for (const span of line.spans) {
+    const tag = span.contentControlTag;
+    if (!tag || x < span.box.x || x > span.box.x + span.box.width) continue;
+    const side = x < span.box.x + span.box.width / 2 ? 'before' : 'after';
+    return { contentControlTag: { controlId: tag.controlId, edge: tag.edge, side } };
+  }
+  return {};
 }
 
 /**

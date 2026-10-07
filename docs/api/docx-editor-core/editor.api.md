@@ -2205,7 +2205,7 @@ export interface PaginatedSurface {
         readonly pageHeightTwips?: number;
         readonly pageWidthTwips?: number;
     }): boolean;
-    setSelection(next: SemanticSelection): void;
+    setSelection(next: SemanticSelection, slot?: SemanticHitTag): void;
     setShowParagraphMarks(show: boolean): void;
     setTableInteractionLabel(resolver: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string): void;
     setTocLabels(labels: NonNullable<PaginatedSurfaceOptions['tocLabels']>): void;

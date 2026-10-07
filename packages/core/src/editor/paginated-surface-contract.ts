@@ -22,6 +22,7 @@ import type {
   CellSelection,
   NavigationCommand,
   SectionProperties,
+  SemanticHitTag,
   SemanticLayout,
   SemanticPosition,
   SemanticSelection,
@@ -270,8 +271,13 @@ export interface PaginatedSurface {
    * `block: 'nearest'`, so an already-visible target never yanks the viewport.
    */
   revealPosition(position: SemanticPosition, options?: RevealOptions): boolean;
-  /** Set the selection directly, for a host driving the surface programmatically. */
-  setSelection(next: SemanticSelection): void;
+  /**
+   * Set the selection directly, for a host driving the surface programmatically. With `slot`,
+   * a collapsed caret at a tagged content-control edge stands in the slot on `slot.side` of that
+   * tag, as a press on the tag would put it; without it, in the slot touching the text on the
+   * right.
+   */
+  setSelection(next: SemanticSelection, slot?: SemanticHitTag): void;
   /**
    * Select one painted drawing at its host paragraph, as a pointer press would.
    *

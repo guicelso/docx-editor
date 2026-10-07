@@ -1,4 +1,7 @@
-import type { ContentControlBoundaryRecord } from '@docx-editor.dev/core/layout';
+import type {
+  CaretSlotNeighbour,
+  ContentControlBoundaryRecord,
+} from '@docx-editor.dev/core/layout';
 
 /**
  * Content-control interaction lane on the paginated surface.
@@ -54,4 +57,13 @@ export interface ContentControlSurfaceState {
   readonly formFill: boolean;
   /** Innermost control containing the caret, or null. */
   readonly activeControlId: string | null;
+  /**
+   * The slot the caret stands in at an edge where view-only content-control tags are drawn,
+   * named by the tag on each side of it (`null` for text), or null anywhere else. One offset
+   * shows several slots there, and the slot is what says where typing lands.
+   */
+  readonly caretSlot: {
+    readonly left: CaretSlotNeighbour | null;
+    readonly right: CaretSlotNeighbour | null;
+  } | null;
 }

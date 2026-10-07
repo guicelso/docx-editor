@@ -42,6 +42,12 @@ interface PublishKeys {
    * never lights up.
    */
   formatPainter: string;
+  /**
+   * The slot the caret stands in at a tagged content-control edge. An arrow walks the slots of
+   * one offset before it moves the offset, so the caret moves on screen while the selection
+   * stays put — and where typing lands moves with it.
+   */
+  caretSlot: string;
 }
 
 const EMPTY: PublishKeys = {
@@ -50,6 +56,7 @@ const EMPTY: PublishKeys = {
   headerFooter: null,
   drawingIntent: 'none',
   formatPainter: 'off/none',
+  caretSlot: '',
 };
 
 function keysOf(state: PaginatedSurfaceState, surface: PaginatedSurface): PublishKeys {
@@ -60,7 +67,14 @@ function keysOf(state: PaginatedSurfaceState, surface: PaginatedSurface): Publis
     headerFooter: hf?.editing && hf.rId ? `${hf.editing}:${hf.rId}` : null,
     drawingIntent: drawingSelectionIntentKey(surface.drawingSelectionIntent()),
     formatPainter: `${state.formatPainter.mode}/${state.formatPainter.level}`,
+    caretSlot: caretSlotKeyOf(state.contentControls.caretSlot),
   };
+}
+
+function caretSlotKeyOf(slot: PaginatedSurfaceState['contentControls']['caretSlot']): string {
+  if (slot === null) return '';
+  const side = (tag: typeof slot.left) => (tag === null ? '' : `${tag.controlId}:${tag.edge}`);
+  return `${side(slot.left)}|${side(slot.right)}`;
 }
 
 /**
@@ -91,7 +105,8 @@ export function createPublishSignal(): PublishSignal {
         next.pendingFormat === last.pendingFormat &&
         next.headerFooter === last.headerFooter &&
         next.drawingIntent === last.drawingIntent &&
-        next.formatPainter === last.formatPainter;
+        next.formatPainter === last.formatPainter &&
+        next.caretSlot === last.caretSlot;
       last = next;
       return !quiet;
     },

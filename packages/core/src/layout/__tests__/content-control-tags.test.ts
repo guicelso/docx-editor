@@ -5,6 +5,7 @@ import { readOoxmlPart, type OoxmlPart } from '../../store/package/ooxml-tree.ts
 import { createFixedMeasurer, layoutSemanticDocument } from '../semantic-layout.ts';
 import type { StyleSpanRecord } from '../semantic-records.ts';
 import { forEachSemanticSpan } from '../export-traversal.ts';
+import { hitTestPage } from '../semantic-hit-test.ts';
 import type { ContentControlTagDisplay } from '../content-control-tags.ts';
 import {
   caretAt,
@@ -227,3 +228,27 @@ const TAGS_FOR_CELL: ContentControlTagDisplay = {
   token: 'cell',
   labelsOf: () => ({ open: { text: '[' }, close: { text: ']' } }),
 };
+
+describe('a press on a tag reports the chip and its half', () => {
+  test('the left half asks for the slot in front of the chip, the right half for the one behind', () => {
+    const tagged = layoutOf(TAGS);
+    const chip = spansOf(tagged).find((span) => plain(span.text) === '[Senão')!;
+    const at = (x: number) =>
+      hitTestPage(tagged, 0, { x, y: chip.box.y + chip.box.height / 2 })?.contentControlTag;
+    expect(at(chip.box.x + chip.box.width * 0.25)).toEqual({
+      controlId: chip.contentControlTag!.controlId,
+      edge: 'open',
+      side: 'before',
+    });
+    expect(at(chip.box.x + chip.box.width * 0.75)?.side).toBe('after');
+  });
+
+  test('a press on text reports no chip', () => {
+    const tagged = layoutOf(TAGS);
+    const cnh = spansOf(tagged).find((span) => span.text === 'CNH')!;
+    expect(
+      hitTestPage(tagged, 0, { x: cnh.box.x + 1, y: cnh.box.y + cnh.box.height / 2 })
+        ?.contentControlTag
+    ).toBeUndefined();
+  });
+});

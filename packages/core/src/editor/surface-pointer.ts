@@ -22,6 +22,7 @@ import {
   hitTestPage,
   pageAtY,
   type SemanticHit,
+  type SemanticHitTag,
   type TableCellAddress,
 } from '../layout/semantic-hit-test.ts';
 import {
@@ -90,7 +91,11 @@ export interface PointerHost {
   layout(): SemanticLayout;
   measurer(): TextMeasurer | undefined;
   selection(): SemanticSelection;
-  setSelection(next: SemanticSelection): void;
+  /**
+   * `tag` names the content-control tag a plain click landed on, and its side: the caret slot
+   * the press chose at that tagged edge.
+   */
+  setSelection(next: SemanticSelection, tag?: SemanticHitTag): void;
   cellSelection(): CellSelection | null;
   setCellSelection(next: CellSelection | null): void;
   focus(): void;
@@ -1080,7 +1085,8 @@ export function createPointerController(
       };
       publish(() =>
         host.setSelection(
-          absorbPlaceholderControls(layout, { anchor: anchorRange.from, head: anchorRange.to })
+          absorbPlaceholderControls(layout, { anchor: anchorRange.from, head: anchorRange.to }),
+          granularity === 'character' ? hit.contentControlTag : undefined
         )
       );
     }
