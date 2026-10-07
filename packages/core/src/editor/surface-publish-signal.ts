@@ -48,6 +48,8 @@ interface PublishKeys {
    * stays put — and where typing lands moves with it.
    */
   caretSlot: string;
+  /** The control under a resting pointer: a host shows its details while the caret is elsewhere. */
+  hoveredControl: string | null;
 }
 
 const EMPTY: PublishKeys = {
@@ -57,6 +59,7 @@ const EMPTY: PublishKeys = {
   drawingIntent: 'none',
   formatPainter: 'off/none',
   caretSlot: '',
+  hoveredControl: null,
 };
 
 function keysOf(state: PaginatedSurfaceState, surface: PaginatedSurface): PublishKeys {
@@ -68,6 +71,7 @@ function keysOf(state: PaginatedSurfaceState, surface: PaginatedSurface): Publis
     drawingIntent: drawingSelectionIntentKey(surface.drawingSelectionIntent()),
     formatPainter: `${state.formatPainter.mode}/${state.formatPainter.level}`,
     caretSlot: caretSlotKeyOf(state.contentControls.caretSlot),
+    hoveredControl: state.contentControls.hoveredControlId,
   };
 }
 
@@ -106,7 +110,8 @@ export function createPublishSignal(): PublishSignal {
         next.headerFooter === last.headerFooter &&
         next.drawingIntent === last.drawingIntent &&
         next.formatPainter === last.formatPainter &&
-        next.caretSlot === last.caretSlot;
+        next.caretSlot === last.caretSlot &&
+        next.hoveredControl === last.hoveredControl;
       last = next;
       return !quiet;
     },
