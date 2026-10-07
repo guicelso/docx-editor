@@ -682,6 +682,12 @@
     "refused": "That equation could not be applied. Check the syntax and try again."
   },
   "contentControl": {
+    "prompt": {
+      "text": "Click here to enter text.",
+      "date": "Click here to enter a date.",
+      "list": "Choose an item.",
+      "buildingBlock": "Choose a building block."
+    },
     "group": "Content controls",
     "showAll": "Show content control boundaries",
     "formFill": "Form-fill mode",

@@ -682,6 +682,12 @@
     "refused": "No se pudo aplicar la ecuación. Revisa la sintaxis e inténtalo de nuevo."
   },
   "contentControl": {
+    "prompt": {
+      "text": "Haga clic o pulse aquí para escribir texto.",
+      "date": "Haga clic aquí o pulse para escribir una fecha.",
+      "list": "Elija un elemento.",
+      "buildingBlock": "Elija un bloque de creación."
+    },
     "group": "Controles de contenido",
     "showAll": "Mostrar límites de los controles de contenido",
     "formFill": "Modo de rellenar formularios",

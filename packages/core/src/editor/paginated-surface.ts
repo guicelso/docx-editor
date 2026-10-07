@@ -308,6 +308,7 @@ import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { overlaySheet, sizeOverlaySheets } from './surface-overlay-sheet.ts';
 import type { SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
 import type { ContentControlSurfaceState } from './surface-content-control-contract.ts';
+import type { ContentControlKind } from '../store/package/content-control-nodes.ts';
 
 export type {
   ContentControlOps,
@@ -371,10 +372,13 @@ export function mountPaginatedSurface(
     readonly initialSelection?: SemanticSelection;
     readonly initialTextFormInput?: PendingTextFormInput;
   };
-  const opened = openTreeSession(
-    bytes,
-    options.reviewModel ? { reviewModel: options.reviewModel } : {}
-  );
+  /** The host's translation; `setTranslate` replaces it, and every reader asks it live. */
+  let translate = options.translate;
+  const opened = openTreeSession(bytes, {
+    ...(options.reviewModel ? { reviewModel: options.reviewModel } : {}),
+    // Read live: the prompts follow `setTranslate`, as every other label of the surface does.
+    placeholderPrompt: (type) => placeholderPromptOf(translate, type),
+  });
   if (!opened.ok) {
     return {
       ok: false,
@@ -2761,7 +2765,6 @@ export function mountPaginatedSurface(
    * the document has already lost the proposal.
    */
   const dateLocale = createSurfaceDateLocale(options.locale, flushTypeBuffer);
-  let translate = options.translate;
   let textFormInteraction: ReturnType<typeof createTextFormFieldInteraction> | null = null;
   let legacyDropdownInteraction: ReturnType<typeof createLegacyDropdownInteraction> | null = null;
   let legacyCheckboxInteraction: ReturnType<typeof createLegacyCheckboxInteraction> | null = null;
@@ -6448,3 +6451,28 @@ function samePosition(a: SemanticPosition, b: SemanticPosition): boolean {
 function slotNeighboursOf(slot: CaretSlot | null): ContentControlSurfaceState['caretSlot'] {
   return slot ? { left: slot.left, right: slot.right } : null;
 }
+
+/**
+ * The prompt an empty control of `type` shows, from the host's translation. A translation
+ * that does not know the key answers with the key (or nothing), and Word's default stands.
+ */
+function placeholderPromptOf(
+  translate: PaginatedSurfaceOptions['translate'],
+  type: ContentControlKind
+): string | undefined {
+  const key = PLACEHOLDER_PROMPT_KEYS[type];
+  if (!key || !translate) return undefined;
+  const text = translate(key);
+  return text && text !== key ? text : undefined;
+}
+
+/** The translation key of each prompt Word writes; a checkbox and a picture show none. */
+const PLACEHOLDER_PROMPT_KEYS: Partial<Record<ContentControlKind, string>> = {
+  richText: 'contentControl.prompt.text',
+  plainText: 'contentControl.prompt.text',
+  untyped: 'contentControl.prompt.text',
+  comboBox: 'contentControl.prompt.list',
+  dropDownList: 'contentControl.prompt.list',
+  date: 'contentControl.prompt.date',
+  docPartList: 'contentControl.prompt.buildingBlock',
+};

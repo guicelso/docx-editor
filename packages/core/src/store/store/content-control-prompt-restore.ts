@@ -68,7 +68,7 @@ export function restoreEmptiedPlaceholder(
   if (!content || holdsContent(content, 0)) return result;
   const nextId = createNodeIdAllocator(result.part);
   const inline = isInlineControl(result.part, control.id);
-  const children = contentWithText(content, promptFor(summary.type), nextId, inline);
+  const children = contentWithText(content, promptFor(summary.type, options), nextId, inline);
   if (!children) return result;
   const sdtPr = contentControlPropertiesContainerOf(control);
   const properties = editedProperties(sdtPr, { showingPlaceholder: true }, nextId);

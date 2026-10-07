@@ -339,3 +339,63 @@ describe('insertContentControl refuses a position nothing can divide', () => {
     ).toBe('locked');
   });
 });
+
+describe('the prompt an empty control shows is the reader’s language', () => {
+  const placeholderPrompt = (type: string) => (type === 'richText' ? 'digite o trecho' : undefined);
+
+  test('an empty control is created showing the prompt the caller supplies', () => {
+    const part = parseDoc(`<w:p><w:r><w:t>ab</w:t></w:r></w:p>`);
+    const result = applyTreeOp(
+      part,
+      {
+        op: 'insertContentControl',
+        paragraphId: paragraphs(part)[0]!.id,
+        start: 1,
+        end: 1,
+        type: 'richText',
+        tag: 'prompted',
+      },
+      { placeholderPrompt }
+    );
+    if (!result.ok) throw new Error(result.reason);
+    const control = insertedControl(result.part, 'prompted');
+    expect(contentControlTextOf(control)).toBe('digite o trecho');
+    expect(isShowingPlaceholder(control)).toBe(true);
+  });
+
+  test('a type the caller has no prompt for keeps Word’s default', () => {
+    const part = parseDoc(`<w:p><w:r><w:t>ab</w:t></w:r></w:p>`);
+    const result = applyTreeOp(
+      part,
+      {
+        op: 'insertContentControl',
+        paragraphId: paragraphs(part)[0]!.id,
+        start: 1,
+        end: 1,
+        type: 'plainText',
+        tag: 'plain',
+      },
+      { placeholderPrompt }
+    );
+    if (!result.ok) throw new Error(result.reason);
+    expect(contentControlTextOf(insertedControl(result.part, 'plain'))).toBe(
+      'Click here to enter text.'
+    );
+  });
+
+  test('emptying a control brings back the supplied prompt', () => {
+    const part = parseDoc(
+      `<w:p><w:r><w:t xml:space="preserve">a </w:t></w:r><w:sdt><w:sdtPr><w:tag w:val="t"/><w:richText/></w:sdtPr>` +
+        `<w:sdtContent><w:r><w:t>X</w:t></w:r></w:sdtContent></w:sdt></w:p>`
+    );
+    const result = applyTreeOp(
+      part,
+      { op: 'deleteText', paragraphId: paragraphs(part)[0]!.id, start: 2, end: 3 },
+      { placeholderPrompt }
+    );
+    if (!result.ok) throw new Error(result.reason);
+    const control = insertedControl(result.part, 't');
+    expect(contentControlTextOf(control)).toBe('digite o trecho');
+    expect(isShowingPlaceholder(control)).toBe(true);
+  });
+});
