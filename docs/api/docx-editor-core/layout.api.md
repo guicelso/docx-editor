@@ -77,6 +77,7 @@ export const AUTO_PREFERRED_WIDTH: PreferredWidth;
 // @public
 export interface AutofitFieldContext {
     readonly bodyPageFields?: BodyPageFieldContext | false;
+    readonly contentControlTags?: ContentControlTagDisplay;
     readonly documentProperties?: DocumentProperties;
     readonly fieldCodeRanges?: FieldCodeRanges;
     readonly noteMarks?: NoteMarkContext;
@@ -266,6 +267,34 @@ export interface CaretGeometry {
     // (undocumented)
     readonly y: number;
 }
+
+// @public
+export interface CaretSlot {
+    // (undocumented)
+    readonly height: number;
+    // (undocumented)
+    readonly left: CaretSlotNeighbour | null;
+    // (undocumented)
+    readonly lineId: string;
+    // (undocumented)
+    readonly pageIndex: number;
+    // (undocumented)
+    readonly right: CaretSlotNeighbour | null;
+    readonly x: number;
+    // (undocumented)
+    readonly y: number;
+}
+
+// @public
+export interface CaretSlotNeighbour {
+    // (undocumented)
+    readonly controlId: string;
+    // (undocumented)
+    readonly edge: ContentControlTagMark['edge'];
+}
+
+// @public
+export function caretSlotsAt(layout: SemanticLayout, position: SemanticPosition): readonly CaretSlot[];
 
 // @public (undocumented)
 export function caretStops(layout: SemanticLayout, measurer?: TextMeasurer): CaretGeometry[];
@@ -530,6 +559,44 @@ export function contentControlsInLayout(layout: SemanticLayout): readonly Conten
 
 // @public
 export function contentControlsOfLayout(layout: SemanticLayout): readonly ContentControlBoundaryRecord[];
+
+// @public
+export interface ContentControlTagDisplay {
+    // (undocumented)
+    readonly labelsOf: (control: ContentControlTagSubject) => {
+        readonly close?: ContentControlTagLabel;
+        readonly open?: ContentControlTagLabel;
+    } | null;
+    readonly token: string;
+}
+
+// @public
+export type ContentControlTagEdge = 'open' | 'close';
+
+// @public
+export interface ContentControlTagLabel {
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly tone?: string;
+}
+
+// @public
+export interface ContentControlTagMark {
+    // (undocumented)
+    readonly controlId: string;
+    // (undocumented)
+    readonly edge: ContentControlTagEdge;
+    readonly tone?: string;
+}
+
+// @public
+export interface ContentControlTagSubject {
+    // (undocumented)
+    readonly controlId: string;
+    // (undocumented)
+    readonly tag: string | undefined;
+}
 
 // @public
 export function createBoundedFallbackWordBoundary(): WordBoundary;
@@ -1019,6 +1086,7 @@ export interface FieldAtomMarker {
         readonly selectedIndex: number;
     };
     readonly formField: boolean;
+    readonly instruction?: string;
     readonly pageField?: {
         readonly kind: AllowlistedPageField;
         readonly numberFormat?: PageFieldNumberFormat;
@@ -3369,6 +3437,9 @@ export function runBorderStrokesForLine(line: LineRecord): readonly ParagraphBor
 export function runStylesEqual(a: ResolvedRunStyle, b: ResolvedRunStyle): boolean;
 
 // @public
+export function sameCaretSlotNeighbour(a: CaretSlotNeighbour | null, b: CaretSlotNeighbour | null): boolean;
+
+// @public
 export interface ScriptItem {
     // (undocumented)
     readonly bidiLevel: number;
@@ -3554,6 +3625,7 @@ export interface SemanticHit {
     readonly caret: CaretGeometry;
     readonly cell: TableCellAddress | null;
     readonly contentControlId: string | null;
+    readonly contentControlTag?: SemanticHitTag;
     readonly drawing: SemanticHitDrawing | null;
     // (undocumented)
     readonly lineId: string;
@@ -3575,6 +3647,16 @@ export interface SemanticHitDrawing {
 }
 
 // @public
+export interface SemanticHitTag {
+    // (undocumented)
+    readonly controlId: string;
+    // (undocumented)
+    readonly edge: 'open' | 'close';
+    // (undocumented)
+    readonly side: 'before' | 'after';
+}
+
+// @public
 export function semanticHorizontalBoundaries(run: ShapedRun): readonly number[];
 
 // @public
@@ -3592,6 +3674,7 @@ export interface SemanticLayout {
 export interface SemanticLayoutOptions {
     readonly cache?: ParagraphLayoutCache<readonly PendingLine[]>;
     readonly compatibilityMode?: number;
+    readonly contentControlTags?: ContentControlTagDisplay;
     readonly defaultTabStopPt?: number;
     readonly displayMode?: RevisionDisplayMode;
     readonly documentProperties?: DocumentProperties;
@@ -4273,6 +4356,7 @@ export interface StyleSpanRecord {
     readonly box: LayoutBox;
     readonly caretEdges?: readonly number[];
     readonly changeSites?: readonly RevisionAttribution[];
+    readonly contentControlTag?: ContentControlTagMark;
     readonly equation?: EquationSpanRecord;
     readonly fieldAtom?: FieldAtomMarker;
     readonly fontSlot?: FontSlot;

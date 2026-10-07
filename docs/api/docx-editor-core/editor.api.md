@@ -2148,16 +2148,19 @@ export interface PaginatedSurface {
     selectAll(): void;
     selectDrawing(drawingNodeId: string, hostParagraphId: string): boolean;
     selectedText(): string;
+    selectionClientRects(): readonly HighlightRect[];
     // (undocumented)
     readonly session: TreeDocxSessionView;
     setActiveScope(scope: ViewScope): boolean;
     setAllRevisionAuthorsVisible(visible: boolean): void;
     setAuthor(author: string | undefined): void;
     setCellSelection(next: CellSelection | null): void;
+    setContentControlTags(display: ContentControlTagDisplay | null): void;
     setDrawingStrings(strings: DrawingPaintStrings): void;
     setEditable(editable: boolean): void;
     // (undocumented)
     setEditingMode(mode: SurfaceEditingMode): void;
+    setFieldTones(tone: FieldTone | null): void;
     setHighlightPainter(painter: SurfaceOverlayPainter | null): void;
     setIndent(update: {
         readonly firstLine?: number | null;

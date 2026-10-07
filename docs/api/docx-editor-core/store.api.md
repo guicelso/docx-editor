@@ -1264,6 +1264,7 @@ export type DrawingTreeDocOp = Extract<TreeDocOp, {
 export interface EditOptions {
     // (undocumented)
     readonly deferValidation?: boolean;
+    readonly placeholderPrompt?: PlaceholderPrompt;
     readonly revisionIds?: () => string;
     readonly trackedRevisionIds?: TransactionRevisionIds;
 }
@@ -2015,6 +2016,10 @@ export function insertPackageCustomNode(packageStore: TreePackageStore, write: I
 
 // @public (undocumented)
 export type InsertTextOp = {
+    readonly beside?: {
+        readonly controlId: string;
+        readonly side: 'before' | 'after';
+    };
     readonly bias?: 'left' | 'right';
     readonly inside?: string;
     readonly offset: number;
@@ -2286,7 +2291,7 @@ export function lockForbidsRemoval(lock: ContentControlLock): boolean;
 export function makeLimitCounter(limits: ResourceLimits, key: keyof ResourceLimits): BoundedCounter;
 
 // @public
-export function materializeGlossaryPlaceholders(pkg: OoxmlPackage, part: OoxmlPart): OoxmlPart;
+export function materializeGlossaryPlaceholders(pkg: OoxmlPackage, part: OoxmlPart, placeholderPrompt?: PlaceholderPrompt): OoxmlPart;
 
 // @public
 export const MAX_CONTENT_CONTROL_NESTING = 32;
@@ -4925,6 +4930,7 @@ export class TreeDocumentStore {
 // @public
 export interface TreeDocumentStoreOptions {
     readonly historyLimit?: number;
+    readonly placeholderPrompt?: PlaceholderPrompt;
     readonly settingsPart?: () => OoxmlPart | null | undefined;
 }
 
@@ -5155,6 +5161,7 @@ export interface TreePackageStoreOptions {
     // (undocumented)
     readonly historyLimit?: number;
     readonly maxEditableStoryParts?: number;
+    readonly placeholderPrompt?: PlaceholderPrompt;
 }
 
 // @public

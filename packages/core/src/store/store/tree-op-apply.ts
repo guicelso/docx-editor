@@ -149,7 +149,6 @@ import {
 } from './tree-op-content-controls.ts';
 import {
   insertionDestination,
-  siteBesideControl,
   fieldInsertionEndAt,
   isParagraph,
   runsUnder,
@@ -157,6 +156,7 @@ import {
   segmentsOf,
   type Segment,
 } from './tree-op-segments.ts';
+import { siteBesideControl } from './tree-op-beside.ts';
 import {
   applyInsertToc,
   applyReplaceTocResult,

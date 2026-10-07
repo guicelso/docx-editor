@@ -2241,7 +2241,6 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     },
 
     getSelectionPlacement: () => selectionPlacement(),
-
     getSelectionRects: () => surface?.selectionClientRects() ?? [],
 
     isReviewPaneOpen: () => reviewPaneOpen,

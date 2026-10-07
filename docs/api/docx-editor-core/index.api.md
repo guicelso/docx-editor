@@ -1477,6 +1477,7 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights {
         readonly anchorY: number;
         readonly pageIndex: number;
     } | null;
+    getSelectionRects(): readonly HighlightRect[];
     getTableCellSelection(): {
         readonly cellIds: readonly string[];
         readonly columns: {
