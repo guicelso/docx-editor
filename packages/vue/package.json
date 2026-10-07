@@ -41,7 +41,7 @@
     "typescript7": "npm:typescript@^7.0.2"
   },
   "dependencies": {
-    "@docx-editor.dev/i18n": "^2.27.0"
+    "@docx-editor.dev/i18n": "^2.27.0-lumia.1"
   },
   "keywords": [
     "docx",
