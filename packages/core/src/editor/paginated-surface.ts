@@ -1776,6 +1776,25 @@ export function mountPaginatedSurface(
   /** TOC chrome is hover-projected; never sticky from caret/click. */
   let hoveredTocControlId: string | null = null;
 
+  /** The innermost control under a resting pointer, as layout answers it (Word's hover). */
+  let hoveredControlId: string | null = null;
+
+  /**
+   * A control's hover retints the chrome already painted, as the TOC's does and for the same
+   * reason: a repaint on pointermove would replace the node a gesture started on.
+   */
+  function setHoveredControlId(next: string | null): void {
+    if (hoveredControlId === next) return;
+    hoveredControlId = next;
+    for (const chrome of pagesLayer.querySelectorAll<HTMLElement>(
+      '.docx-content-control-chrome:not([data-docx-toc])'
+    )) {
+      if (chrome.getAttribute('data-docx-content-control') === next) chrome.dataset.hover = '';
+      else delete chrome.dataset.hover;
+    }
+    options.onChange?.(currentState());
+  }
+
   function tocControlIdOf(toc: ReturnType<typeof detectBodyTocs>[number]): string {
     return tocControlId(toc, session.part());
   }
@@ -1932,7 +1951,8 @@ export function mountPaginatedSurface(
     }
     // TOC regions never project caret-active chrome — hoverIds own their visibility.
     const activeIds = active && !tocControlIds.has(active.id) ? new Set([active.id]) : undefined;
-    const hoverIds = hoveredTocControlId ? new Set([hoveredTocControlId]) : undefined;
+    const hovered = [hoveredTocControlId, hoveredControlId].filter((id) => id !== null);
+    const hoverIds = hovered.length > 0 ? new Set(hovered) : undefined;
     const checkedIds = new Set(
       contentControlsInLayout(currentLayout)
         .filter((control) => control.controlType === 'checkbox' && checkboxChecked(control.id))
@@ -2562,6 +2582,7 @@ export function mountPaginatedSurface(
         formFill: formFillMode,
         activeControlId: contentControlAtCaret()?.id ?? null,
         caretSlot: slotNeighboursOf(caretSlot()),
+        hoveredControlId,
       },
       contextTocId,
       formatPainter: formatPainter.state(),
@@ -6262,6 +6283,7 @@ export function mountPaginatedSurface(
       selection: () => hiddenMarks.shownSelection(selection),
       // `none`: a press lands where the reader LOOKS, and moving the paper under a double
       // click sent its second press elsewhere — a blank footer band never opened.
+      onHover: setHoveredControlId,
       setSelection: (next, tag) => {
         setSelection(next, false, 'none');
         if (tag) chooseSlotOfTag(tag);

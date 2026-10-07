@@ -71,6 +71,11 @@ export interface EnterHeaderFooterPointerRequest extends ActiveHeaderFooterPoint
 /** What the controller needs from the surface it drives. */
 export interface PointerHost {
   readonly pagesLayer: HTMLElement;
+  /**
+   * The innermost content control under a resting pointer, from layout — the one Word draws
+   * the boundary of on hover — or null off every control. Not called while a gesture runs.
+   */
+  onHover?(controlId: string | null): void;
   readonly container: HTMLElement;
   /**
    * Points to CSS pixels, read per gesture rather than captured.
@@ -1165,7 +1170,17 @@ export function createPointerController(
     layerRect = null;
   };
 
+  // Hover is read from the same layout hit test a press uses, never from the painted DOM.
+  const onHoverMove = (event: PointerEvent): void => {
+    if (gesture || !host.onHover) return;
+    const hit = resolve(event.clientX, event.clientY);
+    host.onHover(hit?.contentControlId ?? null);
+  };
+  const onHoverLeave = (): void => host.onHover?.(null);
+
   pagesLayer.addEventListener('pointerdown', onPointerDown);
+  pagesLayer.addEventListener('pointermove', onHoverMove);
+  pagesLayer.addEventListener('pointerleave', onHoverLeave);
   scrollHost?.addEventListener('scroll', onScroll, { passive: true });
   // Anything that can move the layer under a live pointer invalidates the cached origin, not
   // only the scroller this surface sits in: an ancestor or the window can scroll, and a
@@ -1179,6 +1194,8 @@ export function createPointerController(
     destroy() {
       endGesture();
       pagesLayer.removeEventListener('pointerdown', onPointerDown);
+      pagesLayer.removeEventListener('pointermove', onHoverMove);
+      pagesLayer.removeEventListener('pointerleave', onHoverLeave);
       scrollHost?.removeEventListener('scroll', onScroll);
       view?.removeEventListener('scroll', onScroll, { capture: true });
       view?.removeEventListener('resize', onScroll);

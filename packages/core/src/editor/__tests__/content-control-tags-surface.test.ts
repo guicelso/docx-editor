@@ -7,6 +7,7 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 import { afterEach, describe, expect, test } from 'bun:test';
 import { strFromU8, unzipSync } from 'fflate';
 import type { ContentControlTagDisplay } from '../../layout/content-control-tags.ts';
+import { contentControlsInLayout } from '../../layout/semantic-interaction.ts';
 import type { PaginatedSurface } from '../paginated-surface.ts';
 import { mount } from './paginated-surface-fixtures.ts';
 
@@ -96,5 +97,40 @@ describe('field tones on the surface', () => {
     expect(
       opened.container.querySelector<HTMLElement>('[data-field-atom]')?.dataset.fieldTone
     ).toBeUndefined();
+  });
+});
+
+describe('hovering a content control', () => {
+  test('the control under a resting pointer is published and its chrome retinted', () => {
+    const opened = mount(BODY);
+    mounted.push(opened.surface);
+    const { surface, container } = opened;
+    const layout = surface.layout();
+    const page = layout.pages[0]!;
+    const fragment = contentControlsInLayout(layout)[0]!.fragments[0]!;
+    const target = container.querySelector<HTMLElement>('[data-paragraph-id]')!;
+    const move = (x: number, y: number) =>
+      target.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, clientX: x, clientY: y })
+      );
+
+    move(
+      page.contentBox.x + fragment.box.x + fragment.box.width / 2,
+      page.contentBox.y + fragment.box.y + fragment.box.height / 2
+    );
+    const hovered = surface.state().contentControls.hoveredControlId;
+    expect(hovered).not.toBeNull();
+    const chrome = container.querySelector<HTMLElement>(
+      `.docx-content-control-chrome[data-docx-content-control="${hovered}"]`
+    );
+    expect(chrome?.dataset.hover).toBe('');
+    expect(surface.layout()).toBe(layout);
+
+    container
+      .querySelector('[data-paragraph-id]')!
+      .closest('[contenteditable="true"]')
+      ?.dispatchEvent(new PointerEvent('pointerleave'));
+    expect(surface.state().contentControls.hoveredControlId).toBeNull();
+    expect(chrome?.dataset.hover).toBeUndefined();
   });
 });
