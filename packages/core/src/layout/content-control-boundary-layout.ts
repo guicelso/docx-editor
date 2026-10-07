@@ -301,6 +301,8 @@ interface PlacedSpanBox {
   readonly paragraphId: string;
   readonly start: number;
   readonly end: number;
+  /** A view-only tag's control: its zero-width range cannot say which control it belongs to. */
+  readonly tagControlId?: string;
   /**
    * Ordinal of the line this span sits on, so inline-control fragments can union per LINE.
    * Uniting per page gave a wrapped control one rectangle covering everything between its
@@ -442,6 +444,7 @@ function pageContribution(
             paragraphId: span.range.paragraphId,
             start: span.range.start,
             end: span.range.end,
+            ...(span.contentControlTag ? { tagControlId: span.contentControlTag.controlId } : {}),
             line: lineKey,
             box: {
               x: span.box.x + offsetX,
@@ -552,11 +555,37 @@ function fragmentsForBlockControl(
     });
 }
 
+/**
+ * The control and every control nested in it, by id: a tag at a shared edge belongs to the
+ * outline of its own control and its ancestors, never to a sibling's that touches the same offset.
+ */
+const controlIdsWithinMemo = new WeakMap<OoxmlElement, ReadonlySet<string>>();
+
+function controlIdsWithin(control: OoxmlElement): ReadonlySet<string> {
+  const cached = controlIdsWithinMemo.get(control);
+  if (cached) return cached;
+  const ids = new Set<string>([control.id]);
+  const walk = (nodes: readonly OoxmlNode[], depth: number): void => {
+    if (depth >= MAX_INLINE_CONTAINER_DEPTH) return;
+    for (const child of nodes) {
+      if (child.kind === 'textValue') continue;
+      if (isContentControl(child)) {
+        ids.add(child.id);
+        walk(contentControlContentChildren(child), depth + 1);
+      } else if (isInlineRunContainer(child)) walk(child.children, depth + 1);
+    }
+  };
+  walk(contentControlContentChildren(control), 0);
+  controlIdsWithinMemo.set(control, ids);
+  return ids;
+}
+
 function fragmentsForInlineControl(
   paragraphId: string,
   range: { readonly start: number; readonly end: number },
   geometry: PlacedGeometryIndex,
-  work?: ContentControlBoundaryWork
+  work?: ContentControlBoundaryWork,
+  ownedTags: ReadonlySet<string> = new Set()
 ): ContentControlGeometryFragment[] {
   work && (work.paragraphLookups += 1);
   const placed = geometry.spansByParagraph.get(paragraphId) ?? [];
@@ -575,10 +604,8 @@ function fragmentsForInlineControl(
   while (!repeated && low < high) {
     work && (work.spanCandidates += 1);
     const middle = low + ((high - low) >> 1);
-    const beforeStart =
-      range.start === range.end
-        ? placed[middle]!.end < range.start
-        : placed[middle]!.end <= range.start;
+    // Strictly before: a zero-width tag AT the start belongs to this control's outline.
+    const beforeStart = placed[middle]!.end < range.start;
     if (beforeStart) low = middle + 1;
     else high = middle;
   }
@@ -586,11 +613,15 @@ function fragmentsForInlineControl(
   for (let index = low; index < placed.length; index += 1) {
     const span = placed[index]!;
     work && (work.spanCandidates += 1);
-    if (span.end <= range.start) continue;
-    if (span.start >= range.end) {
+    if (span.start > range.end) {
       if (repeated) continue;
       break;
     }
+    if (span.tagControlId !== undefined) {
+      // A tag sits ON an edge: it is drawn inside the control that owns it and its ancestors.
+      if (!ownedTags.has(span.tagControlId)) continue;
+      if (span.start < range.start || span.end > range.end) continue;
+    } else if (span.end <= range.start || span.start >= range.end) continue;
     const group = byLine.get(span.line);
     if (group) group.boxes.push(span.box);
     else byLine.set(span.line, { pageIndex: span.pageIndex, boxes: [span.box] });
@@ -683,7 +714,13 @@ function boundaryRecordOf(
 ): ContentControlBoundaryRecord {
   const fragments =
     collected.level === 'inline' && collected.paragraphId && collected.range
-      ? fragmentsForInlineControl(collected.paragraphId, collected.range, geometry, work)
+      ? fragmentsForInlineControl(
+          collected.paragraphId,
+          collected.range,
+          geometry,
+          work,
+          controlIdsWithin(collected.control)
+        )
       : fragmentsForBlockControl(collected.blockIds, geometry, work);
   // One source for the chrome fields: a field added to the record has one place to be
   // forgotten, not two, and the no-geometry path can never drift from this one.

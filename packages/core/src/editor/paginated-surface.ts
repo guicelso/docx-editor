@@ -892,6 +892,10 @@ export function mountPaginatedSurface(
   });
   // Layout, furniture, and formatting writes share the view's current projection (#497).
   let showFieldCodes = false;
+  /** View-only start/end tags for inline content controls (Design Mode), or none. */
+  let contentControlTags:
+    | import('../layout/content-control-tags.ts').ContentControlTagDisplay
+    | undefined;
   const reviewView = createReviewViewState(
     options.revisionDisplayMode,
     !!options.reviewModel,
@@ -1333,6 +1337,7 @@ export function mountPaginatedSurface(
       // constructed `proposed` never shares cached pages with an `all-markup` one.
       displayMode: revisionDisplayMode(),
       showFieldCodes: context ? false : showFieldCodes,
+      contentControlTags: context ? undefined : contentControlTags,
       revisionAuthorFilter: activeAuthorFilter,
     } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
   }
@@ -5347,6 +5352,19 @@ export function mountPaginatedSurface(
     },
 
     revisionAuthors: () => reviewAuthors.get().value,
+    setContentControlTags(display) {
+      if (destroyed) return;
+      // The token names the labeling: the same one answers the same labels, so nothing to lay out.
+      const unchanged =
+        display === null
+          ? contentControlTags === undefined
+          : display.token === contentControlTags?.token;
+      if (unchanged) return;
+      flushPendingInputAndLayout();
+      contentControlTags = display ?? undefined;
+      scheduler.invalidateAll(session.packageRevision(), 'content-control-tags');
+      scheduler.flush();
+    },
     setRevisionDisplayMode(mode) {
       if (destroyed || mode === reviewView.view()) return;
       flushPendingInputAndLayout();

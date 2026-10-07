@@ -501,6 +501,13 @@ export {
   contentControlHoldingParagraph,
   contentControlRecordsInPart,
 } from './content-control-boundary-layout.ts';
+export type {
+  ContentControlTagDisplay,
+  ContentControlTagEdge,
+  ContentControlTagLabel,
+  ContentControlTagMark,
+  ContentControlTagSubject,
+} from './content-control-tags.ts';
 export {
   W15_NAMESPACE_URI,
   type CommentAnchor,

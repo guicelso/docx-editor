@@ -284,6 +284,8 @@ export interface StyleSpanRecord {
   readonly projected?: boolean;
   /** Authored inline separator rule; its advance belongs to one note atom. */
   readonly noteSeparator?: 'separator' | 'continuationSeparator';
+  /** A view-only content-control tag: which control, and which edge. Its range is zero-width. */
+  readonly contentControlTag?: import('./content-control-tags.ts').ContentControlTagMark;
   /** Paint-ready geometry for one atomic Office Math equation. */
   readonly equation?: EquationSpanRecord;
   /**

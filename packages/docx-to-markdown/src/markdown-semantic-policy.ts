@@ -73,6 +73,8 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     fontSlot: 'layout-only',
     glyphOffsetPt: 'layout-only',
     borderBaselinePt: 'layout-only',
+    // A view-only content-control tag is never laid out for an export.
+    contentControlTag: 'layout-only',
   } satisfies Record<keyof StyleSpanRecord, MarkdownFieldPolicy>,
   sourceRange: {
     paragraphId: 'represented',

@@ -9,6 +9,7 @@ export const paragraphSpanMetadata = (
   changeSites?: readonly RevisionAttribution[];
   fieldAtom?: FieldAwarePiece['fieldAtom'];
   noteSeparator?: FieldAwarePiece['noteSeparator'];
+  contentControlTag?: FieldAwarePiece['contentControlTag'];
 } => ({
   ...(piece.revisions === undefined ? {} : { revisions: piece.revisions }),
   ...(piece.changeSites === undefined ? {} : { changeSites: piece.changeSites }),
@@ -16,4 +17,5 @@ export const paragraphSpanMetadata = (
   // field, and by paint time its result is indistinguishable from ordinary text.
   ...(piece.fieldAtom === undefined ? {} : { fieldAtom: piece.fieldAtom }),
   ...(piece.noteSeparator ? { noteSeparator: piece.noteSeparator } : {}),
+  ...(piece.contentControlTag ? { contentControlTag: piece.contentControlTag } : {}),
 });

@@ -111,6 +111,8 @@ export interface TextboxStoryLayoutOptions {
   readonly projectFieldLink?: import('./field-pieces.ts').FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
+  /** View-only content-control tags (Design Mode), drawn in the story as in the body. */
+  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
   /** Story nesting depth; a textbox laid out from inside another textbox passes depth + 1. */
   readonly depth?: number;
   /**
@@ -517,7 +519,9 @@ export function layoutTextboxStory(
   const flow = flowBlocksInBox(blocks, 0, contentWidth, 0, 0, {
     measurer: options.measurer,
     cache: options.cache,
-    producer: `${options.producer}${options.showFieldCodes ? '|field-codes' : ''}|txbx:${projection.drawingNodeId}`,
+    producer: `${options.producer}${options.showFieldCodes ? '|field-codes' : ''}${
+      options.contentControlTags ? `|cc-tags:${options.contentControlTags.token}` : ''
+    }|txbx:${projection.drawingNodeId}`,
     nextLineId: () => `${prefix}-line-${lineCounter++}`,
     styleCascade: options.styleCascade,
     ...(listItems ? { listItems } : {}),
@@ -526,6 +530,7 @@ export function layoutTextboxStory(
     ...(options.projectLink ? { projectLink: options.projectLink } : {}),
     ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
     showFieldCodes: options.showFieldCodes,
+    ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
     compatibilityMode: options.compatibilityMode,
     tableNestingOffset: 1,
     ...(options.defaultTabStopPt !== undefined

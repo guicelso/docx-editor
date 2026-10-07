@@ -840,6 +840,7 @@ function paintSpan(
   applyRunFaceStyle(element, faceStyle, ctx);
   applyFieldShading(element, span, ctx);
   applyRevisionPresentation(element, span, ctx);
+  if (span.contentControlTag) paintContentControlTagChip(element, span, ctx.scale);
   const textHost = prepareTextPaintHost(document, element, span, ctx.scale);
   if (span.text === '\t') {
     // Keep the model character for range mapping, but clip any native tab ink that would
@@ -2388,3 +2389,43 @@ export function paintSemanticLayoutWithAuthorSlots(
   applyHeaderFooterPaintChrome(pages, resolved);
 }
 import { tabLeaderPattern } from '../layout/tab-leader-pattern.ts';
+
+/**
+ * A view-only content-control tag drawn as its own chip.
+ *
+ * The chip keeps EXACTLY the advance layout reserved — the caret and every following glyph are
+ * placed from that number — so the gap between neighbouring chips is a transparent border
+ * inside the box. Its height is its own text's, not the line band's, so it sits on the line's
+ * baseline as a pill around the label. Colour, fill and outline belong to the stylesheet:
+ * `.docx-cc-tag` draws a neutral chip from the `--doc-*` tokens, and a host restyles it by the
+ * `data-cc-tag-tone` it chose. The data attributes are also the host's click target.
+ */
+function paintContentControlTagChip(
+  element: HTMLElement,
+  span: StyleSpanRecord,
+  scale: number
+): void {
+  const tag = span.contentControlTag!;
+  const css = element.style;
+  const chipHeight = span.style.fontSizePt * CHIP_LINE_FACTOR * scale;
+  element.classList.add('docx-cc-tag');
+  css.width = `${span.box.width * scale}px`;
+  css.height = `${chipHeight}px`;
+  css.paddingTop = '0';
+  css.lineHeight = `${chipHeight}px`;
+  css.borderLeft = `${CHIP_GAP_PT * scale}px solid transparent`;
+  css.borderRight = `${CHIP_GAP_PT * scale}px solid transparent`;
+  css.textAlign = 'center';
+  // No `overflow: hidden`: on an inline-block it moves the baseline to the bottom edge
+  // (CSS 2.1 §10.8.1) and lifts the chip off the line. The label fits by construction —
+  // layout measured this very text for the advance.
+  css.whiteSpace = 'nowrap';
+  element.dataset.ccTagControl = tag.controlId;
+  element.dataset.ccTagEdge = tag.edge;
+  if (tag.tone !== undefined) element.dataset.ccTagTone = tag.tone;
+}
+
+/** The chip's line box as a multiple of its own font size: room for ascent and descent. */
+const CHIP_LINE_FACTOR = 1.3;
+/** The transparent gap on each side of a chip, inside the advance layout reserved. */
+const CHIP_GAP_PT = 1.2;

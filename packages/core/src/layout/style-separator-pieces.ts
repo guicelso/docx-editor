@@ -71,6 +71,7 @@ export function collectDisplayPieces(
     args[15],
     args[16],
     args[17],
-    args[18]
+    args[18],
+    args[19]
   );
 }

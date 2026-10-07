@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Inline content controls showed their extent only as boundary chrome over the page; a host could not show where each control opens and closes in the flow of the text.",
+  "after": "surface.setContentControlTags installs a host labeler that draws view-only start and end chips for inline controls (Word's Design Mode): zero-width layout pieces at the control's edges, coloured by a host tone, in the body, table cells and text boxes.",
+  "reason": "The tags are layout and paint only. They never enter the document, an operation, the journal or an export; offsets, saved bytes and shared state are identical with or without them, so released participants are unaffected.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-tags.test.ts",
+    "packages/core/src/output/__tests__/content-control-tag-paint.test.ts",
+    "packages/core/src/editor/__tests__/content-control-tags-surface.test.ts",
+    "packages/core/src/layout/__tests__/inline-textbox-layout.test.ts"
+  ],
+  "changeset": "view-only-content-control-tags",
+  "migration": null
+}

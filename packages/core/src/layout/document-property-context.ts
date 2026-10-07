@@ -46,6 +46,7 @@ export function documentProjectionProducer(
     SemanticLayoutOptions,
     | 'producer'
     | 'showFieldCodes'
+    | 'contentControlTags'
     | 'documentProperties'
     | 'projectionEpoch'
     | 'projectionTokenForParagraph'
@@ -53,7 +54,13 @@ export function documentProjectionProducer(
   controlToken: string,
   tocToken: string
 ): string {
-  const base = options.showFieldCodes ? `${options.producer ?? ''}|field-codes` : options.producer;
+  const fieldCodes = options.showFieldCodes
+    ? `${options.producer ?? ''}|field-codes`
+    : options.producer;
+  // Tags change what a paragraph measures, so their labeling is part of every cache key.
+  const base = options.contentControlTags
+    ? `${fieldCodes ?? ''}|cc-tags:${options.contentControlTags.token}`
+    : fieldCodes;
   // Coordinated hosts already invalidate only paragraphs whose projected values changed.
   // A partial projection contract must retain the document-wide fallback.
   const properties =

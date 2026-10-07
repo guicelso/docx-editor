@@ -425,3 +425,23 @@ describe('hidden inline text box', () => {
     expect([...authorSlotsOf({ ...layout, pages: [hiddenPage] }).keys()]).toEqual([]);
   });
 });
+
+describe('content-control tags inside a text box story', () => {
+  test('the story draws the tags of its own inline controls', () => {
+    const inner =
+      `<w:p>${run('In ')}<w:sdt><w:sdtPr><w:tag w:val="t"/></w:sdtPr>` +
+      `<w:sdtContent>${run('box')}</w:sdtContent></w:sdt></w:p>`;
+    const part = documentPart(`<w:p>${run('Before ')}${inlineTextbox(inner)}</w:p>`);
+    const layout = layoutSemanticDocument(part, 1, {
+      measurer,
+      producer: 'test',
+      inlineDrawingLayout: drawingLayoutFor(part),
+      contentControlTags: {
+        token: 'tags',
+        labelsOf: () => ({ open: { text: '[' }, close: { text: ']' } }),
+      },
+    });
+    const [text] = storyTexts(boxLine(layout).drawing);
+    expect(text?.replace(/[  ]/g, '')).toBe('In [box]');
+  });
+});
