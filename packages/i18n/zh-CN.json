@@ -681,6 +681,12 @@
     "title": "导航"
   },
   "contentControl": {
+    "prompt": {
+      "text": "单击或点击此处输入文字。",
+      "date": "单击或点击以输入日期。",
+      "list": "选择一项。",
+      "buildingBlock": "选择构建基块。"
+    },
     "formFill": "表单填写模式",
     "group": "内容控件",
     "inspector": "内容控件属性",

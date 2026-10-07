@@ -1,3 +1,4 @@
+import type { PlaceholderPrompt } from '../package/ooxml-edit.ts';
 import { registerUndoHistoryPosition } from './undo-history-position.ts';
 import { capturePackageSelections, selectionForHistory } from './package-history-selection.ts';
 // Package-aware mutation coordinator for editable story parts (body + headers/footers +
@@ -162,6 +163,8 @@ export interface TreePackageStoreOptions {
    * {@link cascadeDeletedNoteReferences}.
    */
   readonly cascadeDeletedNoteReferences?: NoteCascadeFn;
+  /** The prompt an empty control shows, in the reader's language, in every story it opens. */
+  readonly placeholderPrompt?: PlaceholderPrompt;
 }
 
 /**
@@ -183,6 +186,7 @@ export class TreePackageStore {
   private readonly historyLimit: number;
   private readonly maxEditableStoryParts: number;
   private readonly cascadeNoteReferences: NoteCascadeFn;
+  private readonly placeholderPrompt: PlaceholderPrompt | undefined;
   private lastChange: TreeModelChange | null = null;
   /**
    * Hyperlink externals minted via {@link replacePackageShell} (outside package history).
@@ -222,6 +226,7 @@ export class TreePackageStore {
     this.maxEditableStoryParts = options.maxEditableStoryParts ?? DEFAULT_MAX_EDITABLE_STORY_PARTS;
     this.cascadeNoteReferences =
       options.cascadeDeletedNoteReferences ?? cascadeDeletedNoteReferences;
+    this.placeholderPrompt = options.placeholderPrompt;
     // The WHOLE package, not the part alone. A transaction writing several parts as one unit —
     // a comment's story markers plus its body in `comments.xml` plus the relationship and
     // content-type override — needs the package as its working set; a store handed one part
@@ -233,6 +238,7 @@ export class TreePackageStore {
       // making the body the one story a protected document still let you edit. Protection that
       // holds in a header but not the body is worse than none: it looks enforced.
       settingsPart: () => settingsPartOf(this.pkg),
+      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
     });
     this.body.setStoryRef({ kind: 'body', partName: main.name });
     registerUndoHistoryPosition(this, {
@@ -1124,6 +1130,7 @@ export class TreePackageStore {
       // A story store is built from a PART, whose synthetic package holds no `settings.xml`
       // — so without this a protected document refused a body edit and accepted a header one.
       settingsPart: () => settingsPartOf(this.pkg),
+      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
     });
     const story: TreeStoryRef = {
       kind: 'notesPart',
@@ -1182,6 +1189,7 @@ export class TreePackageStore {
       // A story store is built from a PART, whose synthetic package holds no `settings.xml`
       // — so without this a protected document refused a body edit and accepted a header one.
       settingsPart: () => settingsPartOf(this.pkg),
+      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
     });
     const story: TreeStoryRef = {
       kind: 'headerFooter',

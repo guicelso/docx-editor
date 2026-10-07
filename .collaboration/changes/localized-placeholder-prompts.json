@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "An empty content control always showed Word's English prompt (\"Click here to enter text.\"), whatever language the host translated the editor into: on open, when a control was created empty, and when its content was deleted.",
+  "after": "The prompt comes from the host's translation through new contentControl.prompt.* catalog keys, read live on open and by every edit that creates or empties a control; a translation that does not know a key keeps Word's default. The catalogs ship the prompts Word writes in each language.",
+  "reason": "The prompt is the same w:showingPlcHdr content shape, only its text differs; it reduces to the existing canonical primitives, so released participants read it unchanged.",
+  "tests": [
+    "packages/core/src/store/__tests__/content-control-insert.test.ts",
+    "packages/core/src/editor/__tests__/content-control-prompt-translate.test.ts",
+    "packages/i18n/src/catalogs.test.ts"
+  ],
+  "changeset": "localized-placeholder-prompts",
+  "migration": null
+}

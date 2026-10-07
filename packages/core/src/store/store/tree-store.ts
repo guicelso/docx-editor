@@ -34,7 +34,7 @@ import {
 } from './tree-op-content-controls.ts';
 import { nextRevisionId } from './tree-op-revision-ids.ts';
 import { PROPERTY_CHANGE_WRAPPER_OF_OP } from './tree-op-tracked-properties.ts';
-import type { TransactionRevisionIds } from '../package/ooxml-edit.ts';
+import type { PlaceholderPrompt, TransactionRevisionIds } from '../package/ooxml-edit.ts';
 
 /**
  * The ops whose tracked appliers write a revision wrapper. They get the transaction's
@@ -240,6 +240,8 @@ export interface TreeDocumentStoreOptions {
    * document can gain or lose protection while its stories stay open.
    */
   readonly settingsPart?: () => OoxmlPart | null | undefined;
+  /** The prompt an empty control shows, in the reader's language (see `EditOptions`). */
+  readonly placeholderPrompt?: PlaceholderPrompt;
 }
 
 /** A package holding exactly one part, for callers that never open a real one. */
@@ -298,6 +300,7 @@ export class TreeDocumentStore {
   private readonly historyLimit: number;
   /** See {@link TreeDocumentStoreOptions.settingsPart}. */
   private readonly settingsPartOverride: (() => OoxmlPart | null | undefined) | undefined;
+  private readonly placeholderPrompt: PlaceholderPrompt | undefined;
   /** Package-aware story tag applied to publishes (including undo/redo). */
   private storyRef: TreeStoryRef | null = null;
 
@@ -333,6 +336,7 @@ export class TreeDocumentStore {
     this.storyPartName = storyPartName ?? (isPart ? source.name : source.mainDocumentPart);
     this.historyLimit = options.historyLimit ?? 200;
     this.settingsPartOverride = options.settingsPart;
+    this.placeholderPrompt = options.placeholderPrompt;
   }
 
   /**
@@ -649,6 +653,7 @@ export class TreeDocumentStore {
           : null;
       const editOptions = {
         deferValidation: true,
+        ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
         ...(revisionIds ? { revisionIds } : {}),
         ...(trackedRevisionIds ? { trackedRevisionIds } : {}),
       };

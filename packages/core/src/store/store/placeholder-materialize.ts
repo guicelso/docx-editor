@@ -15,7 +15,11 @@ import {
   contentControlPropertiesOf as contentControlSummaryOf,
   type ContentControlKind,
 } from '../package/content-control-nodes.ts';
-import { createNodeIdAllocator, replaceChildren } from '../package/ooxml-edit.ts';
+import {
+  createNodeIdAllocator,
+  replaceChildren,
+  type PlaceholderPrompt,
+} from '../package/ooxml-edit.ts';
 import type { OoxmlPackage } from '../package/ooxml-package.ts';
 import { WML_NAMESPACE_URI } from '../package/ooxml-shared.ts';
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
@@ -109,7 +113,11 @@ function inlineChildrenOf(blocks: readonly OoxmlNode[]): readonly OoxmlNode[] | 
  * Fill every empty prompt-bearing control in `part` with its placeholder and mark it as
  * showing one. Returns `part` itself when there is nothing to fill.
  */
-export function materializeGlossaryPlaceholders(pkg: OoxmlPackage, part: OoxmlPart): OoxmlPart {
+export function materializeGlossaryPlaceholders(
+  pkg: OoxmlPackage,
+  part: OoxmlPart,
+  placeholderPrompt?: PlaceholderPrompt
+): OoxmlPart {
   const targets = collectEmptyControls(part.root);
   if (targets.length === 0) return part;
   let blocks: readonly BuildingBlock[] | null = null;
@@ -139,7 +147,11 @@ export function materializeGlossaryPlaceholders(pkg: OoxmlPackage, part: OoxmlPa
       children = target.inline ? inlineChildrenOf(cloned) : cloned;
     }
     if (!children) {
-      const run = textRun(nextId, promptFor(target.kind), placeholderRunProperties(nextId));
+      const run = textRun(
+        nextId,
+        promptFor(target.kind, placeholderPrompt ? { placeholderPrompt } : undefined),
+        placeholderRunProperties(nextId)
+      );
       children = target.inline
         ? [run]
         : [

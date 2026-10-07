@@ -681,6 +681,12 @@
     "title": "Gezinti"
   },
   "contentControl": {
+    "prompt": {
+      "text": "Metin girmek için buraya tıklayın veya dokunun.",
+      "date": "Tarih girmek için tıklayın veya dokunun.",
+      "list": "Bir öğe seçin.",
+      "buildingBlock": "Bir yapı taşı seçin."
+    },
     "formFill": "Form doldurma modu",
     "group": "İçerik denetimleri",
     "inspector": "İçerik denetimi özellikleri",

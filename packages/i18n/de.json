@@ -681,6 +681,12 @@
     "title": "Navigation"
   },
   "contentControl": {
+    "prompt": {
+      "text": "Klicken oder tippen Sie hier, um Text einzugeben.",
+      "date": "Klicken oder tippen Sie, um ein Datum einzugeben.",
+      "list": "Wählen Sie ein Element aus.",
+      "buildingBlock": "Wählen Sie einen Baustein aus."
+    },
     "formFill": "Formularfüllmodus",
     "group": "Inhaltssteuerelemente",
     "inspector": "Eigenschaften des Inhaltssteuerelements",

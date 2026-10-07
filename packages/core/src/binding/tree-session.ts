@@ -1,3 +1,4 @@
+import type { PlaceholderPrompt } from '../store/package/ooxml-edit.ts';
 import { shareUndoHistoryPosition } from '../store/store/undo-history-position.ts';
 import { createSessionPackageWriter } from './session-package-writer.ts';
 // Tree-backed editing session (cutover step 2b).
@@ -172,6 +173,11 @@ export interface OpenTreeSessionOptions {
    * `hasReviewContent` are unaffected.
    */
   readonly reviewModel?: ReviewModuleContribution;
+  /**
+   * The prompt an empty content control shows for its type, in the reader's language — on open
+   * and whenever an edit creates or empties one. Absent, Word's English defaults.
+   */
+  readonly placeholderPrompt?: PlaceholderPrompt;
 }
 
 /**
@@ -210,7 +216,8 @@ export function openTreeSession(
   // Empty prompt-bearing controls open showing their glossary placeholder, as Word shows it.
   const packageStore = new TreePackageStore(
     pkgLoaded,
-    materializeGlossaryPlaceholders(pkgLoaded, normalized)
+    materializeGlossaryPlaceholders(pkgLoaded, normalized, options.placeholderPrompt),
+    options.placeholderPrompt ? { placeholderPrompt: options.placeholderPrompt } : {}
   );
 
   let headerFooterBySection: {
