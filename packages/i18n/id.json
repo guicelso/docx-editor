@@ -681,6 +681,12 @@
     "title": "Navigasi"
   },
   "contentControl": {
+    "prompt": {
+      "text": "Klik atau ketuk di sini untuk memasukkan teks.",
+      "date": "Klik atau ketuk untuk memasukkan tanggal.",
+      "list": "Pilih item.",
+      "buildingBlock": "Pilih blok penyusun."
+    },
     "formFill": "Mode isi formulir",
     "group": "Kontrol konten",
     "inspector": "Properti kontrol konten",

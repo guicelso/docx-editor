@@ -119,8 +119,8 @@ const DEFAULT_PROMPTS: Readonly<Record<string, string>> = {
 };
 const DEFAULT_TEXT_PROMPT = 'Click here to enter text.';
 
-export function promptFor(type: ContentControlKind): string {
-  return DEFAULT_PROMPTS[type] ?? DEFAULT_TEXT_PROMPT;
+export function promptFor(type: ContentControlKind, options?: EditOptions): string {
+  return options?.placeholderPrompt?.(type) ?? DEFAULT_PROMPTS[type] ?? DEFAULT_TEXT_PROMPT;
 }
 
 // ---------------------------------------------------------------------------
@@ -1379,7 +1379,8 @@ function valueInputOf(
 
 function planValue(
   properties: ContentControlProperties,
-  value: ContentControlValueInput
+  value: ContentControlValueInput,
+  options?: EditOptions
 ): PlannedValue | TreeOpRejection {
   switch (value.kind) {
     case 'text': {
@@ -1395,7 +1396,7 @@ function planValue(
       if (value.text.includes(LINE_BREAK_TEXT) && !propertiesHoldLineBreaks(properties))
         return 'invalidArgs';
       if (value.text.length === 0) {
-        return { text: promptFor(properties.type), showingPlaceholder: true };
+        return { text: promptFor(properties.type, options), showingPlaceholder: true };
       }
       return {
         text: value.text,
@@ -1641,7 +1642,7 @@ export function applySetContentControlValue(
 
   const offered = valueInputOf(properties, op.value);
   if (typeof offered === 'string') return { ok: false, reason: offered };
-  const planned = planValue(properties, offered);
+  const planned = planValue(properties, offered, options);
   if (typeof planned === 'string') return { ok: false, reason: planned };
 
   const nextId = createNodeIdAllocator(part);

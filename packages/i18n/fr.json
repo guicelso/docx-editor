@@ -681,6 +681,12 @@
     "title": "Navigation"
   },
   "contentControl": {
+    "prompt": {
+      "text": "Cliquez ou appuyez ici pour entrer du texte.",
+      "date": "Cliquez ou appuyez ici pour entrer une date.",
+      "list": "Choisissez un élément.",
+      "buildingBlock": "Choisissez un bloc de construction."
+    },
     "formFill": "Mode remplissage de formulaire",
     "group": "Contrôles de contenu",
     "inspector": "Propriétés du contrôle de contenu",

@@ -72,7 +72,18 @@ export interface EditOptions {
    * transaction gets: every applier falls back to its own walk of the part.
    */
   readonly trackedRevisionIds?: TransactionRevisionIds;
+  /**
+   * The prompt an EMPTY control shows for its type, in the reader's language — the text Word
+   * writes under `w:showingPlcHdr` when a control is created empty or emptied. `undefined` from
+   * it, or no function at all, falls back to Word's English default.
+   */
+  readonly placeholderPrompt?: PlaceholderPrompt;
 }
+
+/** The prompt a control of `type` shows while it is empty, or undefined for Word's default. */
+export type PlaceholderPrompt = (
+  type: import('./content-control-nodes.ts').ContentControlKind
+) => string | undefined;
 
 /**
  * What one transaction knows about the revision ids its tracked text ops write.

@@ -272,7 +272,7 @@ function insertEmptyContentControl(
   const nextId = createNodeIdAllocator(current);
   const prompt = textRun(
     nextId,
-    promptFor(op.type),
+    promptFor(op.type, options),
     inheritedRunProperties(current, index, offset, nextId)
   );
   const control = controlElement(propertiesFor(current, op, nextId), [prompt], nextId);

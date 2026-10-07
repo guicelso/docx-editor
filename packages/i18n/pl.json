@@ -681,6 +681,12 @@
     "title": "Nawigacja"
   },
   "contentControl": {
+    "prompt": {
+      "text": "Kliknij lub naciśnij tutaj, aby wprowadzić tekst.",
+      "date": "Kliknij lub naciśnij, aby wprowadzić datę.",
+      "list": "Wybierz element.",
+      "buildingBlock": "Wybierz blok konstrukcyjny."
+    },
     "formFill": "Tryb wypełniania formularza",
     "group": "Kontrolki zawartości",
     "inspector": "Właściwości kontrolki zawartości",
