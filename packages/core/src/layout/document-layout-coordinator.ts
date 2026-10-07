@@ -54,6 +54,7 @@ export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
   projectLink: 'document-coordinator',
   projectFieldLink: 'document-coordinator',
   showFieldCodes: 'document-coordinator',
+  contentControlTags: 'document-coordinator',
   documentProperties: 'document-coordinator',
   notes: 'document-coordinator',
   pageBottomReserves: 'layout-internal',
@@ -100,6 +101,8 @@ export interface LayoutDocumentViewOptions {
   readonly projectFieldLink?: FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
+  /** View-only content-control tags (Design Mode). */
+  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
   readonly inlineDrawingLayout?: InlineDrawingLayoutContext;
   readonly inlineDrawingLayoutForPart?: (
     partName: string
@@ -130,6 +133,7 @@ const _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS = {
   linkProjectors: 'both',
   projectFieldLink: 'both',
   showFieldCodes: 'both',
+  contentControlTags: 'semantic-layout',
   inlineDrawingLayout: 'semantic-layout',
   inlineDrawingLayoutForPart: 'notes',
   drawingTokenForParagraph: 'semantic-layout',
@@ -193,6 +197,7 @@ export function layoutDocumentView(options: LayoutDocumentViewOptions): Semantic
     linkProjectors: options.linkProjectors,
     projectFieldLink: options.projectFieldLink,
     showFieldCodes: options.showFieldCodes,
+    contentControlTags: options.contentControlTags,
     inlineDrawingLayout: options.inlineDrawingLayout,
     drawingTokenForParagraph: options.drawingTokenForParagraph,
     drawingLayoutEpoch: options.drawingLayoutEpoch,
@@ -216,6 +221,7 @@ export function layoutDocumentView(options: LayoutDocumentViewOptions): Semantic
     projectLink: semanticInputs.linkProjectors.projectLink,
     projectFieldLink: semanticInputs.projectFieldLink,
     showFieldCodes: semanticInputs.showFieldCodes,
+    contentControlTags: semanticInputs.contentControlTags,
     documentProperties: semanticInputs.view.documentProperties(),
     inlineDrawingLayout: semanticInputs.inlineDrawingLayout,
     drawingTokenForParagraph: semanticInputs.drawingTokenForParagraph,

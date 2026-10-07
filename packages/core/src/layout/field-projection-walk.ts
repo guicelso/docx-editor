@@ -103,6 +103,15 @@ import {
   contentControlContentChildren,
   isContentControl,
 } from '../store/package/content-control-walk.ts';
+import {
+  contentControlTagStyle,
+  contentControlTagText,
+  contentControlTagToneOf,
+  contentControlTagSubjectOf,
+  type ContentControlTagDisplay,
+  type ContentControlTagEdge,
+  type ContentControlTagLabel,
+} from './content-control-tags.ts';
 
 /** Internal view projection; the public field-reader signature stays unchanged. @internal */
 export function unmergedPiecesOfParagraphForDisplay(
@@ -124,7 +133,8 @@ export function unmergedPiecesOfParagraphForDisplay(
   showFieldCodes = false,
   fieldCodeRanges?: readonly import('./field-code-toc.ts').FieldCodeRange[],
   tocLinkStyleRanges?: readonly import('./toc-link-formatting.ts').TocLinkRange[],
-  changeSites?: MutableChangeSite[]
+  changeSites?: MutableChangeSite[],
+  contentControlTags?: ContentControlTagDisplay
 ): FieldAwarePiece[] {
   if (paragraph.kind === 'textValue') return [];
   if (paragraph.kind !== 'paragraph') return [];
@@ -906,6 +916,29 @@ export function unmergedPiecesOfParagraphForDisplay(
     });
   };
 
+  /**
+   * A view-only tag at a control's edge: projected text over a ZERO-WIDTH range at `offset`,
+   * so it measures and paints like a word and never moves an offset (see `content-control-tags.ts`).
+   */
+  const pushContentControlTag = (
+    controlId: string,
+    edge: ContentControlTagEdge,
+    label: ContentControlTagLabel
+  ): void => {
+    if (label.text.length === 0) return;
+    const tone = contentControlTagToneOf(label);
+    pieces.push({
+      // A tag is one unit: line breaking must never open a line inside it.
+      text: contentControlTagText(label),
+      props: [],
+      style: contentControlTagStyle(resolveRunStyle(inheritedRunProperties, themeFonts)),
+      start: offset,
+      end: offset,
+      projected: true,
+      contentControlTag: tone === undefined ? { controlId, edge } : { controlId, edge, tone },
+    });
+  };
+
   const processInline = (
     child: OoxmlNode,
     depth: number,
@@ -938,9 +971,16 @@ export function unmergedPiecesOfParagraphForDisplay(
     }
     if (isContentControl(child)) {
       if (depth > MAX_STORY_FIELD_SCAN_DEPTH) return;
+      // Inside a field the walk is collecting INPUT to that field, not prose: no tags there.
+      const labels =
+        contentControlTags && !pending
+          ? contentControlTags.labelsOf(contentControlTagSubjectOf(child))
+          : null;
+      if (labels?.open) pushContentControlTag(child.id, 'open', labels.open);
       for (const inner of contentControlContentChildren(child)) {
         processInline(inner, depth + 1, namespaceScope, containerDepth + 1);
       }
+      if (labels?.close) pushContentControlTag(child.id, 'close', labels.close);
       return;
     }
     if (depth > MAX_STORY_FIELD_SCAN_DEPTH) return;

@@ -154,6 +154,8 @@ export interface SemanticLayoutOptions {
   readonly projectFieldLink?: FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
+  /** View-only content-control tags (Design Mode). Absent draws none. */
+  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
   /** @internal */
   readonly fieldCodeRanges?: import('./field-code-toc.ts').FieldCodeRanges;
   /** @internal Word TOC character-style suppression. */

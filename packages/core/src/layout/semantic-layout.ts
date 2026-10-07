@@ -880,6 +880,7 @@ function layoutBlocksPass(
       ...(options.projectLink ? { projectLink: options.projectLink } : {}),
       ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
       showFieldCodes: options.showFieldCodes,
+      ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
 
       ...(options.numberingIndex ? { numberingIndex: options.numberingIndex } : {}),
       inlineDrawingLayout: options.inlineDrawingLayout,
@@ -1587,6 +1588,7 @@ function layoutBlocksPass(
     ...(options.projectLink ? { projectLink: options.projectLink } : {}),
     ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
     showFieldCodes: options.showFieldCodes,
+    ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
     fieldCodeRanges: options.fieldCodeRanges,
     tocLinkStyleRanges: options.tocLinkStyleRanges,
     ...(options.documentProperties ? { documentProperties: options.documentProperties } : {}),
@@ -1759,6 +1761,7 @@ function layoutBlocksPass(
         ...(options.projectLink ? { projectLink: options.projectLink } : {}),
         ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
         showFieldCodes: options.showFieldCodes,
+        ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
         fieldCodeRanges: styleSeparatorRanges(entry.paragraph, options.fieldCodeRanges),
         tocLinkStyleRanges: styleSeparatorRanges(entry.paragraph, options.tocLinkStyleRanges),
         ...(options.documentProperties ? { documentProperties: options.documentProperties } : {}),

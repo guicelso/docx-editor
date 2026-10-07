@@ -618,6 +618,14 @@ export interface PaginatedSurface {
   /** Change the review display without accepting, rejecting, or changing author filters. */
   setRevisionDisplayMode(mode: ReviewDisplayMode): void;
   /**
+   * Draw view-only start and end tags for inline content controls (Word's Design Mode), or
+   * none with `null`. Nothing is written to the document, exported or printed. Re-install with
+   * a new `token` when the labels change; the token already installed lays out nothing.
+   */
+  setContentControlTags(
+    display: import('../layout/content-control-tags.ts').ContentControlTagDisplay | null
+  ): void;
+  /**
    * Where a replacement for `[start, end)` of a paragraph lands, or null when the edit would
    * not be tracked.
    *

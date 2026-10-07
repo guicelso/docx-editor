@@ -102,6 +102,8 @@ export interface AutofitFieldContext {
   readonly fieldCodeRanges?: FieldCodeRanges;
   /** Table-of-contents link styling by paragraph id. */
   readonly tocLinkStyleRanges?: TocLinkRanges;
+  /** View-only content-control tags: a cell's widest line includes its chips. */
+  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
 }
 
 /** What a table flow carries that autofit reads. */
@@ -151,6 +153,7 @@ export function autofitContextOf(deps: AutofitFlowDeps): TableAutofitContext {
     ...(deps.showFieldCodes ? { showFieldCodes: true } : {}),
     ...(deps.fieldCodeRanges ? { fieldCodeRanges: deps.fieldCodeRanges } : {}),
     ...(deps.tocLinkStyleRanges ? { tocLinkStyleRanges: deps.tocLinkStyleRanges } : {}),
+    ...(deps.contentControlTags ? { contentControlTags: deps.contentControlTags } : {}),
   };
   // Values, not identities: a pass builds these objects afresh and the cache must survive it.
   // Every part is compact: the producer is a digest, the value objects are digested.
@@ -160,6 +163,7 @@ export function autofitContextOf(deps: AutofitFlowDeps): TableAutofitContext {
     valueDigest(deps.pageContext),
     valueDigest(deps.documentProperties),
     deps.showFieldCodes === true ? 'codes' : '',
+    deps.contentControlTags ? `cc-tags:${deps.contentControlTags.token}` : '',
     deps.refFields?.valuesToken ?? '',
     deps.drawingLayoutToken ?? '',
     deps.inlineDrawingLayout ? 'drawings' : '',
@@ -333,7 +337,9 @@ export function paragraphContentWidthsPt(
     view.authorFilter,
     fields?.showFieldCodes,
     fields?.fieldCodeRanges?.get(paragraph.id),
-    fields?.tocLinkStyleRanges?.get(paragraph.id)
+    fields?.tocLinkStyleRanges?.get(paragraph.id),
+    undefined,
+    fields?.contentControlTags
   );
   // The bidi pass gives each piece the shaping and joining context line breaking measures with;
   // an unshaped complex-script word measures far wider than it paints.

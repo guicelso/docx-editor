@@ -188,6 +188,11 @@ export interface FieldAwarePiece {
    * `styleForFontSlot` while the piece's `style` stays the run's real resolution.
    */
   readonly fontSlot?: FontSlot;
+  /**
+   * Set when this piece is a view-only content-control TAG. Its range is ZERO-WIDTH at the
+   * control's edge, as a `w:ptab`'s is: it advances the line without moving a model offset.
+   */
+  readonly contentControlTag?: import('./content-control-tags.ts').ContentControlTagMark;
 }
 
 /** A half-open model-offset range, in the paragraph's own UTF-16 offset space. */
