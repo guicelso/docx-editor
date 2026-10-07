@@ -5496,6 +5496,48 @@ export function mountPaginatedSurface(
     },
 
     revisionAuthors: () => reviewAuthors.get().value,
+    selectionClientRects() {
+      flushPendingInputAndLayout();
+      const layout = editingLayout();
+      const live = retainedSelection ?? selection;
+      const slot = caretSlot();
+      const caret = isCollapsedSelection(live)
+        ? caretAt(layout, live.head, measurer ? { measurer } : {})
+        : null;
+      const rects: readonly {
+        pageIndex: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }[] = isCollapsedSelection(live)
+        ? caret
+          ? [
+              {
+                pageIndex: caret.pageIndex,
+                x: slot?.x ?? caret.x,
+                y: caret.y,
+                width: 0,
+                height: caret.height,
+              },
+            ]
+          : []
+        : selectionRects(layout, live, paragraphOrder(), measurer);
+      // The overlay layers sit at the sheet origin, the space selection overlays are painted in.
+      const origin = overlayLayer.getBoundingClientRect();
+      return rects.flatMap((rect) => {
+        const page = layout.pages[rect.pageIndex];
+        if (!page) return [];
+        const offsetX = materializedExtent?.pageOffsetX.get(rect.pageIndex) ?? 0;
+        const left = origin.left + (page.contentBox.x + rect.x + offsetX) * scale;
+        const top = origin.top + (page.contentBox.y + rect.y) * scale;
+        const width = rect.width * scale;
+        const height = rect.height * scale;
+        return [
+          { x: left, y: top, left, top, width, height, right: left + width, bottom: top + height },
+        ];
+      });
+    },
     setFieldTones(tone) {
       if (destroyed || fieldTone === (tone ?? undefined)) return;
       fieldTone = tone ?? undefined;
