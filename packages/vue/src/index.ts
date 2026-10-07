@@ -422,6 +422,7 @@ export type {
   AnchorHighlightAnimation,
   AnchorHighlightOptions,
   ClearAnchorHighlightOptions,
+  HighlightBlend,
   HighlightHit,
   HighlightOptions,
   HighlightRange,

@@ -1327,6 +1327,9 @@ export interface HeaderFooterState {
 }
 
 // @public
+export type HighlightBlend = 'tint' | 'cover';
+
+// @public
 export interface HighlightHit<R extends HighlightRange = HighlightRange> {
     readonly active: boolean;
     readonly index: number;
@@ -1341,6 +1344,7 @@ export interface HighlightHit<R extends HighlightRange = HighlightRange> {
 export interface HighlightOptions {
     readonly activeColor?: string;
     readonly activeIndex?: number;
+    readonly blend?: HighlightBlend;
     readonly className?: string;
     readonly color?: string;
     readonly priority?: number;

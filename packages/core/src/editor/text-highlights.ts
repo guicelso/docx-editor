@@ -13,6 +13,7 @@
 import { findNode, paragraphTextOf } from '@docx-editor.dev/core/store';
 import type {
   EditorHighlights,
+  HighlightBlend,
   HighlightHit,
   HighlightOptions,
   HighlightRange,
@@ -54,6 +55,7 @@ interface HighlightSet {
   readonly activeIndex: number;
   readonly classes: readonly string[];
   readonly priority: number;
+  readonly blend: HighlightBlend;
   /** First-set order, for stable stacking between equal priorities. */
   readonly order: number;
   /** Model text each range covered when captured; `null` for a range that did not resolve. */
@@ -165,6 +167,10 @@ function buildSet(
   if (classes.some((token) => !CLASS_TOKEN.test(token))) {
     throw new TypeError('className must hold space-separated CSS class names.');
   }
+  const blend = options?.blend ?? 'tint';
+  if (blend !== 'tint' && blend !== 'cover') {
+    throw new TypeError("blend must be 'tint' or 'cover'.");
+  }
   const color = colorOption(options?.color, 'color', container);
   const activeColor = colorOption(options?.activeColor, 'activeColor', container);
   return {
@@ -179,6 +185,7 @@ function buildSet(
     activeIndex,
     classes,
     priority,
+    blend,
     order,
     expected: null,
     seen: new Array<string | null>(copy.length).fill(null),
@@ -346,6 +353,31 @@ function check(set: HighlightSet, surface: PaginatedSurface, layout: SemanticLay
 /** Rectangles per set and page record; see `setRects`. */
 const rectCache = new WeakMap<HighlightSet, WeakMap<PageRecord, KeyedParagraphRect[]>>();
 const sheetCache = new WeakMap<HighlightSet, HTMLElement>();
+const groupCache = new WeakMap<HTMLElement, Readonly<Record<HighlightBlend, HTMLElement>>>();
+
+/**
+ * The two compositing groups of a highlight layer. Tint sets blend as ONE group, so a set of
+ * higher priority covers a lower one before the group multiplies over the page; cover sets paint
+ * as is, above every tint set.
+ */
+function blendGroupsOf(layer: HTMLElement): Readonly<Record<HighlightBlend, HTMLElement>> {
+  let groups = groupCache.get(layer);
+  if (!groups) {
+    const groupOf = (blend: HighlightBlend) => {
+      const group = layer.ownerDocument.createElement('div');
+      group.className = 'docx-text-highlight-group';
+      group.setAttribute('data-highlight-blend', blend);
+      return group;
+    };
+    groups = { tint: groupOf('tint'), cover: groupOf('cover') };
+    groupCache.set(layer, groups);
+  }
+  const children = layer.children;
+  if (children.length !== 2 || children[0] !== groups.tint || children[1] !== groups.cover) {
+    layer.replaceChildren(groups.tint, groups.cover);
+  }
+  return groups;
+}
 /** What a pooled mark element currently shows, so a repaint writes only what changed. */
 const markState = new WeakMap<HTMLElement, { key: string }>();
 
@@ -417,8 +449,14 @@ export function createTextHighlights(deps: {
   let lastPaint: string | null = null;
   let lastLayout: SemanticLayout | null = null;
 
+  /** Paint order, bottom to top: every tint set, then every cover set. */
   const ordered = () =>
-    [...sets.values()].sort((a, b) => a.priority - b.priority || a.order - b.order);
+    [...sets.values()].sort(
+      (a, b) =>
+        Number(a.blend === 'cover') - Number(b.blend === 'cover') ||
+        a.priority - b.priority ||
+        a.order - b.order
+    );
 
   function paint(frame: SurfaceOverlayFrame): void {
     const surface = deps.surface();
@@ -444,7 +482,7 @@ export function createTextHighlights(deps: {
     lastPaint = key;
     lastLayout = layout;
     const document = frame.layer.ownerDocument;
-    const sheets: HTMLElement[] = [];
+    const sheets: Record<HighlightBlend, HTMLElement[]> = { tint: [], cover: [] };
     const marks: PaintedMark[] = [];
     for (const set of list) {
       const rects = setRects(set, layout, frame);
@@ -468,12 +506,16 @@ export function createTextHighlights(deps: {
       }
       // Drop marks left over from the previous paint.
       while (sheet.childElementCount > used) sheet.lastElementChild!.remove();
-      sheets.push(sheet);
+      sheets[set.blend].push(sheet);
     }
     // Keep sheets in stacking order; reattach only when the order or the set list changed.
-    const current = frame.layer.children;
-    if (current.length !== sheets.length || sheets.some((sheet, at) => current[at] !== sheet)) {
-      frame.layer.replaceChildren(...sheets);
+    const groups = blendGroupsOf(frame.layer);
+    for (const blend of ['tint', 'cover'] as const) {
+      const current = groups[blend].children;
+      const wanted = sheets[blend];
+      if (current.length !== wanted.length || wanted.some((sheet, at) => current[at] !== sheet)) {
+        groups[blend].replaceChildren(...wanted);
+      }
     }
     painted = marks;
   }

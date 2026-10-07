@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Every highlight set composites with multiply over light paper (screen over dark), so no set can dim or hide the text under it.",
+  "after": "HighlightOptions.blend: 'tint' keeps that compositing as one group; 'cover' paints as is, above every tint set, so a page-colored fill dims the text (a focus veil) and an opaque one hides it.",
+  "reason": "View state only: highlights are never saved, never reach an operation and are not shared with collaborators.",
+  "tests": ["packages/core/src/editor/__tests__/text-highlights.test.ts"],
+  "changeset": "text-highlight-cover-blend",
+  "migration": null
+}

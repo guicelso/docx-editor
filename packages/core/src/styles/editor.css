@@ -6299,19 +6299,27 @@ a.docx-hyperlink:focus-visible {
 
 /* Text highlights from `setHighlights()`: Find results and host marks such as glossary terms.
  *
- * Same compositing as comment bands: the layer multiplies over light paper and screens over
- * dark paper, so the glyphs under a mark keep their color. Each named set is one
- * `[data-highlight-set]` sheet; a set's `color` and `activeColor` options arrive as the two
- * `--doc-text-highlight-set-*` properties on that sheet. A host restyles one set with
+ * Tint sets composite like comment bands: their group multiplies over light paper and screens
+ * over dark paper, so the glyphs under a mark keep their color. Cover sets paint as is, in a
+ * group above, so a page-colored fill can dim the text under it. The layer itself must not
+ * blend: a blending layer isolates its children, and the tint group would multiply over nothing.
+ * Each named set is one `[data-highlight-set]` sheet; a set's `color` and `activeColor` options
+ * arrive as the two `--doc-text-highlight-set-*` properties on that sheet. A host restyles one
+ * set with
  *
  *   .docx-editor [data-highlight-set='glossary'] .docx-text-highlight { ... }
  *
  * or with the set's `className`, which lands on every mark. */
-.docx-text-highlight-overlay {
+.docx-text-highlight-group {
+  position: absolute;
+  inset: 0;
+}
+
+.docx-text-highlight-group[data-highlight-blend='tint'] {
   mix-blend-mode: multiply;
 }
 
-.docx-editor.dark .docx-text-highlight-overlay {
+.docx-editor.dark .docx-text-highlight-group[data-highlight-blend='tint'] {
   mix-blend-mode: screen;
 }
 
