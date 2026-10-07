@@ -153,6 +153,12 @@ export interface PaintContext {
    * arrow key, and deciding it in layout would do far worse.
    */
   readonly fieldShading?: FieldShadingMode;
+  /**
+   * The host's name for a field, from its instruction, published as `data-field-tone` on the
+   * field's result so the host's stylesheet can tell its own fields apart. Paint only: a host
+   * that changes it repaints without laying anything out.
+   */
+  readonly fieldTone?: FieldTone;
   /** Paint paragraph-end and manual-line-break furniture. Tracked marks also follow Show/Hide. */
   readonly showParagraphMarks?: boolean;
   /**
@@ -225,6 +231,8 @@ export interface PaintOptions {
   readonly defaultFontFamily?: string;
   /** See {@link PaintContext.fieldShading}. */
   readonly fieldShading?: FieldShadingMode;
+  /** See {@link PaintContext.fieldTone}. */
+  readonly fieldTone?: FieldTone;
   /** Paint paragraph-end and manual-line-break furniture. Tracked marks also follow Show/Hide. */
   readonly showParagraphMarks?: boolean;
   /** See {@link PaintContext.shadeFormFields}. */
@@ -749,6 +757,27 @@ function positioned(
  * id — comment and revision metadata are attacker-controlled.
  */
 /**
+ * The host's name for a field, from its instruction (untrusted file text), or undefined for
+ * none. Letters, digits and `-`, starting with a letter, at most 32: it lands in an attribute.
+ * @public
+ */
+export type FieldTone = (instruction: string) => string | undefined;
+
+const FIELD_TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
+
+/** A host's tone function, numbered by identity: a new one repaints, the same one reuses pages. */
+const fieldToneIdentities = new WeakMap<FieldTone, number>();
+let nextFieldToneIdentity = 0;
+function fieldToneIdentity(tone: FieldTone): number {
+  let identity = fieldToneIdentities.get(tone);
+  if (identity === undefined) {
+    identity = ++nextFieldToneIdentity;
+    fieldToneIdentities.set(tone, identity);
+  }
+  return identity;
+}
+
+/**
  * The grey block Word draws behind a field's result.
  *
  * A view affordance, never document formatting: it says "this text was computed, not typed",
@@ -767,6 +796,8 @@ function applyFieldShading(element: HTMLElement, span: StyleSpanRecord, ctx: Pai
   // Marked whatever the mode, because the mode is a VIEW setting a host can flip without
   // relaying out, and because the review surface and tests want to find fields regardless.
   element.dataset.fieldAtom = field.formField ? 'form' : 'field';
+  const tone = field.instruction === undefined ? undefined : ctx.fieldTone?.(field.instruction);
+  if (tone !== undefined && FIELD_TONE.test(tone)) element.dataset.fieldTone = tone;
   const shaded = field.formField
     ? ctx.shadeFormFields !== false
     : (ctx.fieldShading ?? DEFAULT_FIELD_SHADING) !== 'never';
@@ -2271,6 +2302,7 @@ export function paintSemanticLayoutWithAuthorSlots(
       : {}),
     ...(options.defaultFontFamily ? { defaultFontFamily: options.defaultFontFamily } : {}),
     ...(options.fieldShading ? { fieldShading: options.fieldShading } : {}),
+    ...(options.fieldTone ? { fieldTone: options.fieldTone } : {}),
     showParagraphMarks: options.showParagraphMarks ?? false,
     changeBars: options.changeBars ?? 'all-markup',
     changeBarsToggle: options.changeBarsToggle ?? false,
@@ -2312,7 +2344,8 @@ export function paintSemanticLayoutWithAuthorSlots(
     // The slot map belongs to this paint. A standalone paint derives it from the layout; an
     // attached surface supplies its stable session map. The key must move when that map moves.
     `markup:${JSON.stringify(options.revisionMarkup)}|facing:${options.facingPages}|rev:${revisionStyleContextKey(revisionStyles)}|cells:${revisionStyleContextKey(revisionCellStyles)}|marks:${options.showParagraphMarks ?? false}|` +
-    `bars:${resolved.changeBars}:${resolved.changeBarsToggle}`;
+    `bars:${resolved.changeBars}:${resolved.changeBarsToggle}|` +
+    `tone:${resolved.fieldTone ? fieldToneIdentity(resolved.fieldTone) : ''}`;
   const previous = retainedPaints.get(container);
   const parametersUnchanged = previous?.parameters === parameters;
   const reusable = parametersUnchanged

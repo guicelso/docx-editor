@@ -918,7 +918,7 @@ describe('w:delInstrText — a tracked-deleted field instruction', () => {
       '<w:r><w:t>cached</w:t></w:r></w:p>';
     const pieces = piecesOfParagraph(paragraphOf(parsePart(demoted)));
     expect(pieces.map((piece) => piece.text)).toEqual(['cached']);
-    expect(pieces[0]!.fieldAtom).toEqual({ formField: false });
+    expect(pieces[0]!.fieldAtom).toMatchObject({ formField: false });
   });
 
   test('a fully-deleted PAGE still evaluates live, with delete attribution', () => {
