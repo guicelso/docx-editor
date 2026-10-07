@@ -20,7 +20,7 @@ export type {
   EditorAnchorNavigation,
   ScrollToAnchorOptions,
 } from './editor-anchor.ts';
-import type { EditorHighlights } from './editor-highlights.ts';
+import type { EditorHighlights, HighlightRect } from './editor-highlights.ts';
 export type {
   EditorHighlights,
   HighlightHit,
@@ -610,6 +610,14 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights {
    * without deriving document geometry, which is the one thing an adapter must not do.
    */
   getSelectionPlacement(): { readonly anchorY: number; readonly pageIndex: number } | null;
+
+  /**
+   * Where the selection is on screen, in client coordinates, from layout — one rectangle per
+   * line of a range, or a zero-width one at a collapsed caret. What a host anchors a floating
+   * toolbar or menu to without measuring the painted DOM. Empty while detached or when the
+   * selection is not laid out. @public
+   */
+  getSelectionRects(): readonly HighlightRect[];
 
   /**
    * Card to document: a COLLAPSED caret at the range start, and a scroll to it. `null` clears it.

@@ -638,6 +638,12 @@ export interface PaginatedSurface {
    */
   setFieldTones(tone: import('../output/semantic-paint.ts').FieldTone | null): void;
   /**
+   * Where the selection is painted, in client coordinates, from layout: one rectangle per line
+   * of a range, or a zero-width one at a collapsed caret (in its slot at a tagged edge). The
+   * retained selection when one is pinned. Empty when nothing is laid out there.
+   */
+  selectionClientRects(): readonly import('../contracts/editor-highlights.ts').HighlightRect[];
+  /**
    * Where a replacement for `[start, end)` of a paragraph lands, or null when the edit would
    * not be tracked.
    *

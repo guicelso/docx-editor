@@ -1,0 +1,12 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A host placing a floating menu at the selection had to measure the painted DOM: the facade exposed no selection geometry.",
+  "after": "Editor.getSelectionRects() answers where the selection is on screen, in client coordinates, from layout: one rectangle per line of a range, or a zero-width one at a collapsed caret (in its slot at a tagged edge), the retained selection when pinned.",
+  "reason": "A read of layout geometry; nothing reaches the document, an operation or shared updates.",
+  "tests": [
+    "packages/core/src/editor/__tests__/selection-client-rects.test.ts"
+  ],
+  "changeset": "selection-client-rects",
+  "migration": null
+}
