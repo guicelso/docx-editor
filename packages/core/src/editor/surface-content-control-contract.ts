@@ -57,6 +57,8 @@ export interface ContentControlSurfaceState {
   readonly formFill: boolean;
   /** Innermost control containing the caret, or null. */
   readonly activeControlId: string | null;
+  /** Innermost control under a resting pointer, from layout (Word's hover), or null. */
+  readonly hoveredControlId: string | null;
   /**
    * The slot the caret stands in at an edge where view-only content-control tags are drawn,
    * named by the tag on each side of it (`null` for text), or null anywhere else. One offset

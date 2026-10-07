@@ -1,0 +1,12 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Only a table of contents reacted to a resting pointer; hovering any other content control showed nothing, unlike Word.",
+  "after": "The pointer controller reports the innermost control under a resting pointer from the same layout hit test a press uses; the surface retints that control's painted chrome (data-hover) without repainting, as the TOC hover does, and publishes it as state().contentControls.hoveredControlId.",
+  "reason": "Surface chrome and state only; nothing reaches the document, an operation or shared updates.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-control-tags-surface.test.ts"
+  ],
+  "changeset": "content-control-hover",
+  "migration": null
+}
