@@ -64,6 +64,11 @@ export interface SurfaceCaretInput {
   /** When true, hide the engine caret (range selection / IME still take precedence). */
   readonly suppress?: boolean;
   /**
+   * The slot the caret stands in when its offset is a tagged edge: one offset shows several
+   * places between view-only content-control tags, and the slot, not the offset, says which.
+   */
+  readonly slot?: import('../layout/content-control-tag-slots.ts').CaretSlot | null;
+  /**
    * Prefer this sheet when the same paragraph paints on multiple pages (open shared HF).
    */
   readonly preferredPageIndex?: number;
@@ -183,6 +188,7 @@ export function createSurfaceCaret(
       preferredPageIndex,
       measurer,
       typingStyle,
+      slot,
     } = read();
     const currentScale = scale();
     // A range selection shows the browser's highlight; an insertion point inside it would
@@ -200,6 +206,20 @@ export function createSurfaceCaret(
     if (!geometry || !Number.isInteger(geometry.pageIndex)) {
       hide();
       return;
+    }
+    if (slot) {
+      // A chip that wrapped puts its slot on another line than the offset's own caret.
+      geometry =
+        slot.lineId === geometry.lineId
+          ? { ...geometry, x: slot.x }
+          : {
+              ...geometry,
+              pageIndex: slot.pageIndex,
+              lineId: slot.lineId,
+              x: slot.x,
+              y: slot.y,
+              height: slot.height,
+            };
     }
     if (typingStyle && measurer) {
       const { pageIndex, lineId } = geometry;

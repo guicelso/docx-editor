@@ -27,6 +27,14 @@ export type InsertTextOp = {
    */
   readonly inside?: string;
   /**
+   * When set, the text lands as a SIBLING right before or after this content control, at its
+   * edge offset — the slot in front of a control's start tag, or behind its end tag.
+   *
+   * The plain offset rule cannot say this at a start edge: the run that starts there is the
+   * control's own, so text typed in front of a control would land inside it.
+   */
+  readonly beside?: { readonly controlId: string; readonly side: 'before' | 'after' };
+  /**
    * Which side of a run BOUNDARY the text joins. Default `'left'` — Word's typing rule:
    * the next character takes the formatting of the character before the caret.
    *

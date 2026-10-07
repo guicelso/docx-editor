@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "At an edge several inline controls share, one model offset had one caret, and typing there landed by the store's default: a keystroke meant in front of a control went inside it, and one meant after the last of nested controls ending a paragraph went inside the outer one.",
+  "after": "insertText takes beside { controlId, side } to land as the control's sibling at its edge. With view-only tags drawn, each offset shows one caret slot per gap between chips; a click picks the slot by the chip half it hits, arrows walk the slots, the caret draws in the slot from layout, typing lands exactly there, and state().contentControls.caretSlot names it.",
+  "reason": "beside reduces to the existing canonical primitives (a new run in the control's holder), which the journal replicates, so released participants read the resulting state unchanged. Slots are surface state and never enter shared updates.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-tag-slots.test.ts",
+    "packages/core/src/layout/__tests__/content-control-tags.test.ts",
+    "packages/core/src/editor/__tests__/content-control-tag-slots-surface.test.ts"
+  ],
+  "changeset": "content-control-caret-slots",
+  "migration": null
+}

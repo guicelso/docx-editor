@@ -509,6 +509,12 @@ export type {
   ContentControlTagSubject,
 } from './content-control-tags.ts';
 export {
+  caretSlotsAt,
+  sameCaretSlotNeighbour,
+  type CaretSlot,
+  type CaretSlotNeighbour,
+} from './content-control-tag-slots.ts';
+export {
   W15_NAMESPACE_URI,
   type CommentAnchor,
   type CommentPosition,
@@ -665,6 +671,7 @@ export {
   type HitPoint,
   type HitTestOptions,
   type SemanticHit,
+  type SemanticHitTag,
   type SemanticHitDrawing,
   type TableCellAddress,
 } from './semantic-hit-test.ts';

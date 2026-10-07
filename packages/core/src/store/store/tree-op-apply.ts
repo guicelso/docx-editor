@@ -149,6 +149,7 @@ import {
 } from './tree-op-content-controls.ts';
 import {
   insertionDestination,
+  siteBesideControl,
   fieldInsertionEndAt,
   isParagraph,
   runsUnder,
@@ -420,7 +421,8 @@ export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOption
         textWithHyphenBuilders(op.text),
         options,
         op.inside,
-        op.bias
+        op.bias,
+        op.beside
       );
     case 'insertTab':
     case 'insertHardBreak':
@@ -631,9 +633,10 @@ function applyInsertContent(
   options?: EditOptions,
   /** The content control the caller says this content belongs to, if it named one. */
   inside?: string,
-  bias: 'left' | 'right' = 'left'
+  bias: 'left' | 'right' = 'left',
+  beside?: { readonly controlId: string; readonly side: 'before' | 'after' }
 ): TreeOpResult {
-  const control = contentControlAtCaret(part, paragraph, offset, offset, bias);
+  const control = beside ? null : contentControlAtCaret(part, paragraph, offset, offset, bias);
   if (control && isShowingPlaceholder(control)) {
     return applyPlaceholderReplace(part, control, builders, options);
   }
@@ -657,7 +660,9 @@ function applyInsertContent(
   const owner = found?.kind === 'textValue' ? null : found;
   // ONE resolution of where this lands, shared with the validation that refuses it. Two copies
   // of this rule is how a lock came to be resolved against a different place than the write.
-  const site = insertionDestination(paragraph, offset, owner, bias).site;
+  const besideSite = beside ? siteBesideControl(paragraph, offset, beside) : null;
+  if (beside && besideSite === null) return { ok: false, reason: 'unknown-content-control' };
+  const site = besideSite ?? insertionDestination(paragraph, offset, owner, bias).site;
 
   // Plain typing changes the existing leaf, rather than copying its text into newly
   // minted containers. Shared split ranges address that leaf, including after formatting
