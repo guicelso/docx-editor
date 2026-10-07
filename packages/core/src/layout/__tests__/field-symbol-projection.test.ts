@@ -90,7 +90,7 @@ describe('a complex SYMBOL field', () => {
     const glyph = pieces[1]!;
     expect(glyph).toMatchObject({ start: 1, end: 2, projected: true });
     expect(glyph.style.fontFamily).toBe('Wingdings');
-    expect(glyph.fieldAtom).toEqual({ formField: false });
+    expect(glyph.fieldAtom).toMatchObject({ formField: false });
     expect(pieces[2]).toMatchObject({ start: 2, end: 3 });
   });
 
@@ -281,7 +281,7 @@ describe('a complex SYMBOL field', () => {
     const glyph = pieces[1]!;
     expect(glyph).toMatchObject({ start: 2, end: 3, projected: true });
     expect(glyph.style.fontFamily).toBe('Wingdings');
-    expect(glyph.fieldAtom).toEqual({ formField: false });
+    expect(glyph.fieldAtom).toMatchObject({ formField: false });
     // Surrounding demoted result text keeps its literal offsets.
     expect(pieces[2]).toMatchObject({ start: 3, end: 7 });
   });
@@ -298,7 +298,7 @@ describe('a simple SYMBOL field', () => {
     const glyph = pieces[1]!;
     expect(glyph).toMatchObject({ start: 1, end: 2, projected: true });
     expect(glyph.style.fontFamily).toBe('Wingdings');
-    expect(glyph.fieldAtom).toEqual({ formField: false });
+    expect(glyph.fieldAtom).toMatchObject({ formField: false });
   });
 
   test('the instruction wins over the cached result', () => {
@@ -339,4 +339,11 @@ describe('a simple SYMBOL field', () => {
     );
     expect(pieces.map((piece) => piece.text)).toEqual(['✔', 'B']);
   });
+});
+
+test('a field’s result carries the instruction it was computed from', () => {
+  const pieces = project(
+    '<w:p><w:r><w:t>A</w:t></w:r>' + complexField(' SYMBOL 0xF0FC \\f "Wingdings" ') + '</w:p>'
+  );
+  expect(pieces[1]!.fieldAtom?.instruction?.trim()).toBe('SYMBOL 0xF0FC \\f "Wingdings"');
 });

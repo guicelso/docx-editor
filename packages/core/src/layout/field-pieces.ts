@@ -69,6 +69,11 @@ export interface FieldAtomMarker {
    */
   readonly formField: boolean;
   /**
+   * The field's instruction as the file states it — untrusted text, never executed. It is what
+   * lets a host tell its own fields apart when it styles them (see `PaintOptions.fieldTone`).
+   */
+  readonly instruction?: string;
+  /**
    * A legacy form CONTROL the reader can operate, with the state it paints.
    *
    * Checkboxes carry their checked state; dropdowns carry their declared entries and index.
@@ -375,6 +380,8 @@ export interface PieceEmitExtras {
  */
 export interface PendingFieldProjection {
   hasNestedField?: boolean;
+  /** The outermost instruction, captured with the specs below and for the same reason. */
+  instruction?: string;
   characterStyleSpec?: import('./field-character-style.ts').CharacterStyleField | null;
   /** Allowlisted kind when live-projecting; null paints inert cached text at the atom. */
   kind: AllowlistedPageField | null;

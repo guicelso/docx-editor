@@ -632,6 +632,12 @@ export interface PaginatedSurface {
     display: import('../layout/content-control-tags.ts').ContentControlTagDisplay | null
   ): void;
   /**
+   * Name each field for the host's stylesheet, from its instruction, or stop with `null`. The
+   * name lands on the field's painted result as `data-field-tone`; nothing is written to the
+   * document, and changing it repaints without laying anything out.
+   */
+  setFieldTones(tone: import('../output/semantic-paint.ts').FieldTone | null): void;
+  /**
    * Where a replacement for `[start, end)` of a paragraph lands, or null when the edit would
    * not be tracked.
    *
