@@ -71,10 +71,7 @@ export interface EnterHeaderFooterPointerRequest extends ActiveHeaderFooterPoint
 /** What the controller needs from the surface it drives. */
 export interface PointerHost {
   readonly pagesLayer: HTMLElement;
-  /**
-   * The innermost content control under a resting pointer, from layout — the one Word draws
-   * the boundary of on hover — or null off every control. Not called while a gesture runs.
-   */
+  /** The innermost control under a resting pointer, from layout, or null; never mid-gesture. */
   onHover?(controlId: string | null): void;
   readonly container: HTMLElement;
   /**
@@ -1170,7 +1167,6 @@ export function createPointerController(
     layerRect = null;
   };
 
-  // Hover is read from the same layout hit test a press uses, never from the painted DOM.
   const onHoverMove = (event: PointerEvent): void => {
     if (gesture || !host.onHover) return;
     const hit = resolve(event.clientX, event.clientY);

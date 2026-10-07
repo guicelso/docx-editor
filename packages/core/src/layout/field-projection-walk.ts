@@ -57,7 +57,7 @@ import {
   appendModelRange,
   applyEastAsiaFontSlots,
   positionalTabOf,
-  type FieldAtomMarker,
+  fieldAtomOf,
   type FieldAwarePiece,
   type FieldLinkProjector,
   type HyperlinkProjector,
@@ -105,9 +105,7 @@ import {
   isContentControl,
 } from '../store/package/content-control-walk.ts';
 import {
-  contentControlTagStyle,
-  contentControlTagText,
-  contentControlTagToneOf,
+  contentControlTagPiece,
   contentControlTagSubjectOf,
   type ContentControlTagDisplay,
   type ContentControlTagEdge,
@@ -935,18 +933,9 @@ export function unmergedPiecesOfParagraphForDisplay(
     edge: ContentControlTagEdge,
     label: ContentControlTagLabel
   ): void => {
-    if (label.text.length === 0) return;
-    const tone = contentControlTagToneOf(label);
-    pieces.push({
-      // A tag is one unit: line breaking must never open a line inside it.
-      text: contentControlTagText(label),
-      props: [],
-      style: contentControlTagStyle(resolveRunStyle(inheritedRunProperties, themeFonts)),
-      start: offset,
-      end: offset,
-      projected: true,
-      contentControlTag: tone === undefined ? { controlId, edge } : { controlId, edge, tone },
-    });
+    const run = resolveRunStyle(inheritedRunProperties, themeFonts);
+    const piece = contentControlTagPiece({ controlId, edge }, label, run, offset);
+    if (piece) pieces.push(piece);
   };
 
   const processInline = (
@@ -1048,14 +1037,3 @@ export function unmergedPiecesOfParagraphForDisplay(
 }
 
 export { piecesOfParagraphForDisplay } from './field-projection-display.ts';
-
-/** The marker a field's displayed result carries: form or not, and the field's instruction. */
-function fieldAtomOf(pending: {
-  readonly formField: boolean;
-  readonly instruction?: string;
-}): FieldAtomMarker {
-  return {
-    formField: pending.formField,
-    ...(pending.instruction !== undefined ? { instruction: pending.instruction } : {}),
-  };
-}

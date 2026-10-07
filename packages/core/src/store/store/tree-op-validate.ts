@@ -81,7 +81,7 @@ import {
 import { rangePartiallyOverlapsDrawingAtom } from '../package/drawing-projection.ts';
 import { isDrawingTreeDocOp, validateDrawingOp } from './tree-op-drawings.ts';
 import { validateInsertFragment } from './tree-op-fragment.ts';
-import { siteBesideControl } from './tree-op-segments.ts';
+import { siteBesideControl } from './tree-op-beside.ts';
 import {
   isParagraph,
   paragraphLength,

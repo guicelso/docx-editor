@@ -70,6 +70,7 @@ export interface PaintOptions {
     // (undocumented)
     readonly facingPages?: boolean;
     readonly fieldShading?: FieldShadingMode;
+    readonly fieldTone?: FieldTone;
     readonly fontAlias?: (family: string) => string | undefined;
     // (undocumented)
     readonly imageUrlPort?: PaintImageUrlPort;
