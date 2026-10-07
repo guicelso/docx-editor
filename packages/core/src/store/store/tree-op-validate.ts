@@ -81,6 +81,7 @@ import {
 import { rangePartiallyOverlapsDrawingAtom } from '../package/drawing-projection.ts';
 import { isDrawingTreeDocOp, validateDrawingOp } from './tree-op-drawings.ts';
 import { validateInsertFragment } from './tree-op-fragment.ts';
+import { siteBesideControl } from './tree-op-segments.ts';
 import {
   isParagraph,
   paragraphLength,
@@ -245,6 +246,29 @@ export function namedOwnerRefusal(
   return null;
 }
 
+/**
+ * A write BESIDE a control lands as its sibling at its edge, and is resolved by the same
+ * function the applier uses: a control that is not there, or an edge that is not at `offset`,
+ * is refused rather than landed somewhere else. Naming both an owner and a sibling is a
+ * contradiction about where the text goes.
+ */
+function besideRefusal(
+  part: OoxmlPart,
+  paragraphId: string,
+  offset: number,
+  inside: string | undefined,
+  beside: { readonly controlId: string; readonly side: 'before' | 'after' }
+): TreeOpRejection | null {
+  if (inside !== undefined) return 'invalidArgs';
+  if (beside.side !== 'before' && beside.side !== 'after') return 'invalidArgs';
+  const control = findNode(part, beside.controlId);
+  if (!control) return 'unknown-content-control';
+  if (control.kind !== 'contentControl') return 'not-a-content-control';
+  const paragraph = findNode(part, paragraphId);
+  if (!paragraph || !isParagraph(paragraph)) return null;
+  return siteBesideControl(paragraph, offset, beside) ? null : 'unknown-content-control';
+}
+
 /** Structural validation, run before any tree work so a rejection changes nothing. */
 export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection | null {
   if (!TREE_DOC_OP_KINDS.includes(op.op)) return 'unknown-op';
@@ -269,6 +293,10 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
   if (op.op === 'insertText' && op.inside !== undefined) {
     const owner = namedOwnerRefusal(part, op.paragraphId, op.offset, op.inside);
     if (owner) return owner;
+  }
+  if (op.op === 'insertText' && op.beside !== undefined) {
+    const site = besideRefusal(part, op.paragraphId, op.offset, op.inside, op.beside);
+    if (site) return site;
   }
 
   if (op.op !== 'deleteBlock') {
@@ -621,7 +649,7 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
       if (op.bias !== undefined && op.bias !== 'left' && op.bias !== 'right') return 'invalidArgs';
       // A named automation insertion was already resolved against that owner's exact landing
       // site above. Re-resolving the raw caret with editor boundary bias can select a sibling.
-      if (op.inside !== undefined) return null;
+      if (op.inside !== undefined || op.beside !== undefined) return null;
       return rejectContentEdit(part, paragraph, op.offset, op.offset, op.bias);
     }
     case 'setListLevel': {
