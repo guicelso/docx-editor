@@ -215,6 +215,10 @@ describe('an empty control at a caret, by destination', () => {
     expect(bracketed(nested)).toBe('CPF O{N{<richText>}}G{B{RG}E{CNH}} fim');
     expect(contentControlPropertiesOf(controlNamed(nested, 'O')).showingPlaceholder).toBe(false);
     expect(contentControlPropertiesOf(controlNamed(nested, 'N')).showingPlaceholder).toBe(true);
+    // No empty run of the prompt stays beside the new control.
+    expect(
+      contentControlContentChildren(controlNamed(nested, 'O')).map((node) => node.kind)
+    ).toEqual(['contentControl']);
   });
 
   test('a stale destination is refused, not landed elsewhere', () => {

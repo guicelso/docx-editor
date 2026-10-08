@@ -8,7 +8,7 @@
 // reasoning about a different place than the write.
 
 import type { EditOptions } from '../package/ooxml-edit.ts';
-import { findNode } from '../package/ooxml-edit.ts';
+import { findNode, replaceChildren } from '../package/ooxml-edit.ts';
 import type {
   OoxmlElement,
   OoxmlNode,
@@ -23,6 +23,7 @@ import {
   contentControlContentOf,
   findContentControl,
   isParagraphPropertiesNode,
+  isRunPropertiesNode,
 } from './tree-op-nodes.ts';
 import {
   isParagraph,
@@ -257,7 +258,38 @@ function emptiedOwner(
   const prompt = promptTypedOver(part, paragraphId, offset, { inside: controlId });
   if (prompt === null) return { part, offset };
   const emptied = clearPlaceholder(part, controlId, options, paragraphId);
-  return emptied === null ? null : { part: emptied, offset: prompt.offset };
+  const replaced = emptied === null ? null : withoutEmptyRuns(emptied, controlId, options);
+  return replaced === null ? null : { part: replaced, offset: prompt.offset };
+}
+
+/**
+ * The emptied prompt's run goes too: what lands here is a node, which replaces the prompt whole.
+ * Left behind, the empty run sat beside the node as text of the control that held it.
+ */
+function withoutEmptyRuns(
+  part: OoxmlPart,
+  controlId: string,
+  options?: EditOptions
+): OoxmlPart | null {
+  const control = findContentControl(part, controlId);
+  const content = control ? contentControlContentOf(control) : null;
+  if (!content) return null;
+  const kept = content.children.filter((child) => !isEmptyTextRun(child));
+  if (kept.length === content.children.length) return part;
+  const written = replaceChildren(part, content.id, kept, options);
+  return written.ok ? written.part : null;
+}
+
+function isEmptyTextRun(node: OoxmlNode): boolean {
+  return (
+    node.kind === 'run' &&
+    node.children.every(
+      (child) =>
+        isRunPropertiesNode(child) ||
+        (child.kind === 'text' &&
+          child.children.every((text) => text.kind === 'textValue' && text.value === ''))
+    )
+  );
 }
 
 function splitAt(

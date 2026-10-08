@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "insertContentControl or insertFragment with inside naming a control that showed its prompt cleared the prompt's text but left its run, empty, beside the inserted node.",
+  "after": "The emptied prompt's run is removed, so the inserted node is the control's whole content.",
+  "reason": "The ops and their replicated form are unchanged; the applier's result for the same op changes, and every replica runs the same applier.",
+  "tests": ["packages/core/src/store/__tests__/content-control-inline-destination.test.ts"],
+  "changeset": "content-control-node-replaces-prompt",
+  "migration": null
+}
