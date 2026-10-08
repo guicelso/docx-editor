@@ -301,6 +301,8 @@ export interface PaintOptions {
      * which of its controls is currently under the pointer.
      */
     readonly hoverIds?: ReadonlySet<string>;
+    /** Control ids selected whole, as a unit the next Backspace or Delete removes. */
+    readonly selectedIds?: ReadonlySet<string>;
     /**
      * Control ids whose boundary furniture is painted by something else.
      *
@@ -2255,7 +2257,7 @@ export function paintSemanticLayoutWithAuthorSlots(
   // `hoverIds` is absent ON PURPOSE — see its doc comment. Including it made a pointer
   // entering a TOC rebuild every page, which detached the node the gesture started on.
   const chromeKey = chrome
-    ? `${chrome.showAll === true ? '1' : '0'}:${chrome.activeIds ? [...chrome.activeIds].sort().join(',') : ''}:${chrome.checkedIds ? [...chrome.checkedIds].sort().join(',') : ''}:${chrome.tocControlIds ? [...chrome.tocControlIds].sort().join(',') : ''}:${chrome.suppressedIds ? [...chrome.suppressedIds].sort().join(',') : ''}:${chrome.readOnly === true ? 'ro' : ''}`
+    ? `${chrome.showAll === true ? '1' : '0'}:${chrome.activeIds ? [...chrome.activeIds].sort().join(',') : ''}:${chrome.selectedIds ? [...chrome.selectedIds].sort().join(',') : ''}:${chrome.checkedIds ? [...chrome.checkedIds].sort().join(',') : ''}:${chrome.tocControlIds ? [...chrome.tocControlIds].sort().join(',') : ''}:${chrome.suppressedIds ? [...chrome.suppressedIds].sort().join(',') : ''}:${chrome.readOnly === true ? 'ro' : ''}`
     : '';
   const drawingStrings = options.drawingStrings ?? DEFAULT_DRAWING_PAINT_STRINGS;
   const urlRegistry =

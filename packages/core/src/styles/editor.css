@@ -919,6 +919,13 @@ a.docx-hyperlink:focus-visible {
   opacity: 1;
 }
 
+/* Selected whole: the next Backspace or Delete removes the control with what it holds. */
+.docx-content-control-chrome[data-selected] .docx-content-control-boundary {
+  border: 2px solid var(--doc-primary);
+  background: color-mix(in srgb, var(--doc-primary) 16%, transparent);
+  opacity: 1;
+}
+
 /* A document nobody may write has nothing to fill in, so the pointer must not light a
  * control as though it did. `data-active` and `data-boundary-visible` still show: those say
  * WHERE a control is, which a reader may want. Only the hover invitation goes. The painter

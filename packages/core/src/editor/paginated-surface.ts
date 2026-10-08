@@ -163,6 +163,7 @@ import {
   type SlotKeep,
 } from './surface-caret-slots.ts';
 import { contentControlEdgesAt } from '../store/store/content-control-edges.ts';
+import { createControlKeys } from './surface-control-keys.ts';
 import { attachListResolveChangeEvidence } from '../layout/list-resolve.ts';
 import { refreshSurfaceRefFieldResults } from './surface-ref-field-refresh.ts';
 import { type RevisionAuthorFilter } from '../layout/revision-projection.ts';
@@ -911,18 +912,39 @@ export function mountPaginatedSurface(
     | undefined;
   /** The host's name for each field, from its instruction, published for its stylesheet. */
   let fieldTone: import('../output/semantic-paint.ts').FieldTone | undefined;
+  const controlEdgesAt = ({ paragraphId, offset }: SemanticPosition) => {
+    const paragraph = findNode(partOfNodeId(session, paragraphId) ?? session.part(), paragraphId);
+    return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(paragraph, offset) : [];
+  };
   const caretSlots = createCaretSlots({
     enabled: () => contentControlTags !== undefined,
     selection: () => selection,
     layout: () => editingLayout(),
-    edgesAt: ({ paragraphId, offset }) => {
-      const paragraph = findNode(partOfNodeId(session, paragraphId) ?? session.part(), paragraphId);
-      return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(paragraph, offset) : [];
-    },
+    edgesAt: controlEdgesAt,
     changed: () => {
       caret.update();
       options.onChange?.(currentState());
     },
+  });
+  const controlKeys = createControlKeys({
+    part: (paragraphId) => partOfNodeId(session, paragraphId) ?? session.part(),
+    selection: () => selection,
+    tagsDrawn: () => contentControlTags !== undefined,
+    drawnSlot: () => caretSlots.current(),
+    placement: () => caretSlots.placement(),
+    edgesAt: controlEdgesAt,
+    select: (next) => setSelection(next),
+    remove: (controlId, at, slot) =>
+      commit(
+        () =>
+          applyOps(
+            [{ op: 'removeContentControl', controlId, keepContent: false }],
+            selectionMark(),
+            caretMark(at)
+          ),
+        () => collapsedAt(at),
+        { slot }
+      ),
   });
   const reviewView = createReviewViewState(
     options.revisionDisplayMode,
@@ -1873,6 +1895,7 @@ export function mountPaginatedSurface(
         readonly showAll?: boolean;
         readonly activeIds?: ReadonlySet<string>;
         readonly hoverIds?: ReadonlySet<string>;
+        readonly selectedIds?: ReadonlySet<string>;
         readonly checkedIds?: ReadonlySet<string>;
         readonly additionalBoundaries?: readonly ContentControlBoundaryRecord[];
         readonly tocControlIds?: ReadonlySet<string>;
@@ -1904,6 +1927,7 @@ export function mountPaginatedSurface(
     const activeIds = active && !tocControlIds.has(active.id) ? new Set([active.id]) : undefined;
     const hovered = [hoveredTocControlId, hoveredControlId].filter((id) => id !== null);
     const hoverIds = hovered.length > 0 ? new Set(hovered) : undefined;
+    const selectedId = controlKeys.selectedId();
     const checkedIds = new Set(
       contentControlsInLayout(currentLayout)
         .filter((control) => control.controlType === 'checkbox' && checkboxChecked(control.id))
@@ -1920,6 +1944,7 @@ export function mountPaginatedSurface(
       !showAllContentControls &&
       !activeIds &&
       !hoverIds &&
+      !selectedId &&
       !readOnly &&
       checkedIds.size === 0 &&
       additionalBoundaries.length === 0 &&
@@ -1932,6 +1957,7 @@ export function mountPaginatedSurface(
       ...(showAllContentControls ? { showAll: true } : {}),
       ...(activeIds ? { activeIds } : {}),
       ...(hoverIds ? { hoverIds } : {}),
+      ...(selectedId ? { selectedIds: new Set([selectedId]) } : {}),
       ...(checkedIds.size > 0 ? { checkedIds } : {}),
       ...(additionalBoundaries.length > 0 ? { additionalBoundaries } : {}),
       ...(tocControlIds.size > 0 ? { tocControlIds } : {}),
@@ -3284,10 +3310,11 @@ export function mountPaginatedSurface(
     // exact armed position (the mirror re-adopting the same caret) keeps it.
     reconcilePendingWith(next);
     releaseRetainedIfEscaped(next);
-    const previousActive = contentControlAtCaret()?.id ?? null;
+    const previousActive = `${contentControlAtCaret()?.id}:${controlKeys.selectedId()}`;
     const previousToc = tocAtPosition(session.part(), selection.head)?.id;
     retireActivationPin();
     caretSlots.forgetUnlessAt(next);
+    controlKeys.forgetUnlessAt(next);
     selection = next;
     // Any plain selection cancels a rectangle. A caret placed by a click, a keystroke or an
     // edit is a text selection by definition, and leaving the rectangle behind would keep
@@ -3336,9 +3363,9 @@ export function mountPaginatedSurface(
     // The caret decides which item is OPEN, so a move re-classifies the bands. The rectangles
     // themselves are cached against the layout and are not recomputed here.
     renderCommentHighlights();
-    // Content-control caret chrome is furniture keyed on the active control id. A caret move
-    // into / out of a control must rebuild paint without a layout pass.
-    const nextActive = contentControlAtCaret()?.id ?? null;
+    // Content-control caret chrome is furniture keyed on the active and the selected control. A
+    // caret move into / out of a control must rebuild paint without a layout pass.
+    const nextActive = `${contentControlAtCaret()?.id}:${controlKeys.selectedId()}`;
     const nextToc = tocAtPosition(session.part(), selection.head)?.id;
     if (previousActive !== nextActive || previousToc !== nextToc) {
       render(false);
@@ -4599,6 +4626,7 @@ export function mountPaginatedSurface(
 
     deleteBackward() {
       if (textFormInteraction?.selectForDeletion('backward')) return;
+      if (controlKeys.press('backward')) return;
       const plan = deleteSelectionPlan();
       if (plan.ops.length > 0) {
         commit(
@@ -4950,7 +4978,7 @@ export function mountPaginatedSurface(
     },
 
     deleteWordBackward() {
-      if (surface.deleteSelection()) return;
+      if (controlKeys.press('backward') || surface.deleteSelection()) return;
       const head = selection.head;
       // Stopped at a struck half's edge, like every other word walk: Ctrl+Backspace at the
       // end of a replacement's new text must not reach back through the old text with it.
@@ -4976,7 +5004,7 @@ export function mountPaginatedSurface(
     },
 
     deleteWordForward() {
-      if (surface.deleteSelection()) return;
+      if (controlKeys.press('forward') || surface.deleteSelection()) return;
       const head = selection.head;
       const target = (textFormInteraction?.wordDeletionBoundary ?? wordBoundary)(
         textOf(head.paragraphId),
@@ -5001,6 +5029,7 @@ export function mountPaginatedSurface(
 
     deleteForward() {
       if (textFormInteraction?.selectForDeletion('forward')) return;
+      if (controlKeys.press('forward')) return;
       if (surface.deleteSelection() || removeCaretParagraph('forward')) return;
       // Delete keeps the typing format like Backspace does — the caret does not move, so
       // the armed format re-anchors in place.
@@ -5610,6 +5639,7 @@ export function mountPaginatedSurface(
     armForcePlainPaste,
 
     deleteSelection() {
+      if (controlKeys.removeSelected()) return true;
       const plan = deleteSelectionPlan();
       if (plan.ops.length === 0) return false;
       commit(

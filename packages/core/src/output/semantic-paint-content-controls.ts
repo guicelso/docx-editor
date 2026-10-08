@@ -70,20 +70,21 @@ export function paintContentControlChrome(
   const showAll = chrome?.showAll === true;
   const activeIds = chrome?.activeIds;
   const hoverIds = chrome?.hoverIds;
+  const selectedIds = chrome?.selectedIds;
   const tocControlIds = chrome?.tocControlIds;
   for (const control of controls) {
     const isToc = tocControlIds?.has(control.id) === true;
     const active = !isToc && activeIds?.has(control.id) === true;
     const hovered = hoverIds?.has(control.id) === true;
+    const selected = selectedIds?.has(control.id) === true;
     pageElement.append(
       paintContentControlBoundary(
         document,
         page,
         control,
         options.scale,
-        active,
-        hovered,
-        showAll || active || (isToc && hovered),
+        { active, hovered, selected },
+        showAll || active || selected || (isToc && hovered),
         chrome?.checkedIds?.has(control.id),
         isToc,
         chrome?.readOnly === true
@@ -152,8 +153,7 @@ function paintContentControlBoundary(
   page: PageRecord,
   control: ContentControlBoundaryRecord,
   scale: number,
-  active: boolean,
-  hovered: boolean,
+  { active, hovered, selected }: { active: boolean; hovered: boolean; selected: boolean },
   boundaryVisible: boolean,
   checked: boolean | undefined,
   isToc: boolean,
@@ -173,6 +173,7 @@ function paintContentControlBoundary(
   if (readOnly) layer.dataset.readOnly = '';
   if (active) layer.dataset.active = '';
   if (hovered) layer.dataset.hover = '';
+  if (selected) layer.dataset.selected = '';
   if (boundaryVisible) layer.dataset.boundaryVisible = '';
   layer.setAttribute('contenteditable', 'false');
   layer.setAttribute('role', 'group');

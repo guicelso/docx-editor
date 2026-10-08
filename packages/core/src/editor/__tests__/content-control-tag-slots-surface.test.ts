@@ -150,12 +150,14 @@ describe('the caret slot at a tagged edge', () => {
     expect(surface.state().contentControls.caretSlot).toBeNull();
   });
 
-  test('backspace deletes by offset, whichever slot the caret stands in', () => {
+  test('backspace beside a tag selects its control instead of deleting across the tag', () => {
     const surface = tagged(GROUP);
     putCaret(surface, 4);
     surface.navigate('left');
     surface.deleteBackward();
-    expect(bracketed(surface)).toBe('CPFG{B{RG}E{CNH}}');
+    expect(bracketed(surface)).toBe('CPF G{B{RG}E{CNH}}');
+    const { anchor, head } = surface.state().selection;
+    expect([anchor.offset, head.offset]).toEqual([4, 9]);
   });
 
   test('a host puts the caret in a chosen slot, as a press on the tag would', () => {

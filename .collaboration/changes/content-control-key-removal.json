@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Backspace and Delete at an inline content control's edge took one character, across a drawn tag into or out of the control, so no key could remove a text control; in a control showing its prompt they took letters of the prompt.",
+  "after": "With tags drawn, a key whose neighbour in the caret's slot is a tag selects that control whole (contentControlChrome.selectedIds, data-selected on its chrome) and the next press, the word keys or cut removes it with removeContentControl keepContent false. With tags drawn, a key in a control showing its prompt removes it at once. Without drawn tags every key keeps the previous behaviour.",
+  "reason": "The selected control is surface state and never enters shared updates. The removal is the existing removeContentControl op, which the journal already replicates.",
+  "tests": ["packages/core/src/editor/__tests__/content-control-key-removal.test.ts"],
+  "changeset": "content-control-key-removal",
+  "migration": null
+}

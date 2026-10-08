@@ -59,6 +59,7 @@ export interface PaintOptions {
         readonly checkedIds?: ReadonlySet<string>;
         readonly hoverIds?: ReadonlySet<string>;
         readonly readOnly?: boolean;
+        readonly selectedIds?: ReadonlySet<string>;
         readonly showAll?: boolean;
         readonly suppressedIds?: ReadonlySet<string>;
         readonly tocControlIds?: ReadonlySet<string>;
