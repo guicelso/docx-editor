@@ -347,6 +347,10 @@ const TREE_OP_REACH: {
   insertHardBreak: (op) => writingAt(op.paragraphId, op.offset),
   insertPageBreak: (op) => writingAt(op.paragraphId, op.offset),
   insertPageField: (op) => writingAt(op.paragraphId, op.offset),
+  // A merge field is authored beside the runs, like a new control, and is never the filling of
+  // one: the caret reaches like a range, and a named place is resolved again by the landing.
+  insertMergeField: (op) => over(op.paragraphId, op.offset, op.offset),
+  setMergeField: (op) => whole(op.fieldNodeId),
   // Plain anchors sit beside text. A tracked note uses the tracked run-content applier.
   insertCommentMarker: (op) => beside(op.paragraphId, op.offset),
   insertNote: (op) =>

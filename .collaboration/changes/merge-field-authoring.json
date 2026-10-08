@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A host could author a merge field only by building the five runs itself and landing them with insertFragment, which split and joined the paragraph and so was refused beside any locked control in it; rewriting a field's name took deleting it and inserting another, losing its formatting.",
+  "after": "insertMergeField { paragraphId, offset, name, result, inside?, beside? } writes the field's five runs with the caret's run properties through the same landing an inline control uses; setMergeField { paragraphId, fieldNodeId, name, result } rewrites the instruction and the cached result in place. The engine owns the instruction's spelling; the name is the host's.",
+  "reason": "Both ops reduce to canonical tree primitives the journal already replicates (a run split, a children insertion, node replacements of an instruction and of result runs). Released participants receive the resulting shared state, never the new op kinds.",
+  "tests": [
+    "packages/core/src/store/__tests__/merge-field-ops.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts"
+  ],
+  "changeset": "merge-field-authoring",
+  "migration": null
+}

@@ -7,8 +7,8 @@
   "baseGitCommitDate": "2026-08-24 14:45:47 +0200",
   "inventoryNote": "Kinds, reach, properties, chrome slots, and lifecycle sets are taken from the implementation after rebase onto origin/main. Main added replaceStoryBlocks, setMathEquation, removeMathEquation, and insertFragment (rich-clipboard-fidelity).",
   "counts": {
-    "treeDocOpKinds": 83,
-    "singlePartApply": 70,
+    "treeDocOpKinds": 85,
+    "singlePartApply": 72,
     "headerFooterLifecycle": 6,
     "noteLifecycle": 5,
     "treeDocOpUnsupported": 2,
@@ -64,6 +64,8 @@
       "insertPageBreak",
       "insertPageField",
       "setFieldCode",
+      "insertMergeField",
+      "setMergeField",
       "setListLevel",
       "setListNumbering",
       "setParagraphTabStops",
@@ -153,6 +155,8 @@
     "insertPageBreak",
     "insertPageField",
     "setFieldCode",
+    "insertMergeField",
+    "setMergeField",
     "setListLevel",
     "setListNumbering",
     "setParagraphTabStops",
@@ -459,6 +463,24 @@
       "commandExposure": [],
       "packageIntents": [],
       "openSpec": ["agent-editing-subset"]
+    },
+    {
+      "kind": "insertMergeField",
+      "commitPath": "applyTreeOp",
+      "storyScopes": ["body", "headerFooter", "notesPart"],
+      "storyParity": "all",
+      "commandExposure": [],
+      "packageIntents": [],
+      "openSpec": []
+    },
+    {
+      "kind": "setMergeField",
+      "commitPath": "applyTreeOp",
+      "storyScopes": ["body", "headerFooter", "notesPart"],
+      "storyParity": "all",
+      "commandExposure": [],
+      "packageIntents": [],
+      "openSpec": []
     },
     {
       "kind": "setListLevel",

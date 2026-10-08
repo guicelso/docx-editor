@@ -218,7 +218,7 @@ function wrapRangeInContentControl(
  * The same rule the inline custom-node insert follows, for the same reason — a field dropped
  * into a heading must not come out body-sized.
  */
-function inheritedRunProperties(
+export function inheritedRunProperties(
   part: OoxmlPart,
   index: ParagraphOffsetIndex,
   offset: number,

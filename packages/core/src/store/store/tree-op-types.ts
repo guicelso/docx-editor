@@ -1,5 +1,6 @@
 import type { SetLegacyDropdownOp } from './legacy-dropdown-fields.ts';
 import type { SetFieldCodeOp } from './tree-op-field-code.ts';
+import type { InsertMergeFieldOp, SetMergeFieldOp } from './tree-op-merge-fields.ts';
 import type { InsertTextOp, DeleteTextOp } from './text-edit-op-types.ts';
 import type { SetTextFormFieldDefaultOp, CommitTextFormFieldOp } from './text-form-fields.ts';
 import type { SetLegacyCheckboxOp } from './legacy-checkbox-fields.ts';
@@ -162,6 +163,8 @@ export {
  */
 export type TreeDocOp =
   | SetFieldCodeOp
+  | InsertMergeFieldOp
+  | SetMergeFieldOp
   | {
       /**
        * Replace one story's complete block structure with fresh plain paragraphs.

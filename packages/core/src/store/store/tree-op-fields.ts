@@ -9,7 +9,7 @@ import type { OoxmlNode } from '../package/ooxml-tree.ts';
 
 export type PageFieldKind = 'PAGE' | 'NUMPAGES' | 'SECTIONPAGES' | 'PAGE_X_OF_Y';
 
-function fldChar(nextId: () => string, type: 'begin' | 'separate' | 'end'): OoxmlNode {
+export function fldChar(nextId: () => string, type: 'begin' | 'separate' | 'end'): OoxmlNode {
   return {
     id: nextId(),
     kind: 'fldChar',
@@ -30,7 +30,7 @@ function fldChar(nextId: () => string, type: 'begin' | 'separate' | 'end'): Ooxm
   } as unknown as OoxmlNode;
 }
 
-function instrText(nextId: () => string, instruction: string): OoxmlNode {
+export function instrText(nextId: () => string, instruction: string): OoxmlNode {
   const valueId = nextId();
   return {
     id: nextId(),

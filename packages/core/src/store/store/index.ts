@@ -196,6 +196,15 @@ export {
 } from '../package/drawing-projection.ts';
 export type { ImageResourceState, SupportedImageMime } from '../package/image-resources.ts';
 
+export {
+  isMergeFieldName,
+  mergeFieldNameOf,
+  mergeFieldsOf,
+  MAX_MERGE_FIELD_NAME_CHARS,
+  type InsertMergeFieldOp,
+  type MergeFieldRange,
+  type SetMergeFieldOp,
+} from './tree-op-merge-fields.ts';
 export { textFormFieldsOf, type TextFormFieldRange } from './text-form-fields.ts';
 export {
   legacyCheckboxFieldsOf,

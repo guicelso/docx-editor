@@ -23,6 +23,8 @@ export const TREE_DOC_OP_KINDS = [
   'insertPageBreak',
   'insertPageField',
   'setFieldCode',
+  'insertMergeField',
+  'setMergeField',
   'setListLevel',
   'setListNumbering',
   'setParagraphTabStops',

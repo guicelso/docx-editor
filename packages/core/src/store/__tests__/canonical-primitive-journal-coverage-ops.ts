@@ -442,6 +442,26 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
         code: 'NUMPAGES',
       })
     ),
+    story('insertMergeField', plainDoc(), (store) => ({
+      op: 'insertMergeField',
+      paragraphId: firstParagraphId(store),
+      offset: 5,
+      name: 'field:7c1f0a52-3b64-4d8e-9a10-2f5c6d7e8b90',
+      result: '«nome»',
+    })),
+    story(
+      'setMergeField',
+      plainDoc(
+        '<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> MERGEFIELD "a" \\* MERGEFORMAT </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>«a»</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:sectPr/>'
+      ),
+      (store) => ({
+        op: 'setMergeField',
+        paragraphId: firstParagraphId(store),
+        fieldNodeId: findKind(store.bodyStore().part, 'fldChar').id,
+        name: 'b',
+        result: '«b»',
+      })
+    ),
     story('insertTable', plainDoc(), (store) => ({
       op: 'insertTable',
       beforeParagraphId: paragraphIds(store)[1]!,

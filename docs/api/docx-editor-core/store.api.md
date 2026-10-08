@@ -2033,6 +2033,23 @@ export function insertCustomNodeWrite(store: TreeDocumentStore, write: InsertCus
 dataOwnerPartName?: string): CustomNodeWriteResult;
 
 // @public
+export interface InsertMergeFieldOp {
+    readonly beside?: {
+        readonly controlId: string;
+        readonly side: 'before' | 'after';
+    };
+    readonly inside?: string;
+    readonly name: string;
+    // (undocumented)
+    readonly offset: number;
+    // (undocumented)
+    readonly op: 'insertMergeField';
+    // (undocumented)
+    readonly paragraphId: string;
+    readonly result: string;
+}
+
+// @public
 export function insertPackageCustomNode(packageStore: TreePackageStore, write: InsertCustomNodeWrite, scope?: StoryScope): CustomNodeWriteResult;
 
 // @public (undocumented)
@@ -2136,6 +2153,9 @@ export function isLegalFootnotePosition(pos: string): pos is FootnotePosition;
 
 // @public
 export function isLegalNumRestart(value: string): value is NoteNumRestart;
+
+// @public (undocumented)
+export function isMergeFieldName(name: unknown): name is string;
 
 // @public
 export function isNormalNote(node: OoxmlNode): boolean;
@@ -2330,6 +2350,9 @@ export const MAX_CUSTOM_NODE_PAYLOAD_LENGTH: number;
 export const MAX_FRAGMENT_DECODED_BYTES: number;
 
 // @public
+export const MAX_MERGE_FIELD_NAME_CHARS = 2048;
+
+// @public
 export const MAX_NOTE_REFERENCE_PARTS = 256;
 
 // @public
@@ -2355,6 +2378,24 @@ export function mergedParagraphMarkProperties(part: OoxmlPart, paragraphId: stri
 
 // @public
 export function mergedProperties(existing: readonly OoxmlProperty[], incoming: OoxmlProperty | readonly OoxmlProperty[]): OoxmlProperty[];
+
+// @public
+export function mergeFieldNameOf(instruction: string): string | null;
+
+// @public
+export interface MergeFieldRange {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly fieldNodeId: string;
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    readonly start: number;
+}
+
+// @public
+export function mergeFieldsOf(paragraph: OoxmlParagraphNode): readonly MergeFieldRange[];
 
 // @public
 export function mergeFragmentIntoPackage(target: OoxmlPackage, fragment: OoxmlPackage, ownerPartName: string): FragmentMergeResult;
@@ -4157,6 +4198,19 @@ export interface SetLegacyDropdownOp {
 }
 
 // @public
+export interface SetMergeFieldOp {
+    readonly fieldNodeId: string;
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    readonly op: 'setMergeField';
+    // (undocumented)
+    readonly paragraphId: string;
+    // (undocumented)
+    readonly result: string;
+}
+
+// @public
 export function setPackageCommentResolved(packageStore: TreePackageStore, commentId: string, resolved: boolean): SetCommentResolvedResult;
 
 // @public
@@ -4448,10 +4502,10 @@ export interface TransportPort {
 }
 
 // @public
-export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock"];
+export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "setFieldCode", "insertMergeField", "setMergeField", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock"];
 
 // @public
-export type TreeDocOp = SetFieldCodeOp | {
+export type TreeDocOp = SetFieldCodeOp | InsertMergeFieldOp | SetMergeFieldOp | {
     readonly op: 'replaceStoryBlocks';
     readonly paragraphs: readonly string[];
     readonly storyRootId: string;
