@@ -1,0 +1,81 @@
+// Content-control tags in a real browser: the half of a chip that is clicked decides where the
+// typed text lands — in front of a control, at its start, or after it.
+
+import { readOoxmlPackage } from '../packages/core/src/store/package/ooxml-package';
+import type { OoxmlNode } from '../packages/core/src/store/package/ooxml-tree';
+import {
+  contentControlContentChildren,
+  isContentControl,
+} from '../packages/core/src/store/package/content-control-walk';
+import { contentControlTagSubjectOf } from '../packages/core/src/layout/content-control-tags';
+import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import type { Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+const origin = process.env.CC_TAGS_ORIGIN ?? 'http://localhost:5273';
+
+test.beforeEach(async ({ page }) => {
+  await page.goto(`${origin}/?fixture=content-control-tags.docx&e2e=1`);
+  await page.waitForFunction(() => window.__DOCX_EDITOR_E2E__?.fontMeasurer() === 'shaped');
+  await page.evaluate(() => {
+    const surface = (window.__DOCX_EDITOR_E2E__!.getEditor() as DocxEditorInstance).surface;
+    if (!surface) throw new Error('the editor has no surface yet');
+    surface.setContentControlTags({
+      token: 'tag-names',
+      labelsOf: ({ tag }) => ({ open: { text: `${tag} ▸` }, close: { text: `◂ ${tag}` } }),
+    });
+  });
+  await expect(page.locator('[data-cc-tag-control]')).toHaveCount(12);
+});
+
+async function clickChip(
+  page: Page,
+  tag: string,
+  edge: 'open' | 'close',
+  half: 'left' | 'right'
+): Promise<void> {
+  const chip = page.locator(`[data-cc-tag-edge="${edge}"]`).filter({ hasText: tag });
+  const box = await chip.boundingBox();
+  if (!box) throw new Error(`no ${edge} chip for ${tag}`);
+  await page.mouse.click(box.x + box.width * (half === 'left' ? 0.2 : 0.8), box.y + box.height / 2);
+}
+
+/** The saved paragraph with each control bracketed by its tag: `Status: group-1{case-1{alpha}…}`. */
+async function savedText(page: Page): Promise<string> {
+  const saved = await page.evaluate(async () =>
+    Array.from((await window.__DOCX_EDITOR_E2E__!.saveBytes())!)
+  );
+  const opened = readOoxmlPackage(new Uint8Array(saved));
+  if (!opened.ok) throw new Error(opened.reason);
+  const walk = (nodes: readonly OoxmlNode[]): string =>
+    nodes
+      .map((node) => {
+        if (node.kind === 'textValue') return node.value;
+        if (isContentControl(node)) {
+          return `${contentControlTagSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
+        }
+        return walk(node.children);
+      })
+      .join('');
+  return walk([opened.package.parts.get(opened.package.mainDocumentPart)!.root]);
+}
+
+test('the right half of an opening chip types at the start of its control', async ({ page }) => {
+  await clickChip(page, 'fallback-1', 'open', 'right');
+  await page.keyboard.type('Y');
+  expect(await savedText(page)).toContain('fallback-1{Ybeta}');
+});
+
+test('the left half of an opening chip types in front of its control, letter after letter', async ({
+  page,
+}) => {
+  await clickChip(page, 'group-2', 'open', 'left');
+  await page.keyboard.type('AB');
+  expect(await savedText(page)).toContain('. Then: ABgroup-2{');
+});
+
+test('the right half of a closing chip types after its control', async ({ page }) => {
+  await clickChip(page, 'group-1', 'close', 'right');
+  await page.keyboard.type('Z');
+  expect(await savedText(page)).toContain('{beta}}Z. Then: ');
+});
