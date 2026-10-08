@@ -145,8 +145,8 @@ import {
   applySetContentControlProperties as applyAutomationSetContentControlProperties,
   applySetContentControlValue as applyAutomationSetContentControlValue,
   clearPlaceholder,
-  placeholderControlForInsertion,
 } from './tree-op-content-controls.ts';
+import { insertionOwnerAt, promptTypedOver } from './tree-op-inline-destination.ts';
 import {
   insertionDestination,
   fieldInsertionEndAt,
@@ -251,7 +251,7 @@ export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOption
   // caret: an automation call and a paste insert text too, and a prompt that survived them
   // would leave the typed characters appended to "Click here to enter text.".
   if (op.op === 'insertText' && !op.revision) {
-    const prompt = placeholderControlForInsertion(part, op.paragraphId, op.offset);
+    const prompt = promptTypedOver(part, op.paragraphId, op.offset, op);
     if (prompt) {
       // The caret's paragraph is the one the prompt is emptied into, so the insert below
       // still finds it. A prompt whose content cannot be emptied in place is refused, not
@@ -636,7 +636,7 @@ function applyInsertContent(
   bias: 'left' | 'right' = 'left',
   beside?: { readonly controlId: string; readonly side: 'before' | 'after' }
 ): TreeOpResult {
-  const control = beside ? null : contentControlAtCaret(part, paragraph, offset, offset, bias);
+  const control = insertionOwnerAt(part, paragraph, offset, { inside, beside }, bias);
   if (control && isShowingPlaceholder(control)) {
     return applyPlaceholderReplace(part, control, builders, options);
   }

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "insertText replaced the prompt of the first control showing one whose span touched the offset, whatever destination the op named. Text named inside one of two empty neighbours replaced the other's prompt, and text named beside a control whose first child showed a prompt was refused (invalidArgs).",
+  "after": "The prompt an insertion replaces is decided by where it lands: inside a control, that control's own prompt; beside a control, none; with no destination, the offset rule as before.",
+  "reason": "The insertion reduces to the canonical primitives the journal already replicates (the prompt emptied and a run written in the named holder), so released participants read the resulting state unchanged. Ops with no destination behave as before.",
+  "tests": ["packages/core/src/store/__tests__/content-control-prompt-destination.test.ts"],
+  "changeset": "content-control-prompt-destination",
+  "migration": null
+}

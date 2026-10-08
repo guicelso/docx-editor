@@ -18,8 +18,12 @@ import type {
 import { contentControlPropertiesOf } from '../package/content-control-nodes.ts';
 import { splitRunsAt } from './tree-op-apply.ts';
 import { siteBesideControl } from './tree-op-beside.ts';
-import { clearPlaceholder } from './tree-op-content-controls.ts';
-import { contentControlContentOf, isParagraphPropertiesNode } from './tree-op-nodes.ts';
+import { clearPlaceholder, placeholderControlForInsertion } from './tree-op-content-controls.ts';
+import {
+  contentControlContentOf,
+  findContentControl,
+  isParagraphPropertiesNode,
+} from './tree-op-nodes.ts';
 import {
   isParagraph,
   paragraphOffsetIndex,
@@ -27,7 +31,7 @@ import {
   type ParagraphOffsetIndex,
 } from './tree-op-segments.ts';
 import { namedOwnerRefusal } from './tree-op-validate.ts';
-import { holds, rejectContentEdit } from './tree-op-validate-controls.ts';
+import { contentControlAtCaret, holds, rejectContentEdit } from './tree-op-validate-controls.ts';
 import type { TreeOpRejection } from './tree-op-types.ts';
 
 /** The place a caller names: a control's own content, or the sibling slot at one of its edges. */
@@ -203,6 +207,44 @@ function besideLanding(
   };
 }
 
+/**
+ * The prompt an insertion types over, and the offset its text then starts at.
+ *
+ * Decided by where the text lands, as the first keystroke into a prompt replaces it: the named
+ * control's own prompt `inside`, none `beside` a control, and the offset's own rule only when the
+ * caller names no place. The prompt of a neighbour sharing the offset is never the one replaced.
+ */
+export function promptTypedOver(
+  part: OoxmlPart,
+  paragraphId: string,
+  offset: number,
+  fields: InlineDestinationFields
+): { readonly control: OoxmlNode; readonly offset: number } | null {
+  if (fields.beside !== undefined) return null;
+  if (fields.inside === undefined) return placeholderControlForInsertion(part, paragraphId, offset);
+  const owner = findNode(part, fields.inside);
+  const paragraph = findNode(part, paragraphId);
+  if (!owner || !paragraph || !isParagraph(paragraph)) return null;
+  if (!contentControlPropertiesOf(owner).showingPlaceholder) return null;
+  const start = holds(owner, paragraphId)
+    ? 0
+    : paragraphOffsetIndex(paragraph).spanOf(owner)?.start;
+  return start === undefined ? null : { control: owner, offset: start };
+}
+
+/** The control an insertion at a caret edits: the one it names, none beside one, or the offset's. */
+export function insertionOwnerAt(
+  part: OoxmlPart,
+  paragraph: OoxmlParagraphNode,
+  offset: number,
+  fields: InlineDestinationFields,
+  bias?: 'left' | 'right'
+): OoxmlElement | null {
+  if (fields.beside !== undefined) return null;
+  if (fields.inside !== undefined) return findContentControl(part, fields.inside);
+  return contentControlAtCaret(part, paragraph, offset, offset, bias);
+}
+
 /** The owner with its prompt emptied, and the offset its content now starts at. */
 function emptiedOwner(
   part: OoxmlPart,
@@ -211,13 +253,11 @@ function emptiedOwner(
   controlId: string,
   options?: EditOptions
 ): { readonly part: OoxmlPart; readonly offset: number } | null {
-  const owner = findNode(part, controlId);
-  const paragraph = findNode(part, paragraphId);
-  if (!owner || !paragraph || !isParagraph(paragraph)) return null;
-  if (!contentControlPropertiesOf(owner).showingPlaceholder) return { part, offset };
-  const start = paragraphOffsetIndex(paragraph).spanOf(owner)?.start;
+  if (!findNode(part, controlId)) return null;
+  const prompt = promptTypedOver(part, paragraphId, offset, { inside: controlId });
+  if (prompt === null) return { part, offset };
   const emptied = clearPlaceholder(part, controlId, options, paragraphId);
-  return emptied === null || start === undefined ? null : { part: emptied, offset: start };
+  return emptied === null ? null : { part: emptied, offset: prompt.offset };
 }
 
 function splitAt(
