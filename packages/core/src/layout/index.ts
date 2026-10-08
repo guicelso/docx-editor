@@ -671,6 +671,7 @@ export {
   type HitPoint,
   type HitTestOptions,
   type SemanticHit,
+  type SemanticHitField,
   type SemanticHitTag,
   type SemanticHitDrawing,
   type TableCellAddress,

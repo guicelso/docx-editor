@@ -3627,6 +3627,7 @@ export interface SemanticHit {
     readonly contentControlId: string | null;
     readonly contentControlTag?: SemanticHitTag;
     readonly drawing: SemanticHitDrawing | null;
+    readonly field?: SemanticHitField;
     // (undocumented)
     readonly lineId: string;
     readonly onGlyphs: boolean;
@@ -3640,6 +3641,18 @@ export interface SemanticHit {
 export interface SemanticHitDrawing {
     // (undocumented)
     readonly drawingNodeId: string;
+    // (undocumented)
+    readonly paragraphId: string;
+    // (undocumented)
+    readonly start: number;
+}
+
+// @public
+export interface SemanticHitField {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly instruction: string;
     // (undocumented)
     readonly paragraphId: string;
     // (undocumented)

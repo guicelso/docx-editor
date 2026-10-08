@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A press on a field's painted result placed the caret at the field's nearer edge, and a host that treated its fields as chips had to find the chip under the pointer in the DOM and set the selection itself.",
+  "after": "With surface.setFieldSelection(select), a plain press on a field whose instruction the rule accepts selects the field's one-unit range, and the painted result of a field the selection is exactly carries data-selected. SemanticHit reports the field under the point from layout.",
+  "reason": "The selection and its paint are surface state and never enter shared updates.",
+  "tests": ["packages/core/src/editor/__tests__/field-press-selection.test.ts"],
+  "changeset": "field-press-selection",
+  "migration": null
+}

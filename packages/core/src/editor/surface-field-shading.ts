@@ -98,3 +98,56 @@ export function syncActiveFieldShading(
     state.marked.push(candidate);
   }
 }
+
+/** A selection one model unit wide, which is what a selected field atom is. */
+function oneUnitRangeOf(selection: {
+  readonly anchor: FieldShadingCaret;
+  readonly head: FieldShadingCaret;
+}): { readonly paragraphId: string; readonly start: number; readonly end: number } | null {
+  const { anchor, head } = selection;
+  if (anchor.paragraphId !== head.paragraphId || Math.abs(head.offset - anchor.offset) !== 1) {
+    return null;
+  }
+  const start = Math.min(anchor.offset, head.offset);
+  return { paragraphId: head.paragraphId, start, end: start + 1 };
+}
+
+const SELECTED_ATTRIBUTE = 'data-selected';
+const selectedByLayer = new WeakMap<HTMLElement, LayerShadingState>();
+
+/**
+ * Mark the field atom the selection is exactly — the press on a field, or a range that covers
+ * one and nothing else — as `data-selected`, the attribute a selected content control carries.
+ *
+ * A one-unit range is painted by the selection highlight over a field's whole result, but the
+ * highlight is a tint under the text: a host styling the field as a chip needs to say which chip
+ * is the subject of the toolbar and of its own inspector. Same bookkeeping as the caret's mark.
+ */
+export function syncSelectedField(
+  pagesLayer: HTMLElement,
+  selection: {
+    readonly anchor: FieldShadingCaret;
+    readonly head: FieldShadingCaret;
+  },
+  options?: { readonly domReplaced?: boolean }
+): void {
+  const range = oneUnitRangeOf(selection);
+  let state = selectedByLayer.get(pagesLayer);
+  if (!state) {
+    state = { caretKey: null, marked: [] };
+    selectedByLayer.set(pagesLayer, state);
+  }
+  const key = range ? `${range.paragraphId}\u0000${range.start}\u0000${range.end}` : null;
+  if (!options?.domReplaced && key === state.caretKey) return;
+  for (const marked of state.marked) marked.removeAttribute(SELECTED_ATTRIBUTE);
+  state.marked = [];
+  state.caretKey = key;
+  if (!range) return;
+  for (const candidate of pagesLayer.querySelectorAll<HTMLElement>('[data-field-atom]')) {
+    if (candidate.dataset.paragraphId !== range.paragraphId) continue;
+    if (Number(candidate.dataset.start) !== range.start) continue;
+    if (Number(candidate.dataset.end) !== range.end) continue;
+    candidate.setAttribute(SELECTED_ATTRIBUTE, 'true');
+    state.marked.push(candidate);
+  }
+}

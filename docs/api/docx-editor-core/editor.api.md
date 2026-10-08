@@ -2170,6 +2170,7 @@ export interface PaginatedSurface {
     setEditable(editable: boolean): void;
     // (undocumented)
     setEditingMode(mode: SurfaceEditingMode): void;
+    setFieldSelection(select: ((instruction: string) => boolean) | null): void;
     setFieldTones(tone: FieldTone | null): void;
     setHighlightPainter(painter: SurfaceOverlayPainter | null): void;
     setIndent(update: {

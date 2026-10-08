@@ -111,6 +111,16 @@ export interface SemanticHit {
    * half asks for the caret slot in front of the chip, the right half for the one behind it.
    */
   readonly contentControlTag?: SemanticHitTag;
+  /** The field atom under the point: its model range and its instruction, untrusted text. */
+  readonly field?: SemanticHitField;
+}
+
+/** A field atom under the point. @public */
+export interface SemanticHitField {
+  readonly paragraphId: string;
+  readonly start: number;
+  readonly end: number;
+  readonly instruction: string;
 }
 
 /** A chip under the point, and the side of it the point is on. @public */
@@ -536,7 +546,22 @@ function resolveParagraph(
     contentControlId: null,
     drawing: resolved.drawing && resolved.withinSpan ? drawingHitIdentity(resolved.drawing) : null,
     ...tagAtX(line, point.x),
+    ...fieldAtX(line, point.x),
   };
+}
+
+/**
+ * The field atom the x falls on. Line breaking can split a field's result into several spans,
+ * and every one of them publishes the same model range.
+ */
+function fieldAtX(line: LineRecord, x: number): { field?: SemanticHitField } {
+  for (const span of line.spans) {
+    const instruction = span.fieldAtom?.instruction;
+    if (instruction === undefined || x < span.box.x || x > span.box.x + span.box.width) continue;
+    const { paragraphId, start, end } = span.range;
+    return { field: { paragraphId, start, end, instruction } };
+  }
+  return {};
 }
 
 /** The view-only tag the x falls on, with the half it falls in. */

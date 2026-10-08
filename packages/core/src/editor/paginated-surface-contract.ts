@@ -639,6 +639,11 @@ export interface PaginatedSurface {
    */
   setFieldTones(tone: import('../output/semantic-paint.ts').FieldTone | null): void;
   /**
+   * Which fields a plain press selects whole, from their instruction, or none with `null`. The
+   * selected field's painted result carries `data-selected`; nothing is written to the document.
+   */
+  setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+  /**
    * Where the selection is painted, in client coordinates, from layout: one rectangle per line
    * of a range, or a zero-width one at a collapsed caret (in its slot at a tagged edge). The
    * retained selection when one is pinned. Empty when nothing is laid out there.

@@ -118,7 +118,7 @@ import {
 import { resolveSelectedDrawingRecord } from './docx-editor-images.ts';
 import { createHiddenMarkEditing, type RevisionView } from './hidden-mark-joins.ts';
 import { drawingSelectionPosition } from './surface-drawing-selection.ts';
-import { syncActiveFieldShading } from './surface-field-shading.ts';
+import { syncActiveFieldShading, syncSelectedField } from './surface-field-shading.ts';
 import {
   createLayoutScheduler,
   createLayoutSession,
@@ -912,6 +912,9 @@ export function mountPaginatedSurface(
     | undefined;
   /** The host's name for each field, from its instruction, published for its stylesheet. */
   let fieldTone: import('../output/semantic-paint.ts').FieldTone | undefined;
+  /** Which fields a press selects whole, by instruction; none without a host rule. */
+  let fieldSelection: ((instruction: string) => boolean) | undefined;
+
   const controlEdgesAt = ({ paragraphId, offset }: SemanticPosition) => {
     const paragraph = findNode(partOfNodeId(session, paragraphId) ?? session.part(), paragraphId);
     return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(paragraph, offset) : [];
@@ -2663,6 +2666,7 @@ export function mountPaginatedSurface(
     // Paint just rebuilt every span, so the caret's field lost its mark with the old DOM.
     textboxEditing?.syncDom();
     syncActiveFieldShading(pagesLayer, collapsedCaretPosition(), { domReplaced: true });
+    syncSelectedField(pagesLayer, selection, { domReplaced: true });
     setHeaderFooterEditingChrome(container, pagesLayer, activeHf != null);
     // Viewing mode hides write affordances the painter cannot know about — today the
     // blank header/footer "double-click to add" band.
@@ -3420,6 +3424,7 @@ export function mountPaginatedSurface(
     updateCaret: () => {
       caret.update();
       syncActiveFieldShading(pagesLayer, collapsedCaretPosition());
+      syncSelectedField(pagesLayer, selection);
     },
     textOf: (paragraphId) => textOf(paragraphId),
     pendingFormatOps: (paragraphId, offset, length, replacing) =>
@@ -5498,6 +5503,9 @@ export function mountPaginatedSurface(
         ];
       });
     },
+    setFieldSelection(select) {
+      fieldSelection = select ?? undefined;
+    },
     setFieldTones(tone) {
       if (destroyed || fieldTone === (tone ?? undefined)) return;
       fieldTone = tone ?? undefined;
@@ -6288,6 +6296,7 @@ export function mountPaginatedSurface(
       // `none`: a press lands where the reader LOOKS, and moving the paper under a double
       // click sent its second press elsewhere — a blank footer band never opened.
       onHover: setHoveredControlId,
+      selectsField: (instruction) => fieldSelection?.(instruction) === true,
       setSelection: (next, tag) => {
         setSelection(next, false, 'none');
         if (tag) caretSlots.chooseBeside(tag);
