@@ -21,14 +21,20 @@ import {
 import { MAX_INLINE_CONTAINER_DEPTH } from '../package/ooxml-shared.ts';
 import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { isInlineControl } from './content-control-checkbox.ts';
-import { contentWithText, editedProperties, promptFor } from './tree-op-content-controls.ts';
+import {
+  applyRemoveContentControl,
+  contentWithText,
+  editedProperties,
+  promptFor,
+} from './tree-op-content-controls.ts';
 import {
   contentControlContentOf,
   findContentControl,
   isRunPropertiesNode,
+  parentOf,
 } from './tree-op-nodes.ts';
 import { paragraphLength } from './tree-op-segments.ts';
-import type { TreeOpResult } from './tree-op-types.ts';
+import type { TreeDocOp, TreeOpResult } from './tree-op-types.ts';
 
 /** The kinds whose empty content shows a prompt. A checkbox or a picture has none. */
 const PROMPT_KINDS: ReadonlySet<ContentControlKind> = new Set<ContentControlKind>([
@@ -67,6 +73,23 @@ export function restoreEmptiedPlaceholder(
   const content = contentControlContentOf(control);
   if (!content || holdsContent(content, 0)) return result;
   return rewritePrompt(result, controlId, options);
+}
+
+/**
+ * Remove a control (`removeContentControl` naming `keepContent`), and the control that held it shows
+ * its prompt when the removal left it empty — as one a content edit emptied does. Without this,
+ * removing the last control a control held left it a zero-width shell with nothing to show.
+ */
+export function applyRemoveContentControlKeepingPrompt(
+  part: OoxmlPart,
+  op: Extract<TreeDocOp, { op: 'removeContentControl' }>,
+  options?: EditOptions
+): TreeOpResult {
+  const control = findContentControl(part, op.controlId);
+  const holder = control ? parentOf(part, control.id) : null;
+  const holderControl = holder?.kind === 'contentControlContent' ? parentOf(part, holder.id) : null;
+  const removed = applyRemoveContentControl(part, op, options);
+  return holderControl ? restoreEmptiedPlaceholder(removed, holderControl.id, options) : removed;
 }
 
 /**

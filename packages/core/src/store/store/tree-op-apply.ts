@@ -141,7 +141,6 @@ import { pageFieldContentBuilders, pageFieldModelLength } from './tree-op-fields
 import { applyTrackedContentControl } from './tracked-content-control-insert.ts';
 import { applyInsertContentControl as applyAutomationInsertContentControl } from './tree-op-content-control-insert.ts';
 import {
-  applyRemoveContentControl as applyAutomationRemoveContentControl,
   applySetContentControlProperties as applyAutomationSetContentControlProperties,
   applySetContentControlValue as applyAutomationSetContentControlValue,
   clearPlaceholder,
@@ -190,6 +189,7 @@ import { settleDeletionCoverage } from './content-control-deletion-coverage.ts';
 import { applyDrawingContentEdit } from './drawing-content-edit.ts';
 import { applyInsertBuildingBlock } from './building-block-insert.ts';
 import {
+  applyRemoveContentControlKeepingPrompt,
   promptInsertionOffset,
   restoreEmptiedPlaceholder,
 } from './content-control-prompt-restore.ts';
@@ -241,7 +241,7 @@ export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOption
     return applyAutomationSetContentControlProperties(part, op, options);
   }
   if (op.op === 'removeContentControl' && op.keepContent !== undefined) {
-    return applyAutomationRemoveContentControl(part, op, options);
+    return applyRemoveContentControlKeepingPrompt(part, op, options);
   }
   if (op.op === 'insertContentControl') {
     return op.revision

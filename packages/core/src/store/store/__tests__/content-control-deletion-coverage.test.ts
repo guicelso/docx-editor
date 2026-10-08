@@ -126,3 +126,42 @@ describe('a deletion that reaches into a prompt', () => {
     expect(deleted(`${run('AB')}${prompt('O', 'name')}${run('CD')}`, 2, 6)).toBe('ABO*{name}CD');
   });
 });
+
+describe('removing a control', () => {
+  function removed(body: string, tag: string): string {
+    const part = partOf(body);
+    const control = findControl(part.root, tag);
+    const result = applyTreeOp(
+      part,
+      { op: 'removeContentControl', controlId: control, keepContent: false },
+      PROMPT_OPTIONS
+    );
+    if (!result.ok) throw new Error(result.reason);
+    return bracketed(result.part);
+  }
+
+  test('the last one a control held leaves that control showing its prompt', () => {
+    const lone = `${run('A')}${sdt('G', sdt('B', run('rg')))}${run('Z')}`;
+    expect(removed(lone, 'B')).toBe('AG*{type here}Z');
+  });
+
+  test('one of several leaves the control that held it as it was', () => {
+    expect(removed(GROUP, 'B')).toBe('AG{E{cnh}}Z');
+  });
+});
+
+function findControl(node: OoxmlNode, tag: string): string {
+  const found = controlTagged(node, tag);
+  if (found === null) throw new Error(`no control ${tag}`);
+  return found;
+}
+
+function controlTagged(node: OoxmlNode, tag: string): string | null {
+  if (node.kind === 'textValue') return null;
+  if (isContentControl(node) && contentControlPropertiesOf(node).tag === tag) return node.id;
+  for (const child of node.children) {
+    const found = controlTagged(child, tag);
+    if (found !== null) return found;
+  }
+  return null;
+}

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "removeContentControl (with keepContent) that took the last thing a control held left that control empty, a zero-width shell with no prompt.",
+  "after": "The control that held the removed one shows its prompt when the removal left it empty, by the same rule a content edit already follows.",
+  "reason": "The op and its replicated form are unchanged; the applier's result for the same removeContentControl changes, and every replica runs the same applier.",
+  "tests": ["packages/core/src/store/store/__tests__/content-control-deletion-coverage.test.ts"],
+  "changeset": "content-control-removal-keeps-prompt",
+  "migration": null
+}
