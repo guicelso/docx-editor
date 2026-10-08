@@ -5,6 +5,7 @@ import {
 } from './tree-op-inline-elements.ts';
 import { contentControlPropertiesOf } from '../package/content-control-nodes.ts';
 import { canTrackContentControl } from './tracked-content-control-insert.ts';
+import { inlineDestinationRefusal } from './tree-op-inline-destination.ts';
 import { findNode } from '../package/ooxml-edit.ts';
 import {
   INSERTABLE_CONTENT_CONTROL_TYPES,
@@ -393,6 +394,12 @@ export function validateInsertContentControl(
   }
   if (splitsSurrogate(paragraph, op.start) || splitsSurrogate(paragraph, op.end)) {
     return 'splits-surrogate-pair';
+  }
+  // A named place answers for itself: inside a control or beside one, by the same resolution
+  // the applier lands with.
+  if (op.inside !== undefined || op.beside !== undefined) {
+    if (op.revision) return 'invalidArgs';
+    return inlineDestinationRefusal(part, op.paragraphId, op, op);
   }
   // BOTH EDGES, and here rather than in the applier: a control is a sibling of runs, so an
   // edge strictly inside a hyperlink, an inline control or an atomic field is not a place one

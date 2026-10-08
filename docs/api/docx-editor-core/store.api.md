@@ -4782,7 +4782,12 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly op: 'removeContentControl';
 } | {
     readonly alias?: string;
+    readonly beside?: {
+        readonly controlId: string;
+        readonly side: 'before' | 'after';
+    };
     readonly end: number;
+    readonly inside?: string;
     readonly lock?: ContentControlLock;
     readonly op: 'insertContentControl';
     readonly paragraphId: string;
@@ -4807,7 +4812,12 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly scope: 'document' | 'section';
     readonly sectionIndex?: number;
 } | {
+    readonly beside?: {
+        readonly controlId: string;
+        readonly side: 'before' | 'after';
+    };
     readonly blocks: readonly OoxmlNode[];
+    readonly inside?: string;
     readonly lastMarkCovered?: boolean;
     readonly offset: number;
     readonly op: 'insertFragment';

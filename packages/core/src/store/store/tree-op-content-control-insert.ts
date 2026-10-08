@@ -3,7 +3,8 @@
 // Two shapes, one op. A range becomes a WRAPPER around the characters that are already
 // there; a caret becomes an EMPTY control showing its type's prompt, which is what Word's
 // Developer tab inserts when nothing is selected. Both are one transaction and one undo
-// step, and both leave every other node in the paragraph where it was.
+// step, and both leave every other node in the paragraph where it was. Either lands in the
+// paragraph, or in the place the caller names — inside an inline control, or beside one.
 //
 // Split out of `tree-op-content-controls.ts` so the insertion paths have room to be read
 // side by side rather than to fit under a line cap.
@@ -19,12 +20,7 @@ import {
   replaceChildren,
   type EditOptions,
 } from '../package/ooxml-edit.ts';
-import type {
-  OoxmlElement,
-  OoxmlNode,
-  OoxmlParagraphNode,
-  OoxmlPart,
-} from '../package/ooxml-tree.ts';
+import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { splitRunsAt } from './tree-op-apply.ts';
 import {
   cloneWithFreshIds,
@@ -36,13 +32,19 @@ import {
   wmlElement,
   type InsertableContentControlKind,
 } from './tree-op-content-controls.ts';
-import { fromEdit, isParagraphPropertiesNode, runPropertiesNodeOf } from './tree-op-nodes.ts';
+import { contentControlContentOf, fromEdit, runPropertiesNodeOf } from './tree-op-nodes.ts';
+import {
+  atomSpanLookup,
+  inlineDestinationOf,
+  inlineDestinationRefusal,
+  inlineLandingAt,
+  type InlineDestination,
+} from './tree-op-inline-destination.ts';
 import {
   indivisibleAt,
   paragraphLength,
   paragraphOffsetIndex,
   splitsSurrogate,
-  type OffsetSpan,
   type ParagraphOffsetIndex,
 } from './tree-op-segments.ts';
 import type { TreeDocOp, TreeOpResult } from './tree-op-types.ts';
@@ -121,15 +123,20 @@ export function applyInsertContentControl(
   if (splitsSurrogate(paragraph, op.start) || splitsSurrogate(paragraph, op.end)) {
     return { ok: false, reason: 'splits-surrogate-pair' };
   }
-  // `validateTreeOp` answers this too, which is what lets `can` predict the refusal. Repeated
+  // `validateTreeOp` answers these too, which is what lets `can` predict the refusal. Repeated
   // here because the applier is reachable on its own and must fail closed rather than emit the
   // control beside the container the caller pointed into.
-  if (indivisibleAt(paragraph, op.start) || indivisibleAt(paragraph, op.end)) {
-    return { ok: false, reason: 'indivisible-content' };
-  }
+  const destination = inlineDestinationOf(op);
+  const refused =
+    destination === null
+      ? indivisibleAt(paragraph, op.start) || indivisibleAt(paragraph, op.end)
+        ? 'indivisible-content'
+        : null
+      : inlineDestinationRefusal(part, op.paragraphId, op, op);
+  if (refused) return { ok: false, reason: refused };
   return op.start === op.end
-    ? insertEmptyContentControl(part, paragraph, op, options)
-    : wrapRangeInContentControl(part, op, options);
+    ? insertEmptyContentControl(part, op, destination, options)
+    : wrapRangeInContentControl(part, op, destination, options);
 }
 
 /**
@@ -137,11 +144,13 @@ export function applyInsertContentControl(
  *
  * A control is a SIBLING of runs, never a thing inside one, so a range ending mid-run splits
  * that run at both edges first. The characters and their formatting are the ones that were
- * there; only the run boundaries move.
+ * there; only the run boundaries move. The wrapped children are the paragraph's, or the named
+ * owner's when the range lies inside an inline control.
  */
 function wrapRangeInContentControl(
   part: OoxmlPart,
   op: InsertOp,
+  destination: InlineDestination | null,
   options?: EditOptions
 ): TreeOpResult {
   let current = part;
@@ -155,6 +164,11 @@ function wrapRangeInContentControl(
 
   const reloaded = findNode(current, op.paragraphId);
   if (!reloaded || reloaded.kind !== 'paragraph') return { ok: false, reason: 'tree-invariant' };
+  const holder =
+    destination === null
+      ? reloaded
+      : contentControlContentOf(findNode(current, destination.controlId)!);
+  if (!holder) return { ok: false, reason: 'unsupported' };
   const index = paragraphOffsetIndex(reloaded);
   const wrapped: OoxmlNode[] = [];
   let covered = false;
@@ -162,7 +176,7 @@ function wrapRangeInContentControl(
   // the caret path below: skipping it left the instruction and the end marker outside the
   // control, cutting the field in two.
   const atomSpanOf = atomSpanLookup(index);
-  for (const child of reloaded.children) {
+  for (const child of holder.children) {
     const own = index.spanOf(child);
     const span = own && own.start !== own.end ? own : (atomSpanOf(child) ?? own);
     if (!span || span.start === span.end) continue;
@@ -181,7 +195,7 @@ function wrapRangeInContentControl(
   const wrappedIds = new Set(wrapped.map((child) => child.id));
   let placed = false;
   const children: OoxmlNode[] = [];
-  for (const child of reloaded.children) {
+  for (const child of holder.children) {
     if (!wrappedIds.has(child.id)) {
       children.push(child);
       continue;
@@ -192,7 +206,7 @@ function wrapRangeInContentControl(
     }
   }
   return fromEdit(
-    replaceChildren(current, reloaded.id, children, options),
+    replaceChildren(current, holder.id, children, options),
     contentControlEffect(reloaded.id, 'flow-structural')
   );
 }
@@ -222,94 +236,44 @@ function inheritedRunProperties(
 }
 
 /**
- * The span of the ATOM a paragraph child belongs to, for the chrome an atom is spelt with.
- *
- * `removeNodeIds` names the elements — `w:fldChar`, `w:instrText` — rather than the runs
- * holding them, so a paragraph child is matched by itself or by what it holds. One level is
- * enough: field chrome is a run wrapping exactly one of those elements.
- */
-function atomSpanLookup(index: ParagraphOffsetIndex): (child: OoxmlNode) => OffsetSpan | null {
-  const byNodeId = new Map<string, OffsetSpan>();
-  for (const segment of index.segments) {
-    if (!segment.removeNodeIds) continue;
-    const span = { start: segment.start, end: segment.end };
-    for (const id of segment.removeNodeIds) byNodeId.set(id, span);
-  }
-  if (byNodeId.size === 0) return () => null;
-  return (child) => {
-    const own = byNodeId.get(child.id);
-    if (own) return own;
-    if (child.kind === 'textValue') return null;
-    for (const inner of child.children) {
-      const found = byNodeId.get(inner.id);
-      if (found) return found;
-    }
-    return null;
-  };
-}
-
-/**
  * Insert an EMPTY control at a caret, holding its type's prompt.
  *
  * Word's own gesture: the control arrives showing "Click here to enter text." with
  * `w:showingPlcHdr` set, so the first character typed replaces the prompt whole. That
  * transition already exists in the applier for `insertText`; this is the other end of it.
+ * The caret's place is the paragraph's, or the one the caller named (`inside`, `beside`).
  */
 function insertEmptyContentControl(
   part: OoxmlPart,
-  paragraph: OoxmlParagraphNode,
   op: InsertOp,
+  destination: InlineDestination | null,
   options?: EditOptions
 ): TreeOpResult {
-  const offset = op.start;
-  const split = splitRunsAt(part, paragraph, offset, options);
-  if (!split.ok) return { ok: false, reason: split.reason };
-  const current = split.part;
-  const reloaded = findNode(current, op.paragraphId);
-  if (!reloaded || reloaded.kind !== 'paragraph') return { ok: false, reason: 'tree-invariant' };
+  const landed = inlineLandingAt(part, op.paragraphId, op.start, destination, options);
+  if (!landed.ok) return landed;
+  const { landing } = landed;
+  const holder = findNode(landing.part, landing.holderId);
+  if (!holder || holder.kind === 'textValue') return { ok: false, reason: 'tree-invariant' };
 
-  const index = paragraphOffsetIndex(reloaded);
-  const nextId = createNodeIdAllocator(current);
+  const nextId = createNodeIdAllocator(landing.part);
   const prompt = textRun(
     nextId,
     promptFor(op.type, options),
-    inheritedRunProperties(current, index, offset, nextId)
+    inheritedRunProperties(
+      landing.part,
+      paragraphOffsetIndex(landing.paragraph),
+      landing.offset,
+      nextId
+    )
   );
-  const control = controlElement(propertiesFor(current, op, nextId), [prompt], nextId);
-
-  // Nothing straddles the offset: the run was split, and `indivisibleAt` already refused an
-  // offset inside anything a split cannot divide. So each child lands whole on one side.
-  //
-  // A field's chrome — its instruction, its separator, its end marker — sits at ZERO LENGTH at
-  // the field's own offset, because the field is one addressable unit and its begin run carries
-  // the whole of it. A running cursor alone would therefore leave all of that chrome on the far
-  // side of a caret at the field's trailing edge, putting the new control between
-  // `w:fldChar begin` and the instruction it belongs to. The offset model already records which
-  // nodes spell one atom, so the ATOM's span answers for each of them instead.
-  const atomSpanOf = atomSpanLookup(index);
-
-  const before: OoxmlNode[] = [];
-  const after: OoxmlNode[] = [];
-  let cursor = 0;
-  for (const child of reloaded.children) {
-    if (isParagraphPropertiesNode(child)) {
-      before.push(child);
-      continue;
-    }
-    const own = index.spanOf(child);
-    const span = own && own.start !== own.end ? own : (atomSpanOf(child) ?? own);
-    // A truly zero-length node — a bookmark, a comment marker — takes the bucket its POSITION
-    // puts it in, exactly as the inline insert divides them.
-    if (!span || span.start === span.end) {
-      (cursor < offset ? before : after).push(child);
-      continue;
-    }
-    cursor = span.end;
-    (span.end <= offset ? before : after).push(child);
-  }
-
+  const control = controlElement(propertiesFor(landing.part, op, nextId), [prompt], nextId);
+  const children = [
+    ...holder.children.slice(0, landing.index),
+    control,
+    ...holder.children.slice(landing.index),
+  ];
   return fromEdit(
-    replaceChildren(current, reloaded.id, [...before, control, ...after], options),
-    contentControlEffect(reloaded.id, 'flow-structural')
+    replaceChildren(landing.part, holder.id, children, options),
+    contentControlEffect(landing.paragraph.id, 'flow-structural')
   );
 }

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "insertContentControl and insertFragment landed only among a paragraph's own children: an offset strictly inside an inline content control was refused as indivisible, and an offset at an edge several controls share had one place, the paragraph's, whatever the caller meant.",
+  "after": "Both ops take the destination insertText already takes: inside { controlId } lands a new control (at a caret or around a range) or a one-paragraph fragment's inline content in that inline control's own content, replacing its prompt when it shows one; beside { controlId, side } lands it as the control's sibling at that edge. Validation and the applier resolve the place with one function.",
+  "reason": "The landing reduces to the canonical tree primitives the journal already replicates (a run split and a children replacement inside the named holder), so released participants read the resulting shared state unchanged. The destination fields are optional and absent from every op released participants send.",
+  "tests": ["packages/core/src/store/__tests__/content-control-inline-destination.test.ts"],
+  "changeset": "content-control-inline-destination",
+  "migration": null
+}

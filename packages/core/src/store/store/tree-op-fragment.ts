@@ -36,6 +36,11 @@ import {
   splitsSurrogate,
 } from './tree-op-segments.ts';
 import { rejectContentEdit } from './tree-op-validate-controls.ts';
+import {
+  inlineDestinationOf,
+  inlineDestinationRefusal,
+  inlineLandingAt,
+} from './tree-op-inline-destination.ts';
 import { applyTreeOp } from './tree-op-apply.ts';
 import { equationsOfAtom, isOmmlDisplay } from '../package/omml-display.ts';
 import type { TreeDocOp, TreeOpEffect, TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
@@ -85,7 +90,8 @@ export function validateInsertFragment(
     return 'offset-out-of-range';
   }
   if (splitsSurrogate(paragraph, op.offset)) return 'splits-surrogate-pair';
-  if (indivisibleAt(paragraph, op.offset)) return 'indivisible-content';
+  const named = op.inside !== undefined || op.beside !== undefined;
+  if (!named && indivisibleAt(paragraph, op.offset)) return 'indivisible-content';
   if (!Array.isArray(op.blocks) || op.blocks.length === 0) return 'fragment-invalid-block';
   if (op.blocks.length > MAX_FRAGMENT_INSERT_BLOCKS) return 'fragment-resource-budget';
   const budget = { nodes: 0 };
@@ -96,7 +102,19 @@ export function validateInsertFragment(
     const refused = fragmentShape(block, 1, budget);
     if (refused) return refused;
   }
+  if (named) {
+    // A named place takes inline content only: a paragraph mark has no place inside a control.
+    if (!landsInline(op)) return 'invalidArgs';
+    return inlineDestinationRefusal(part, op.paragraphId, { start: op.offset, end: op.offset }, op);
+  }
   return rejectContentEdit(part, paragraph as OoxmlParagraphNode, op.offset, op.offset);
+}
+
+/** A one-paragraph fragment whose mark did not travel: its content splices inline. */
+function landsInline(op: InsertFragmentOp): boolean {
+  return (
+    op.blocks.length === 1 && op.blocks[0]!.kind === 'paragraph' && op.lastMarkCovered !== true
+  );
 }
 
 /**
@@ -248,8 +266,36 @@ export function applyInsertFragment(
 
   const first = blocks[0]!;
   const last = blocks[blocks.length - 1]!;
-  const inlineOnly =
-    blocks.length === 1 && first.kind === 'paragraph' && op.lastMarkCovered !== true;
+  const inlineOnly = landsInline(op);
+  const destination = inlineDestinationOf(op);
+
+  if (destination !== null) {
+    // A named place: the inline content goes straight into it. The paragraph split + join below
+    // would cut every control around the offset in two.
+    const landed = inlineLandingAt(part, host.id, op.offset, destination, options);
+    if (!landed.ok) return landed;
+    const { landing } = landed;
+    const inline = inlineChildrenOf(first as OoxmlElement);
+    const holderNode = findNode(landing.part, landing.holderId);
+    if (!holderNode || holderNode.kind === 'textValue')
+      return { ok: false, reason: 'tree-invariant' };
+    const spliced = insertChildren(
+      landing.part,
+      landing.holderId,
+      landing.index,
+      besideText(inline, holderNode.children),
+      options
+    );
+    if (!spliced.ok) return { ok: false, reason: 'tree-invariant' };
+    const effect: TreeOpEffect = {
+      dirty: [host.id],
+      created: [],
+      deleted: [],
+      dependencyKeys: TEXT_DEPS,
+      impact: 'flow-structural',
+    };
+    return { ok: true, part: spliced.part, effect };
+  }
 
   if (inlineOnly) {
     // Pure inline splice: split, append the fragment's inline content to the head, join.

@@ -924,6 +924,14 @@ export type TreeDocOp =
       readonly tag?: string;
       readonly alias?: string;
       readonly lock?: ContentControlLock;
+      /**
+       * Author the control in this inline control's own content rather than in the paragraph:
+       * at a caret or around a range within its offsets — the name `insertText` takes. An
+       * owner showing its prompt has the prompt replaced by the new control.
+       */
+      readonly inside?: string;
+      /** Author the control as this inline control's sibling at its `side` edge, a caret only. */
+      readonly beside?: { readonly controlId: string; readonly side: 'before' | 'after' };
     }
   | {
       /**
@@ -962,6 +970,13 @@ export type TreeDocOp =
       readonly blocks: readonly OoxmlNode[];
       /** True when the fragment's last paragraph mark travelled (its paragraph stays whole). */
       readonly lastMarkCovered?: boolean;
+      /**
+       * Land a one-paragraph fragment's inline content in this inline control's own content,
+       * at the offset — the name `insertText` takes. A prompt it lands in is replaced.
+       */
+      readonly inside?: string;
+      /** Land a one-paragraph fragment's inline content as this control's sibling at its edge. */
+      readonly beside?: { readonly controlId: string; readonly side: 'before' | 'after' };
     }
   | {
       readonly op: 'insertDrawing';
