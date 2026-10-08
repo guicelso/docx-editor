@@ -45,6 +45,14 @@ export interface ContentControlOps {
 }
 
 /**
+ * A collapsed caret right after text a host just wrote: where content-control edges meet, it stands
+ * touching that text, as the caret after typed text does. @public
+ */
+export interface CaretAfterText {
+  readonly afterText: true;
+}
+
+/**
  * Content-control chrome the surface owns, not the document.
  *
  * Boundary furniture visibility and form-fill navigation are surface chrome, not model
@@ -60,9 +68,10 @@ export interface ContentControlSurfaceState {
   /** Innermost control under a resting pointer, from layout (Word's hover), or null. */
   readonly hoveredControlId: string | null;
   /**
-   * The slot the caret stands in at an edge where view-only content-control tags are drawn,
-   * named by the tag on each side of it (`null` for text), or null anywhere else. One offset
-   * shows several slots there, and the slot is what says where typing lands.
+   * The slot the caret stands in where inline content-control edges meet, named by the edge on
+   * each side of it (`null` for text). One offset is several places there, and the slot is what
+   * says where typing lands. With view-only tags drawn there is always one; with them hidden,
+   * only where an edit or a host placed the caret. Null anywhere else.
    */
   readonly caretSlot: {
     readonly left: CaretSlotNeighbour | null;

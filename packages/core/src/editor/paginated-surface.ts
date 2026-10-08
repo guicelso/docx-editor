@@ -156,7 +156,13 @@ import {
   type SemanticPosition,
   type SemanticSelection,
 } from '@docx-editor.dev/core/layout';
-import { createCaretSlots, isCollapsedSelection, slotPlacementOf } from './surface-caret-slots.ts';
+import {
+  AFTER_TYPED_TEXT,
+  createCaretSlots,
+  isCollapsedSelection,
+  type SlotKeep,
+} from './surface-caret-slots.ts';
+import { contentControlEdgesAt } from '../store/store/content-control-edges.ts';
 import { attachListResolveChangeEvidence } from '../layout/list-resolve.ts';
 import { refreshSurfaceRefFieldResults } from './surface-ref-field-refresh.ts';
 import { type RevisionAuthorFilter } from '../layout/revision-projection.ts';
@@ -306,6 +312,7 @@ import type { SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
 import { placeholderPromptOf } from './surface-placeholder-prompts.ts';
 
 export type {
+  CaretAfterText,
   ContentControlOps,
   ContentControlSurfaceState,
   DrawingSelectionIntent,
@@ -908,6 +915,10 @@ export function mountPaginatedSurface(
     enabled: () => contentControlTags !== undefined,
     selection: () => selection,
     layout: () => editingLayout(),
+    edgesAt: ({ paragraphId, offset }) => {
+      const paragraph = findNode(partOfNodeId(session, paragraphId) ?? session.part(), paragraphId);
+      return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(paragraph, offset) : [];
+    },
     changed: () => {
       caret.update();
       options.onChange?.(currentState());
@@ -3084,6 +3095,8 @@ export function mountPaginatedSurface(
            * and applies to whatever is typed next there.
            */
           readonly rearmPending?: ArmedFormat;
+          /** The side of its slot the edit keeps, so the caret stays where the edit happened. */
+          readonly slot?: SlotKeep;
         }
       | undefined = {}
   ): void {
@@ -3149,6 +3162,7 @@ export function mountPaginatedSurface(
           desiredX = null;
           caretFollowPending = true;
         }
+        if (options?.slot) caretSlots.hold(selection.head, options.slot);
         // Re-anchor AFTER the post-edit caret is installed, so the armed format follows the
         // edit (Backspace moves it one left, Enter moves it into the new paragraph). Only a
         // collapsed caret can hold one — the same invariant arming enforces.
@@ -4410,6 +4424,8 @@ export function mountPaginatedSurface(
       consumePendingFormatOps,
       withoutPendingOnRejection,
       caretMark,
+      placement: () => caretSlots.placement(),
+      keep: (side) => caretSlots.keep(side),
       commit,
     });
 
@@ -4546,29 +4562,19 @@ export function mountPaginatedSurface(
       const pendingOps = consumePendingFormatOps(target.paragraphId, target.offset, text.length);
       // The caret's own control OWNS the insert: at a control's trailing edge the store's
       // default lands beside it (right for a link), but Word keeps typing inside a control.
-      // At a tagged edge the SLOT names the destination exactly (`slotPlacementOf`).
-      const slot = plan.ops.length === 0 ? caretSlots.current() : null;
-      const inside =
-        plan.ops.length === 0 && !slot ? insertOwnerOf(contentControlAtCaret()) : undefined;
-      const insertOps: TreeDocOp[] = [
-        ...plan.ops,
-        slot
-          ? {
-              op: 'insertText',
-              paragraphId: target.paragraphId,
-              offset: target.offset,
-              text,
-              ...slotPlacementOf(slot),
-            }
-          : typedInsertText(target, text, inside),
-      ];
+      // Where control edges meet, the caret's SLOT names the destination exactly.
+      const placement = plan.ops.length === 0 ? caretSlots.placement() : null;
+      const insert = placement
+        ? typedInsertText(target, text, placement)
+        : typedInsertText(target, text, {
+            inside: plan.ops.length === 0 ? insertOwnerOf(contentControlAtCaret()) : undefined,
+          });
+      const insertOps: TreeDocOp[] = [...plan.ops, insert];
       // Typing at a prompt's edge replaces the prompt, so the text lands where the prompt
       // began; a caret counted from the pressed offset sat past the paragraph's new end.
       const landing = promptInsertionLanding(
         partOfNodeId(session, target.paragraphId) ?? session.part(),
-        target.paragraphId,
-        target.offset,
-        text.length
+        insert
       );
       const redoMark = { paragraphId: target.paragraphId, start: landing, end: landing };
       commit(
@@ -4579,11 +4585,9 @@ export function mountPaginatedSurface(
             selectionMark(),
             redoMark
           ),
-        () => collapsedAt({ paragraphId: target.paragraphId, offset: landing })
+        () => collapsedAt({ paragraphId: target.paragraphId, offset: landing }),
+        { slot: AFTER_TYPED_TEXT }
       );
-      // In front of a control the next keystroke is still in front of it: its start edge moved
-      // by what was typed, and the default slot there would carry the text inside.
-      caretSlots.keepInFront(slot, { paragraphId: target.paragraphId, offset: landing });
     },
     proposeTextChange: (kind, text, author) => commitProposedTextChange(kind, text, author),
 
@@ -4599,7 +4603,8 @@ export function mountPaginatedSurface(
       if (plan.ops.length > 0) {
         commit(
           () => applyOps(plan.ops, selectionMark(), caretMark(plan.collapseTo)),
-          () => collapsedAt(plan.collapseTo)
+          () => collapsedAt(plan.collapseTo),
+          { slot: caretSlots.keepFrontOf(plan.collapseTo) }
         );
         return;
       }
@@ -4607,6 +4612,8 @@ export function mountPaginatedSurface(
       // Word keeps the typing format across Backspace: bold armed at a caret survives
       // deleting the character before it, re-anchored where the caret lands.
       const armed = armedAtCaret() ?? undefined;
+      // Only the character goes: the caret keeps what stood on its right.
+      const kept = caretSlots.keep('right');
       const position = hiddenMarks.shown(selection.head);
       if (position.offset === 0) {
         // Backspace at the start of a paragraph pulls it into the previous one. Refusing
@@ -4676,7 +4683,7 @@ export function mountPaginatedSurface(
               caretMark({ paragraphId: position.paragraphId, offset: chip.start })
             ),
           () => collapsedAt({ paragraphId: position.paragraphId, offset: chip.start }),
-          { rearmPending: armed }
+          { rearmPending: armed, slot: kept }
         );
         return;
       }
@@ -4695,7 +4702,7 @@ export function mountPaginatedSurface(
             caretMark({ ...position, offset: position.offset - 1 })
           ),
         () => collapsedAt({ ...position, offset: position.offset - 1 }),
-        { rearmPending: armed }
+        { rearmPending: armed, slot: kept }
       );
     },
 
@@ -4964,7 +4971,7 @@ export function mountPaginatedSurface(
             selectionMark()
           ),
         () => collapsedAt({ ...head, offset: target }),
-        { rearmPending: armedAtCaret() ?? undefined }
+        { rearmPending: armedAtCaret() ?? undefined, slot: caretSlots.keep('right') }
       );
     },
 
@@ -4988,7 +4995,7 @@ export function mountPaginatedSurface(
             selectionMark()
           ),
         undefined,
-        { rearmPending: armedAtCaret() ?? undefined }
+        { rearmPending: armedAtCaret() ?? undefined, slot: caretSlots.keep('left') }
       );
     },
 
@@ -4998,6 +5005,8 @@ export function mountPaginatedSurface(
       // Delete keeps the typing format like Backspace does — the caret does not move, so
       // the armed format re-anchors in place.
       const armed = armedAtCaret() ?? undefined;
+      // Only the character goes: the caret keeps what stood on its left.
+      const kept = caretSlots.keep('left');
       const position = hiddenMarks.shown(selection.head);
       const text = textOf(position.paragraphId);
       if (position.offset < text.length) {
@@ -5012,7 +5021,7 @@ export function mountPaginatedSurface(
                 selectionMark()
               ),
             () => collapsedAt(position),
-            { rearmPending: armed }
+            { rearmPending: armed, slot: kept }
           );
           return;
         }
@@ -5030,7 +5039,7 @@ export function mountPaginatedSurface(
               selectionMark()
             ),
           undefined,
-          { rearmPending: armed }
+          { rearmPending: armed, slot: kept }
         );
         return;
       }
@@ -5078,7 +5087,8 @@ export function mountPaginatedSurface(
       // (the carried initialDrawingSelectionIntent already preserves a real one).
       if (!selectionsEqual(next, selection)) setDrawingIntent({ kind: 'programmatic' }, false);
       setSelection(next);
-      if (slot) caretSlots.chooseBeside(slot);
+      if (slot && 'afterText' in slot) caretSlots.stand(AFTER_TYPED_TEXT);
+      else if (slot) caretSlots.chooseBeside(slot);
     },
 
     selectDrawing(drawingNodeId, hostParagraphId) {
@@ -5604,7 +5614,8 @@ export function mountPaginatedSurface(
       if (plan.ops.length === 0) return false;
       commit(
         () => applyOps(plan.ops, selectionMark(), caretMark(plan.collapseTo)),
-        () => collapsedAt(plan.collapseTo)
+        () => collapsedAt(plan.collapseTo),
+        { slot: caretSlots.keepFrontOf(plan.collapseTo) }
       );
       return true;
     },

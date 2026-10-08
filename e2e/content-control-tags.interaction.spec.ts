@@ -80,6 +80,14 @@ test('the right half of a closing chip types after its control', async ({ page }
   expect(await savedText(page)).toContain('{beta}}Z. Then: ');
 });
 
+test('typing at the end of a control stays in it, keystroke after keystroke', async ({ page }) => {
+  await clickChip(page, 'case-1', 'close', 'left');
+  await page.keyboard.type('XY');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('Z');
+  expect(await savedText(page)).toContain('case-1{alphaXZ}fallback-1{beta}');
+});
+
 test('every chip draws its label centred, with the same room on both sides and nothing overflowing', async ({
   page,
 }) => {

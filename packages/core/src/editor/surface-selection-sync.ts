@@ -147,7 +147,8 @@ export interface SurfaceSelectionSyncDeps {
   /**
    * Replace the current selection with text, exactly as typing it would — one transaction,
    * attribution and refusals included. Used for a composition that began over a range
-   * spanning two paragraphs, which the painted DOM cannot be asked about.
+   * spanning two paragraphs, which the painted DOM cannot be asked about, and for one that
+   * only added its string at the caret, which is typing.
    */
   replaceSelectionWith?(text: string): void;
   /**
@@ -364,7 +365,7 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
    *
    * The diff itself lives in surface-input.ts; this applies it and lands the caret.
    */
-  function reconcileParagraphFromDom(paragraphId: string): void {
+  function reconcileParagraphFromDom(paragraphId: string, composed: string): void {
     const modelText = deps.textOf(paragraphId);
     // The browser's own selection says WHICH painted copy was composed into, for a paragraph
     // the page repeats: a shared header, a `w:tblHeader` row, a twice-referenced note. The IME
@@ -376,6 +377,21 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
       document.getSelection()?.anchorNode ?? null
     );
     if (painted === null) return;
+    // A composition that only ADDED its string at the caret is typing, and goes where typing
+    // goes: a dead-key accent at an edge where controls meet lands in the caret's slot, which
+    // the diff below cannot see, and the caret then stays beside it.
+    const caret = deps.selection();
+    if (
+      deps.replaceSelectionWith &&
+      composed.length > 0 &&
+      selectionsEqual(caret, collapsedAt(caret.head)) &&
+      caret.head.paragraphId === paragraphId &&
+      painted ===
+        modelText.slice(0, caret.head.offset) + composed + modelText.slice(caret.head.offset)
+    ) {
+      deps.replaceSelectionWith(composed);
+      return;
+    }
     const plan = paragraphReplacePlan(paragraphId, modelText, painted);
     if (!plan) return;
     // Composed text takes the armed caret format like typed text would — same transaction,
@@ -699,7 +715,7 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
         // The composed text is in the DOM and nowhere else. Read it back, diff it against
         // what the model holds for that paragraph, and commit the difference — the only
         // route by which an IME edit can reach the tree, since it could not be intercepted.
-        reconcileParagraphFromDom(paragraphId);
+        reconcileParagraphFromDom(paragraphId, event?.data ?? '');
       }
 
       session.endComposition();

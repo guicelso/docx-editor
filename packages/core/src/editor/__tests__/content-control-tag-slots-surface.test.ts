@@ -18,18 +18,28 @@ import { mount, putCaret } from './paginated-surface-fixtures.ts';
 const run = (text: string) => `<w:r><w:t xml:space="preserve">${text}</w:t></w:r>`;
 const sdt = (tag: string, inner: string) =>
   `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/></w:sdtPr><w:sdtContent>${inner}</w:sdtContent></w:sdt>`;
+/** A control showing its prompt, `pp`: the first key typed into it replaces the whole prompt. */
+const prompt = (tag: string) =>
+  `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent>${run('pp')}</w:sdtContent></w:sdt>`;
 
 /** `CPF G{B{RG}E{CNH}}`, ending the paragraph — the shape of a block body. */
 const GROUP = `${run('CPF ')}${sdt('G', sdt('B', run('RG')) + sdt('E', run('CNH')))}`;
+/** `CPF G{B{pp}E{pp}}`: the branches a variation creates, side by side and empty. */
+const EMPTY_BRANCHES = `${run('CPF ')}${sdt('G', prompt('B') + prompt('E'))}`;
 
 const mounted: PaginatedSurface[] = [];
 afterEach(() => {
   for (const surface of mounted.splice(0)) surface.destroy();
 });
 
-function tagged(body: string): PaginatedSurface {
+function plain(body: string): PaginatedSurface {
   const { surface } = mount(`<w:p>${body}</w:p>`);
   mounted.push(surface);
+  return surface;
+}
+
+function tagged(body: string): PaginatedSurface {
+  const surface = plain(body);
   surface.setContentControlTags({
     token: 'slots',
     labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
@@ -51,6 +61,21 @@ function bracketed(surface: PaginatedSurface): string {
       })
       .join('');
   return walk(paragraph.kind === 'textValue' ? [] : paragraph.children);
+}
+
+function controlIdOf(surface: PaginatedSurface, tag: string): string {
+  const find = (nodes: readonly OoxmlNode[]): string | null => {
+    for (const node of nodes) {
+      if (node.kind === 'textValue') continue;
+      if (isContentControl(node) && contentControlTagSubjectOf(node).tag === tag) return node.id;
+      const inner = find(node.children);
+      if (inner) return inner;
+    }
+    return null;
+  };
+  const id = find([surface.session.part().root]);
+  if (id === null) throw new Error(`no control ${tag}`);
+  return id;
 }
 
 const slotOf = (surface: PaginatedSurface) => {
@@ -166,6 +191,168 @@ describe('the caret slot at a tagged edge', () => {
     const surface = tagged(GROUP);
     surface.setContentControlTags(null);
     putCaret(surface, 4);
+    expect(surface.state().contentControls.caretSlot).toBeNull();
+  });
+});
+
+describe('the caret after an edit stays where the edit happened', () => {
+  test('typing at the end of a branch stays in it, keystroke after keystroke', () => {
+    const surface = tagged(GROUP);
+    putCaret(surface, 6);
+    surface.navigate('left');
+    surface.navigate('left');
+    expect(slotOf(surface)).toBe('| close');
+    surface.type('X');
+    surface.type('Y');
+    expect(bracketed(surface)).toBe('CPF G{B{RGXY}E{CNH}}');
+    expect(slotOf(surface)).toBe('| close');
+  });
+
+  test('typing into an empty branch replaces its prompt and stays in it', () => {
+    const surface = tagged(EMPTY_BRANCHES);
+    putCaret(surface, 5);
+    surface.type('d');
+    surface.type('e');
+    expect(bracketed(surface)).toBe('CPF G{B{de}E{pp}}');
+  });
+
+  test('in front of a group whose first branch is empty, the text lands in front', () => {
+    const surface = tagged(EMPTY_BRANCHES);
+    putCaret(surface, 4);
+    surface.navigate('left');
+    surface.navigate('left');
+    expect(slotOf(surface)).toBe('| open');
+    surface.type('X');
+    expect(bracketed(surface)).toBe('CPF XG{B{pp}E{pp}}');
+  });
+
+  test('Backspace takes the character and keeps what stood on the caret’s right', () => {
+    const surface = tagged(GROUP);
+    putCaret(surface, 6);
+    surface.navigate('left');
+    surface.navigate('left');
+    surface.deleteBackward();
+    surface.type('X');
+    expect(bracketed(surface)).toBe('CPF G{B{RX}E{CNH}}');
+  });
+
+  test('Delete takes the character and keeps what stood on the caret’s left', () => {
+    const surface = tagged(GROUP);
+    putCaret(surface, 5);
+    surface.deleteForward();
+    surface.type('X');
+    expect(bracketed(surface)).toBe('CPF G{B{RX}E{CNH}}');
+  });
+
+  test('deleting a selection leaves the caret where the selection began', () => {
+    const surface = tagged(GROUP);
+    const paragraphId = surface.state().selection.head.paragraphId;
+    surface.setSelection({
+      anchor: { paragraphId, offset: 5 },
+      head: { paragraphId, offset: 6 },
+    });
+    surface.deleteSelection();
+    surface.type('X');
+    expect(bracketed(surface)).toBe('CPF G{B{RX}E{CNH}}');
+  });
+
+  test('a plain paste lands in the slot, and typing continues after it', () => {
+    const surface = tagged(GROUP);
+    putCaret(surface, 6);
+    surface.navigate('left');
+    expect(slotOf(surface)).toBe('close open');
+    surface.insertPlainText('X');
+    surface.type('Y');
+    expect(bracketed(surface)).toBe('CPF G{B{RG}XYE{CNH}}');
+  });
+
+  test('a rich paste lands in the slot, as a plain one does', () => {
+    const surface = tagged(GROUP);
+    putCaret(surface, 4);
+    surface.navigate('left');
+    expect(slotOf(surface)).toBe('open open');
+    expect(surface.pasteRich('X', '<b>X</b>')).toBe(true);
+    expect(bracketed(surface)).toBe('CPF G{XB{RG}E{CNH}}');
+  });
+
+  test('a composed accent lands in the slot, as a typed one does', () => {
+    const { surface, container } = mount(`<w:p>${GROUP}</w:p>`);
+    mounted.push(surface);
+    surface.setContentControlTags({
+      token: 'slots',
+      labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+    });
+    putCaret(surface, 6);
+    surface.navigate('left');
+    expect(slotOf(surface)).toBe('close open');
+    const pages = container.querySelector('.docx-pages')!;
+    pages.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    const branch = [
+      ...container.querySelectorAll<HTMLElement>('[data-paragraph-id][data-start]'),
+    ].find((span) => span.textContent === 'RG')!;
+    branch.textContent = 'RGé';
+    const end = new CompositionEvent('compositionend', { bubbles: true });
+    // happy-dom drops `data` from the init dict, which is where a browser puts the composed string.
+    Object.defineProperty(end, 'data', { value: 'é' });
+    pages.dispatchEvent(end);
+    expect(bracketed(surface)).toBe('CPF G{B{RG}éE{CNH}}');
+  });
+});
+
+describe('a host that wrote text puts the caret after it', () => {
+  test('the caret touches what the host wrote, and typing continues there', () => {
+    const surface = tagged(GROUP);
+    const paragraphId = surface.state().selection.head.paragraphId;
+    const branch = controlIdOf(surface, 'B');
+    surface.applyAutomationOps(() => [
+      { op: 'insertText', paragraphId, offset: 6, text: 'X', inside: branch },
+    ]);
+    const after = { paragraphId, offset: 7 };
+    surface.setSelection({ anchor: after, head: after }, { afterText: true });
+    expect(slotOf(surface)).toBe('| close');
+    surface.type('Y');
+    expect(bracketed(surface)).toBe('CPF G{B{RGXY}E{CNH}}');
+  });
+});
+
+describe('without tags, an edit still leaves the caret where it happened', () => {
+  test('typing into an empty branch beside another stays in it', () => {
+    const surface = plain(EMPTY_BRANCHES);
+    putCaret(surface, 5);
+    surface.type('d');
+    surface.type('e');
+    expect(bracketed(surface)).toBe('CPF G{B{de}E{pp}}');
+  });
+
+  test('Delete before the last character of a branch keeps the caret in it', () => {
+    const surface = plain(GROUP);
+    putCaret(surface, 5);
+    surface.deleteForward();
+    surface.type('X');
+    expect(bracketed(surface)).toBe('CPF G{B{RX}E{CNH}}');
+  });
+
+  test('the slot an edit placed is published, and a host can place the caret in one', () => {
+    const surface = plain(GROUP);
+    putCaret(surface, 5);
+    surface.deleteForward();
+    expect(slotOf(surface)).toBe('| close');
+    const at = { paragraphId: surface.state().selection.head.paragraphId, offset: 4 };
+    surface.setSelection(
+      { anchor: at, head: at },
+      { controlId: controlIdOf(surface, 'G'), edge: 'open', side: 'after' }
+    );
+    expect(slotOf(surface)).toBe('open open');
+    surface.type('Y');
+    expect(bracketed(surface)).toBe('CPF G{YB{R}E{CNH}}');
+  });
+
+  test('a caret no edit placed keeps the Word rule: the control opening there takes the key', () => {
+    const surface = plain(GROUP);
+    putCaret(surface, 6);
+    surface.type('X');
+    surface.type('Y');
+    expect(bracketed(surface)).toBe('CPF G{B{RG}E{XYCNH}}');
     expect(surface.state().contentControls.caretSlot).toBeNull();
   });
 });

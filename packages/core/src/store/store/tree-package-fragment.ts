@@ -15,10 +15,13 @@ import {
 import { readOoxmlPackage, type OoxmlPackage } from '../package/ooxml-package.ts';
 import { mergeFragmentIntoPackage, type FragmentMergeResult } from './clipboard-fragment-merge.ts';
 import {
+  landsInline,
+  type InsertFragmentOp,
   MAX_FRAGMENT_DEPTH,
   MAX_FRAGMENT_INSERT_BLOCKS,
   MAX_FRAGMENT_NODES,
 } from './tree-op-fragment.ts';
+import type { InlineDestinationFields } from './tree-op-inline-destination.ts';
 import type { OoxmlNode } from '../package/ooxml-tree.ts';
 import type { PackageTransactResult, StoryScope, TreePackageStore } from './tree-package-store.ts';
 import type { TreeDocOp } from './tree-op-types.ts';
@@ -34,6 +37,11 @@ export interface FragmentPasteInput {
   readonly lastMarkCovered: boolean;
   /** Ops that clear the current selection first (the surface's deleteSelectionPlan). */
   readonly priorOps?: readonly TreeDocOp[];
+  /**
+   * The inline place a one-paragraph fragment lands in, where control edges meet at `offset`.
+   * A fragment with more paragraphs has no inline place and lands at the offset.
+   */
+  readonly destination?: InlineDestinationFields;
   /**
    * Collaboration actor for the ids this paste mints.
    *
@@ -162,13 +170,16 @@ export function applyFragmentPaste(
           }
           if (!packageApplied) return;
           blockCount = landed.blocks.length;
-          ctx.apply({
+          const insert: InsertFragmentOp = {
             op: 'insertFragment',
             paragraphId: input.paragraphId,
             offset: input.offset,
             blocks: landed.blocks,
             lastMarkCovered: input.lastMarkCovered,
-          });
+          };
+          ctx.apply(
+            input.destination && landsInline(insert) ? { ...insert, ...input.destination } : insert
+          );
         },
         {
           story,

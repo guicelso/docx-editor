@@ -9,17 +9,17 @@
 
 import type { OoxmlPart, TreeDocOp } from '@docx-editor.dev/core/store';
 import type { ContentControlBoundaryRecord } from '../layout/semantic-records.ts';
-import { placeholderControlForInsertion } from '../store/store/tree-op-content-controls.ts';
+import {
+  promptTypedOver,
+  type InlineDestinationFields,
+} from '../store/store/tree-op-inline-destination.ts';
 
-/** The caret offset after `textLength` characters land at `offset` in `paragraphId`. */
-export function promptInsertionLanding(
-  part: OoxmlPart,
-  paragraphId: string,
-  offset: number,
-  textLength: number
-): number {
-  const prompt = placeholderControlForInsertion(part, paragraphId, offset);
-  return (prompt?.offset ?? offset) + textLength;
+type InsertTextOp = Extract<TreeDocOp, { op: 'insertText' }>;
+
+/** The caret offset after `insert` lands: past its text, from where the prompt it replaces began. */
+export function promptInsertionLanding(part: OoxmlPart, insert: InsertTextOp): number {
+  const prompt = promptTypedOver(part, insert.paragraphId, insert.offset, insert);
+  return (prompt?.offset ?? insert.offset) + insert.text.length;
 }
 
 /**
@@ -42,21 +42,22 @@ export function insertOwnerOf(control: ContentControlBoundaryRecord | null): str
 }
 
 /**
- * The keyboard's `insertText`, owned by the control the caret sits in when one does. Named,
- * the control's trailing edge means "the end of the field", so typing after the last character
- * of a control stays inside it, as in Word; unnamed, the store's default lands the text beside
- * the control, which is right for a hyperlink and wrong for a form field.
+ * The keyboard's `insertText`, landing where `destination` names. Owned by the control the caret
+ * sits in, the control's trailing edge means "the end of the field", so typing after the last
+ * character of a control stays inside it, as in Word; with no place named, the store's default
+ * lands the text beside the control, which is right for a hyperlink and wrong for a form field.
  */
 export function typedInsertText(
   target: { readonly paragraphId: string; readonly offset: number },
   text: string,
-  inside: string | undefined
-): TreeDocOp {
+  destination: InlineDestinationFields
+): InsertTextOp {
   return {
     op: 'insertText',
     paragraphId: target.paragraphId,
     offset: target.offset,
     text,
-    ...(inside === undefined ? {} : { inside }),
+    ...(destination.inside === undefined ? {} : { inside: destination.inside }),
+    ...(destination.beside === undefined ? {} : { beside: destination.beside }),
   };
 }

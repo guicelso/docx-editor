@@ -114,6 +114,12 @@ export function canExecuteImageCommand(command: Extract<EditorCommand, {
 export function captureImageMutationPreconditions(editor: Pick<DocxEditorInstance, 'surface' | 'mountGeneration'>): ImageMutationPreconditions | null;
 
 // @public
+export interface CaretAfterText {
+    // (undocumented)
+    readonly afterText: true;
+}
+
+// @public
 export function changedFields(seed: ParagraphDialogFields, current: ParagraphDialogFields,
 seedMixed?: ParagraphDialogMixed,
 currentMixed?: ParagraphDialogMixed): ParagraphFormatUpdate | null;
@@ -2212,7 +2218,7 @@ export interface PaginatedSurface {
         readonly pageHeightTwips?: number;
         readonly pageWidthTwips?: number;
     }): boolean;
-    setSelection(next: SemanticSelection, slot?: SemanticHitTag): void;
+    setSelection(next: SemanticSelection, slot?: SemanticHitTag | CaretAfterText): void;
     setShowParagraphMarks(show: boolean): void;
     setTableInteractionLabel(resolver: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string): void;
     setTocLabels(labels: NonNullable<PaginatedSurfaceOptions['tocLabels']>): void;

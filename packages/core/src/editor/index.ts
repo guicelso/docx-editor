@@ -158,6 +158,7 @@ export {
 } from './chrome-controls.ts';
 export {
   mountPaginatedSurface,
+  type CaretAfterText,
   type DrawingSelectionIntent,
   type OpenPaginatedResult,
   type PaginatedSurface,

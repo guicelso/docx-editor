@@ -27,6 +27,8 @@ export {
   type TreeOpRejection,
   type TreeOpResult,
 } from './tree-ops.ts';
+export { contentControlEdgesAt, type ContentControlEdge } from './content-control-edges.ts';
+export type { InlineDestinationFields } from './tree-op-inline-destination.ts';
 export {
   extractFragmentPackage,
   type FragmentCoverage,

@@ -676,6 +676,17 @@ export interface ContentControlDateFormat {
 }
 
 // @public
+export interface ContentControlEdge {
+    // (undocumented)
+    readonly controlId: string;
+    // (undocumented)
+    readonly edge: 'open' | 'close';
+}
+
+// @public
+export function contentControlEdgesAt(paragraph: OoxmlParagraphNode, offset: number): readonly ContentControlEdge[];
+
+// @public
 export function contentControlEndPropertiesNodeOf(control: OoxmlNode): OoxmlContentControlEndPropertiesNode | undefined;
 
 // @public
@@ -1569,6 +1580,7 @@ export type FragmentMergeResult = {
 // @public (undocumented)
 export interface FragmentPasteInput {
     readonly actorId?: string;
+    readonly destination?: InlineDestinationFields;
     readonly fragmentBytes: Uint8Array;
     // (undocumented)
     readonly lastMarkCovered: boolean;
@@ -1975,6 +1987,15 @@ export interface InlineControlSpan {
 
 // @public
 export function inlineControlStartingAt(paragraph: OoxmlParagraphNode, offset: number): InlineControlSpan | null;
+
+// @public
+export interface InlineDestinationFields {
+    readonly beside?: {
+        readonly controlId: string;
+        readonly side: 'before' | 'after';
+    };
+    readonly inside?: string;
+}
 
 // @public
 export interface InsertBuildingBlockOp {

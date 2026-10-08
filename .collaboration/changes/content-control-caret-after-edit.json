@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "After an edit the caret fell back to the default slot at its new offset: the next keystroke after typing at the end of a control, or after Backspace or Delete inside one, landed in the next control or behind the closing edges. A composition and a paste at a collapsed caret ignored the caret's slot.",
+  "after": "Each edit names the side of its slot it keeps, and the surface holds that slot at the post-edit caret: typing, composing and pasting keep the caret touching what they inserted, Backspace keeps the right-hand edge, Delete the left-hand one, and a range deletion the last edge in front of the range. Without drawn tags the edges come from the document, so the same holds. A composition that only added its string at the caret goes through the typing lane, and paste names the slot's destination. The surface predicts where typed text lands from the store's own prompt rule.",
+  "reason": "Slots are surface state and never enter shared updates. The writes reduce to the existing insertText and insertFragment destinations, which the journal already replicates as canonical primitives.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-control-tag-slots-surface.test.ts",
+    "packages/core/src/store/__tests__/content-control-edges.test.ts",
+    "e2e/content-control-tags.interaction.spec.ts"
+  ],
+  "changeset": "content-control-caret-after-edit",
+  "migration": null
+}

@@ -111,7 +111,7 @@ export function validateInsertFragment(
 }
 
 /** A one-paragraph fragment whose mark did not travel: its content splices inline. */
-function landsInline(op: InsertFragmentOp): boolean {
+export function landsInline(op: InsertFragmentOp): boolean {
   return (
     op.blocks.length === 1 && op.blocks[0]!.kind === 'paragraph' && op.lastMarkCovered !== true
   );

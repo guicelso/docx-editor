@@ -44,6 +44,8 @@ import {
   type RangeDeletionPlan,
 } from './surface-selection-ops.ts';
 import type { SurfaceEditingMode } from './paginated-surface-contract.ts';
+import { promptInsertionLanding } from './content-control-prompt-landing.ts';
+import { AFTER_TYPED_TEXT, type SlotKeep, type SlotPlacement } from './surface-caret-slots.ts';
 
 /** A history mark: one paragraph and an offset range within it. */
 type HistoryMark = { paragraphId: string; start: number; end: number };
@@ -99,9 +101,14 @@ export interface SurfaceClipboardDeps {
     redoMark?: HistoryMark
   ): TreeApplyResult;
   caretMark(position: { paragraphId: string; offset: number }): HistoryMark;
+  /** Where content pasted at the collapsed caret lands, when its slot names the place. */
+  placement(): SlotPlacement | null;
+  /** The side of the caret's slot an edit at the caret keeps. */
+  keep(side: 'left' | 'right'): SlotKeep | undefined;
   commit(
     run: () => TreeApplyResult | boolean,
-    selectionAfter?: () => SemanticSelection | null
+    selectionAfter?: () => SemanticSelection | null,
+    options?: { readonly slot?: SlotKeep }
   ): void;
 }
 
@@ -161,6 +168,14 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     const target = plan.replaceAt ?? plan.collapseTo;
     const joined = lines.join('');
     const ops: TreeDocOp[] = [...plan.ops];
+    // At a caret where control edges meet, the slot names the place, as it does for typing.
+    const insert: Extract<TreeDocOp, { op: 'insertText' }> = {
+      op: 'insertText',
+      paragraphId: target.paragraphId,
+      offset: target.offset,
+      text: joined,
+      ...(plan.ops.length === 0 ? deps.placement() : null),
+    };
     // Plain text pasted at a caret takes the armed typing format, like typed text — Word
     // formats a plain paste as if you had typed it. Written over the PRE-SPLIT offsets, so
     // the op runs before `splitParagraphMany` cuts the paragraph up.
@@ -170,12 +185,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
       joined.length
     );
     if (joined.length > 0) {
-      ops.push({
-        op: 'insertText',
-        paragraphId: target.paragraphId,
-        offset: target.offset,
-        text: joined,
-      });
+      ops.push(insert);
       ops.push(...pendingOps);
     }
     const boundaries: number[] = [];
@@ -191,26 +201,25 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
 
     const before = new Set(deps.paragraphIds?.() ?? session.paragraphIdsIn(deps.storyScope()));
     const lastLine = lines[lines.length - 1]!;
+    // A paste into a prompt replaces it, so a one-line paste ends past where the prompt began.
+    const landing = promptInsertionLanding(
+      partOfNodeId(session, target.paragraphId) ?? session.part(),
+      insert
+    );
     // A paste that stays in ONE paragraph knows exactly where it ends, so redo can put the
     // caret there. A multi-line paste mints its paragraphs inside the transaction, so the
     // landing id does not exist yet and the mark stays undefined — redo then falls back to
     // the clamp, which is where this lane started.
     const redoMark =
       boundaries.length === 0
-        ? deps.caretMark({
-            paragraphId: target.paragraphId,
-            offset: target.offset + lastLine.length,
-          })
+        ? deps.caretMark({ paragraphId: target.paragraphId, offset: landing })
         : undefined;
     const withoutFormat = ops.filter((op) => !pendingOps.includes(op));
     deps.commit(
       () => deps.withoutPendingOnRejection(ops, withoutFormat, deps.selectionMark(), redoMark),
       () => {
         if (boundaries.length === 0) {
-          return collapsedAt({
-            paragraphId: target.paragraphId,
-            offset: target.offset + lastLine.length,
-          });
+          return collapsedAt({ paragraphId: target.paragraphId, offset: landing });
         }
         // The caret lands at the end of the pasted text: in the LAST minted paragraph, right
         // after the final line. Scoped story ids are in document order, so the last unfamiliar
@@ -218,9 +227,10 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
         const minted = (deps.paragraphIds?.() ?? session.paragraphIdsIn(deps.storyScope())).filter(
           (id) => !before.has(id)
         );
-        const landing = minted[minted.length - 1];
-        return landing ? collapsedAt({ paragraphId: landing, offset: lastLine.length }) : null;
-      }
+        const tail = minted[minted.length - 1];
+        return tail ? collapsedAt({ paragraphId: tail, offset: lastLine.length }) : null;
+      },
+      boundaries.length === 0 && joined.length > 0 ? { slot: AFTER_TYPED_TEXT } : undefined
     );
   }
 
@@ -313,6 +323,9 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     deps.flushPendingInputAndLayout();
     const plan = deps.deleteSelectionPlan();
     const target = plan.replaceAt ?? plan.collapseTo;
+    const placement = plan.ops.length === 0 ? deps.placement() : null;
+    // The caret stays at the paste's start, in front of what was pasted.
+    const kept = plan.ops.length === 0 ? deps.keep('left') : undefined;
     let landed = false;
     let unsupported = false;
     deps.commit(
@@ -339,6 +352,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
             fragmentBytes: bytes,
             lastMarkCovered,
             priorOps: plan.ops as unknown as TreeDocOp[],
+            ...(placement ? { destination: placement } : {}),
             ...(actorId !== undefined ? { actorId } : {}),
           }
         );
@@ -351,7 +365,8 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
           ...(result.ok ? {} : { reason: result.detail ?? result.reason }),
         } as unknown as TreeApplyResult;
       },
-      () => collapsedAt(target)
+      () => collapsedAt(target),
+      kept ? { slot: kept } : undefined
     );
     return unsupported ? 'unsupported-content' : landed;
   }

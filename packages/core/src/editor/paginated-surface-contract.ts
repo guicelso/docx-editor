@@ -40,6 +40,7 @@ export type SurfaceEditingMode = 'edit' | 'suggest' | 'view';
 import type { ReviewWriteIntent } from './review-write-intent.ts';
 import type { SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
 import type {
+  CaretAfterText,
   ContentControlOps,
   ContentControlSurfaceState,
 } from './surface-content-control-contract.ts';
@@ -48,7 +49,7 @@ import type {
   FormatPainterSurfaceState,
 } from './surface-format-painter-contract.ts';
 import type { PaginatedSurfacePerf } from './surface-perf-contract.ts';
-export type { ReviewWriteIntent, ContentControlOps, ContentControlSurfaceState };
+export type { CaretAfterText, ReviewWriteIntent, ContentControlOps, ContentControlSurfaceState };
 export type {
   FormatPainterLevel,
   FormatPainterMode,
@@ -273,11 +274,11 @@ export interface PaginatedSurface {
   revealPosition(position: SemanticPosition, options?: RevealOptions): boolean;
   /**
    * Set the selection directly, for a host driving the surface programmatically. With `slot`,
-   * a collapsed caret at a tagged content-control edge stands in the slot on `slot.side` of that
-   * tag, as a press on the tag would put it; without it, in the slot touching the text on the
-   * right.
+   * a collapsed caret where content-control edges meet stands in the slot on `slot.side` of that
+   * edge, as a press on its tag would put it, or touching the text on its left after text the
+   * host wrote; without it, in the slot touching the text on the right.
    */
-  setSelection(next: SemanticSelection, slot?: SemanticHitTag): void;
+  setSelection(next: SemanticSelection, slot?: SemanticHitTag | CaretAfterText): void;
   /**
    * Select one painted drawing at its host paragraph, as a pointer press would.
    *
