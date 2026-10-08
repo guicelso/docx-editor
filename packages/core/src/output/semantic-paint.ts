@@ -11,6 +11,7 @@ import { paragraphIsRtl } from '../layout/rtl-paragraph.ts';
 import { DEFAULT_RUN_STYLE } from '../layout/run-style.ts';
 
 import { paintedSpanText } from '../layout/optional-hyphen-break.ts';
+import { contentControlTagInsetsPt } from '../layout/content-control-tags.ts';
 import {
   paintParagraphMark,
   paintManualLineBreak,
@@ -2446,8 +2447,11 @@ function paintContentControlTagChip(
   css.height = `${chipHeight}px`;
   css.paddingTop = '0';
   css.lineHeight = `${chipHeight}px`;
-  css.borderLeft = `${CHIP_GAP_PT * scale}px solid transparent`;
-  css.borderRight = `${CHIP_GAP_PT * scale}px solid transparent`;
+  const { gapPt, padPt } = contentControlTagInsetsPt(span.style);
+  css.borderLeft = `${gapPt * scale}px solid transparent`;
+  css.borderRight = `${gapPt * scale}px solid transparent`;
+  css.paddingLeft = `${padPt * scale}px`;
+  css.paddingRight = `${padPt * scale}px`;
   css.textAlign = 'center';
   // No `overflow: hidden`: on an inline-block it moves the baseline to the bottom edge
   // (CSS 2.1 §10.8.1) and lifts the chip off the line. The label fits by construction —
@@ -2460,5 +2464,3 @@ function paintContentControlTagChip(
 
 /** The chip's line box as a multiple of its own font size: room for ascent and descent. */
 const CHIP_LINE_FACTOR = 1.3;
-/** The transparent gap on each side of a chip, inside the advance layout reserved. */
-const CHIP_GAP_PT = 1.2;

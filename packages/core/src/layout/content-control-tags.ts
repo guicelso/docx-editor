@@ -9,12 +9,33 @@ import { contentControlPropertiesOf, propertyVal } from './content-control-prope
 import type { FieldAwarePiece } from './field-pieces.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
-/** Room inside the chip, measured by layout so paint never draws wider than the line reserved. */
-const CHIP_PAD = ' ';
-
-/** The text a tag measures and paints: one unbreakable unit with its padding. */
+/** The text a tag measures and paints: one unbreakable unit, its spaces made non-breaking. */
 export function contentControlTagText(label: ContentControlTagLabel): string {
-  return `${CHIP_PAD}${label.text.replace(/ /g, ' ')}${CHIP_PAD}`;
+  return label.text.replace(/ /g, '\u00A0');
+}
+
+/** The transparent gap that keeps two neighbouring chips apart, inside each chip's advance. */
+const CHIP_GAP_PT = 1.2;
+/** The padding between the chip's fill and its label, in ems of the chip's own size. */
+const CHIP_PAD_EM = 0.35;
+
+/**
+ * The room a chip keeps on EACH side of its label, in points: the gap between neighbours and the
+ * padding inside the fill. Geometry, not characters — layout adds it to the measured label and
+ * paint draws exactly it, so the label is centred in the space reserved for it whatever font
+ * paints it.
+ */
+export function contentControlTagInsetsPt(style: Pick<ResolvedRunStyle, 'fontSizePt'>): {
+  readonly gapPt: number;
+  readonly padPt: number;
+} {
+  return { gapPt: CHIP_GAP_PT, padPt: style.fontSizePt * CHIP_PAD_EM };
+}
+
+/** What a chip adds to its label's measured width: the room on both sides. */
+export function contentControlTagChromePt(style: Pick<ResolvedRunStyle, 'fontSizePt'>): number {
+  const { gapPt, padPt } = contentControlTagInsetsPt(style);
+  return 2 * (gapPt + padPt);
 }
 
 /** Which edge of the control a tag stands at. @public */

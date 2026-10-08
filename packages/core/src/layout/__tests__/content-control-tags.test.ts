@@ -8,7 +8,10 @@ import { forEachSemanticSpan } from '../export-traversal.ts';
 import { hitTestPage } from '../semantic-hit-test.ts';
 import { anchorLineStartsByModelOffset } from '../anchor-line-probe.ts';
 import { DEFAULT_RUN_STYLE } from '../run-style.ts';
-import type { ContentControlTagDisplay } from '../content-control-tags.ts';
+import {
+  contentControlTagChromePt,
+  type ContentControlTagDisplay,
+} from '../content-control-tags.ts';
 import {
   caretAt,
   caretStops,
@@ -68,8 +71,8 @@ function spansOf(layout: ReturnType<typeof layoutSemanticDocument>): StyleSpanRe
   return spans;
 }
 
-/** A tag's painted text without its chip padding, spaces as typed. */
-const plain = (text: string) => text.replace(/\u2009/g, '').replace(/\u00A0/g, ' ');
+/** A tag's painted text with its spaces as typed. */
+const plain = (text: string) => text.replace(/\u00A0/g, ' ');
 
 const paragraphIdOf = (layout: ReturnType<typeof layoutSemanticDocument>) =>
   spansOf(layout)[0]!.range.paragraphId;
@@ -122,6 +125,17 @@ describe('content-control tags', () => {
       const chips = spansOf(layoutOf(label(text))).filter((span) => span.contentControlTag);
       expect(chips.map((span) => plain(span.text).trim())).toHaveLength(6);
       for (const chip of chips) expect(plain(chip.text).trim()).toBe(text);
+    }
+  });
+
+  test('a chip measures its label plus the room around it, and the label carries no spacing characters', () => {
+    const chips = spansOf(layoutOf(TAGS)).filter((span) => span.contentControlTag);
+    for (const chip of chips) {
+      expect(chip.text).not.toMatch(/\u2009/);
+      expect(chip.box.width).toBeCloseTo(
+        measurer.measure(chip.text, chip.style) + contentControlTagChromePt(chip.style),
+        6
+      );
     }
   });
 

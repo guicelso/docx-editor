@@ -7,8 +7,12 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '@docx-editor.dev/core/store';
-import type { ContentControlTagDisplay } from '../../layout/content-control-tags.ts';
+import {
+  contentControlTagInsetsPt,
+  type ContentControlTagDisplay,
+} from '../../layout/content-control-tags.ts';
 import { createFixedMeasurer, layoutSemanticDocument } from '../../layout/semantic-layout.ts';
+import type { StyleSpanRecord } from '../../layout/semantic-records.ts';
 import { paintSemanticLayout } from '../semantic-paint.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -95,5 +99,28 @@ describe('painting a content-control tag', () => {
       .flatMap((line) => line.spans)
       .find((span) => span.contentControlTag)!;
     expect(parseFloat(chip.style.width)).toBeCloseTo(record.box.width * 2, 4);
+  });
+
+  test('draws the room layout measured: the same gap and padding on both sides of the label', () => {
+    const layout = layoutSemanticDocument(load(BODY), 1, {
+      measurer,
+      contentControlTags: { token: 't', labelsOf: () => ({ close: { text: '◂' } }) },
+    });
+    const container = document.createElement('div');
+    paintSemanticLayout(container, layout, { scale: 2, ariaHidden: false });
+    const chip = container.querySelector<HTMLElement>('[data-cc-tag-control]')!;
+    const record = layout.pages
+      .flatMap((page) => page.fragments)
+      .flatMap((fragment) => (fragment as { lines?: { spans: StyleSpanRecord[] }[] }).lines ?? [])
+      .flatMap((line) => line.spans)
+      .find((span) => span.contentControlTag)!;
+    const { gapPt, padPt } = contentControlTagInsetsPt(record.style);
+    expect(chip.style.borderLeftWidth).toBe(chip.style.borderRightWidth);
+    expect(chip.style.paddingLeft).toBe(chip.style.paddingRight);
+    expect(parseFloat(chip.style.borderLeftWidth)).toBeCloseTo(gapPt * 2, 4);
+    expect(parseFloat(chip.style.paddingLeft)).toBeCloseTo(padPt * 2, 4);
+    // The label alone fills what is left — it never overflows into one side.
+    const labelWidth = parseFloat(chip.style.width) - 2 * (gapPt + padPt) * 2;
+    expect(labelWidth).toBeCloseTo(measurer.measure('◂', record.style) * 2, 4);
   });
 });

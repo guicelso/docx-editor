@@ -98,7 +98,12 @@ import { createEquationLayouter } from './equation-layout.ts';
 import { anchorLineStartsByModelOffset } from './anchor-line-probe.ts';
 import * as lineEndSpaces from './line-end-whitespace.ts';
 import { chopOversizedWord } from './oversized-word-break.ts';
-import { canChopPiece, isLayoutOwnedPiece, pieceBoundaries } from './layout-owned-piece.ts';
+import {
+  canChopPiece,
+  isLayoutOwnedPiece,
+  pieceBoundaries,
+  pieceChromePt,
+} from './layout-owned-piece.ts';
 import type { WordCarryContext } from './word-carry.ts';
 import { carryWordAtOptionalHyphens } from './optional-hyphen-break.ts';
 import { measuredWidth, styleCutAtHyphen } from './optional-hyphen-joining.ts';
@@ -1237,7 +1242,8 @@ export function breakParagraph(
         ? Math.min(piece.noteSeparator === 'separator' ? 144 : lineAvailable(), lineAvailable())
         : piece.fieldAtom?.formControl?.kind === 'checkbox'
           ? faceStyle.fontSizePt
-          : measurer.measure(displayText(measureSource, faceStyle), faceStyle);
+          : measurer.measure(displayText(measureSource, faceStyle), faceStyle) +
+            pieceChromePt(piece, faceStyle);
       exclusionProbe.setWidth(width);
       // A candidate may open a line only at a real break opportunity — the shared
       // decision in `lineOpenDecisionAt`, which the anchor-line probe above consumes too.

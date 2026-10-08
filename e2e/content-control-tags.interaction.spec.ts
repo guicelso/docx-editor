@@ -79,3 +79,26 @@ test('the right half of a closing chip types after its control', async ({ page }
   await page.keyboard.type('Z');
   expect(await savedText(page)).toContain('{beta}}Z. Then: ');
 });
+
+test('every chip draws its label centred, with the same room on both sides and nothing overflowing', async ({
+  page,
+}) => {
+  const rooms = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-cc-tag-control]')).map((chip) => {
+      const label = document.createRange();
+      label.selectNodeContents(chip);
+      const ink = label.getBoundingClientRect();
+      const box = chip.getBoundingClientRect();
+      return {
+        left: ink.left - box.left,
+        right: box.right - ink.right,
+        overflow: chip.scrollWidth - chip.clientWidth,
+      };
+    })
+  );
+  for (const room of rooms) {
+    expect(room.overflow).toBe(0);
+    expect(room.left).toBeGreaterThan(3);
+    expect(Math.abs(room.left - room.right)).toBeLessThan(0.5);
+  }
+});

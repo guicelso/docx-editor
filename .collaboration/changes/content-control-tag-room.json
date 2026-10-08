@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tag measured its label with a thin space on each side as its only padding, and paint then drew a transparent gap inside that measured width. The label was wider than the room left for it, so the centred text overflowed and the browser aligned it to the start: the left side of a chip had padding and the right side none, worst on a one-glyph chip.",
+  "after": "The room around a tag's label is geometry: a transparent gap between neighbours and a padding inside the fill, both on each side. Every place that measures a piece adds it to the label's measured width, and paint draws exactly it, so the label is centred with the same room on both sides.",
+  "reason": "Tags are view-only layout pieces: nothing changes in the document, in the store or in any shared update. Only the advance a tag takes on a laid-out line grows.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-tags.test.ts",
+    "packages/core/src/output/__tests__/content-control-tag-paint.test.ts",
+    "e2e/content-control-tags.interaction.spec.ts"
+  ],
+  "changeset": "content-control-tag-room",
+  "migration": null
+}

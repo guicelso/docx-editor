@@ -1,7 +1,9 @@
 // Which pieces publish a model range that their painted text does not map one to one.
 
 import { wordBoundaries } from './cjk-line-break.ts';
+import { contentControlTagChromePt } from './content-control-tags.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
+import type { ResolvedRunStyle } from './run-style.ts';
 
 /**
  * Whether layout owns this piece's range rather than its text.
@@ -48,4 +50,13 @@ export function canChopPiece(piece: FieldAwarePiece): boolean {
  */
 export function pieceBoundaries(piece: FieldAwarePiece, ideographic: boolean): number[] {
   return piece.contentControlTag ? [piece.text.length] : wordBoundaries(piece.text, ideographic);
+}
+
+/**
+ * The advance a piece takes beyond its measured text: a content-control tag's chip room. Every
+ * place that measures a piece adds it, so a line, an anchor probe and an autofit column agree on
+ * the chip's width with paint.
+ */
+export function pieceChromePt(piece: FieldAwarePiece, style: ResolvedRunStyle): number {
+  return piece.contentControlTag ? contentControlTagChromePt(style) : 0;
 }
