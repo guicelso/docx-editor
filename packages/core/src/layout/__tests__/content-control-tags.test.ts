@@ -6,6 +6,8 @@ import { createFixedMeasurer, layoutSemanticDocument } from '../semantic-layout.
 import type { StyleSpanRecord } from '../semantic-records.ts';
 import { forEachSemanticSpan } from '../export-traversal.ts';
 import { hitTestPage } from '../semantic-hit-test.ts';
+import { anchorLineStartsByModelOffset } from '../anchor-line-probe.ts';
+import { DEFAULT_RUN_STYLE } from '../run-style.ts';
 import type { ContentControlTagDisplay } from '../content-control-tags.ts';
 import {
   caretAt,
@@ -111,6 +113,18 @@ describe('content-control tags', () => {
     for (const span of tags) expect(span.box.width).toBeGreaterThan(0);
   });
 
+  test('a label is one chip at every break opportunity: a dash, a tab, a line too narrow', () => {
+    const label = (text: string): ContentControlTagDisplay => ({
+      token: text,
+      labelsOf: () => ({ open: { text }, close: { text } }),
+    });
+    for (const text of ['group-1 ▸', 'a\tb', `wide-${'x'.repeat(200)}`]) {
+      const chips = spansOf(layoutOf(label(text))).filter((span) => span.contentControlTag);
+      expect(chips.map((span) => plain(span.text).trim())).toHaveLength(6);
+      for (const chip of chips) expect(plain(chip.text).trim()).toBe(text);
+    }
+  });
+
   test('tags push the following text right; the line is wider by their width', () => {
     const plain = spansOf(layoutOf()).find((span) => span.text === 'fim')!;
     const tagged = spansOf(layoutOf(TAGS)).find((span) => span.text === 'fim')!;
@@ -208,6 +222,47 @@ describe('content-control tags in a table cell', () => {
     expect(cellTexts(TAGS_FOR_CELL).text).toBe('CPF [RG]');
   });
 
+  test('a label stays one chip in an auto-width cell and beside CJK prose', () => {
+    const hyphenated: ContentControlTagDisplay = {
+      token: 'hyphenated',
+      labelsOf: () => ({ open: { text: 'group-1' }, close: { text: 'group-1' } }),
+    };
+    for (const body of [CELL, `<w:p>${run('漢字 ')}${sdt('span:optional:c1', run('RG'))}</w:p>`]) {
+      const layout = layoutSemanticDocument(documentOf(body), 0, {
+        measurer,
+        contentControlTags: hyphenated,
+      });
+      const chips: string[] = [];
+      forEachSemanticSpan(layout, ({ span }) => {
+        if (span.contentControlTag) chips.push(plain(span.text).trim());
+      });
+      expect(chips).toEqual(['group-1', 'group-1']);
+    }
+  });
+
+  test('a squeezed auto column keeps a whole chip as its minimum, never spilling into the next', () => {
+    const autoCell = (inner: string) =>
+      `<w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr><w:p>${inner}</w:p></w:tc>`;
+    const table =
+      `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tblGrid><w:gridCol/><w:gridCol/></w:tblGrid>` +
+      `<w:tr>${autoCell(sdt('c1', run('a')))}${autoCell(run('zzzz '.repeat(200)))}</w:tr></w:tbl><w:p/>`;
+    const layout = layoutSemanticDocument(documentOf(table), 0, {
+      measurer,
+      contentControlTags: {
+        token: 'squeezed',
+        labelsOf: () => ({ open: { text: `wide-${'y'.repeat(12)}` }, close: { text: '◂' } }),
+      },
+    });
+    let chipRight = 0;
+    let nextColumnLeft = Number.POSITIVE_INFINITY;
+    forEachSemanticSpan(layout, ({ span, absoluteBox }) => {
+      if (span.contentControlTag)
+        chipRight = Math.max(chipRight, absoluteBox.x + absoluteBox.width);
+      if (span.text.startsWith('zzzz')) nextColumnLeft = Math.min(nextColumnLeft, absoluteBox.x);
+    });
+    expect(chipRight).toBeLessThanOrEqual(nextColumnLeft);
+  });
+
   test('an auto-width cell widens by its tags, so the line never overflows', () => {
     const widthOf = (tags?: ContentControlTagDisplay) => {
       let widest = 0;
@@ -250,5 +305,32 @@ describe('a press on a tag reports the chip and its half', () => {
       hitTestPage(tagged, 0, { x: cnh.box.x + 1, y: cnh.box.y + cnh.box.height / 2 })
         ?.contentControlTag
     ).toBeUndefined();
+  });
+});
+
+describe('an anchored drawing beside a tag', () => {
+  test('its line is predicted with the chip whole, as placement breaks it', () => {
+    const text = (value: string, start: number) => ({
+      text: value,
+      start,
+      end: start + value.length,
+      props: [],
+      style: DEFAULT_RUN_STYLE,
+    });
+    const chip = {
+      ...text('bb-cc', 4),
+      end: 4,
+      projected: true,
+      contentControlTag: { controlId: 'c1', edge: 'open' as const },
+    };
+    const starts = anchorLineStartsByModelOffset({
+      pieces: [text('aaaa', 0), chip, text('dd', 4)],
+      measurer: createFixedMeasurer(10, 12),
+      available: 70,
+      firstLineOffset: 0,
+      anchorStarts: [4],
+      equationLayoutOf: () => null,
+    });
+    expect(starts.get(4)).toBe(4);
   });
 });

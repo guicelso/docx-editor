@@ -13,12 +13,12 @@
 
 import { PAGE_BREAK_CHAR } from '@docx-editor.dev/core/store';
 import type { FieldAwarePiece } from './field-projection.ts';
-import { lineOpenDecisionAt, wordBoundaries } from './cjk-line-break.ts';
+import { lineOpenDecisionAt } from './cjk-line-break.ts';
 import type { CjkParagraphBreaks } from './cjk-paragraph-breaks.ts';
 import { canHangCjkPunctuation } from './cjk-spacing.ts';
 import type { CjkParagraphTypography } from './cjk-typography.ts';
 import { measureInlineDrawing } from './drawing-layout.ts';
-import { isLayoutOwnedPiece } from './layout-owned-piece.ts';
+import { isLayoutOwnedPiece, pieceBoundaries } from './layout-owned-piece.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import type { EquationSpanRecord } from './equation-layout.ts';
 import type { TextMeasurer } from './semantic-records.ts';
@@ -88,7 +88,7 @@ export function anchorLineStartsByModelOffset(input: {
     const probePieceLayoutOwned = isLayoutOwnedPiece(piece);
     let consumed = 0;
     for (const boundary of input.cjkBreaks?.boundaries(piece) ??
-      wordBoundaries(piece.text, !probePieceLayoutOwned)) {
+      pieceBoundaries(piece, !probePieceLayoutOwned)) {
       const candidate = piece.text.slice(consumed, boundary);
       if (candidate.length === 0) continue;
       const style = styleForFontSlot(piece.style, piece.fontSlot);

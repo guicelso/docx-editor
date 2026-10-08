@@ -42,7 +42,7 @@ import {
 } from './field-projection.ts';
 import { DEFAULT_REVISION_DISPLAY_MODE, revisionsVisible } from './revision-projection.ts';
 import type { ParagraphLayoutCache } from './layout-cache.ts';
-import { cjkChopCutAllowedAt, lineOpenDecisionAt, wordBoundaries } from './cjk-line-break.ts';
+import { cjkChopCutAllowedAt, lineOpenDecisionAt } from './cjk-line-break.ts';
 import { cjkParagraphBreaks } from './cjk-paragraph-breaks.ts';
 import {
   createCjkOpticalFitter,
@@ -98,7 +98,7 @@ import { createEquationLayouter } from './equation-layout.ts';
 import { anchorLineStartsByModelOffset } from './anchor-line-probe.ts';
 import * as lineEndSpaces from './line-end-whitespace.ts';
 import { chopOversizedWord } from './oversized-word-break.ts';
-import { canChopPiece, isLayoutOwnedPiece } from './layout-owned-piece.ts';
+import { canChopPiece, isLayoutOwnedPiece, pieceBoundaries } from './layout-owned-piece.ts';
 import type { WordCarryContext } from './word-carry.ts';
 import { carryWordAtOptionalHyphens } from './optional-hyphen-break.ts';
 import { measuredWidth, styleCutAtHyphen } from './optional-hyphen-joining.ts';
@@ -1119,8 +1119,7 @@ export function breakParagraph(
     const canChopWord = canChopPiece(piece);
     const textBreaks = layoutOwned ? null : cjkBreaks;
     let consumed = 0;
-    for (const boundary of cjkBreaks?.boundaries(piece) ??
-      wordBoundaries(piece.text, !layoutOwned)) {
+    for (const boundary of cjkBreaks?.boundaries(piece) ?? pieceBoundaries(piece, !layoutOwned)) {
       const candidate = piece.text.slice(consumed, boundary);
       if (candidate.length === 0) continue;
       const metrics = measurer.lineMetrics(

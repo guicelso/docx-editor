@@ -1,5 +1,6 @@
 // Which pieces publish a model range that their painted text does not map one to one.
 
+import { wordBoundaries } from './cjk-line-break.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
 
 /**
@@ -25,10 +26,10 @@ export function isLayoutOwnedPiece(piece: FieldAwarePiece): boolean {
  * A layout-owned field result (a URL in a HYPERLINK field, a REF result) is cut too, with
  * every fragment publishing the whole piece range. Text that a later pass rewrites, or a
  * width that stands in for other text, stays whole: `measureText`, positional tabs, page
- * numbers, form controls, navigable note marks, and note separators.
+ * numbers, form controls, navigable note marks, note separators, and content-control tags.
  */
 export function canChopPiece(piece: FieldAwarePiece): boolean {
-  if (piece.measureText !== undefined) return false;
+  if (piece.measureText !== undefined || piece.contentControlTag) return false;
   if (!isLayoutOwnedPiece(piece)) return true;
   const atom = piece.fieldAtom;
   return (
@@ -39,4 +40,12 @@ export function canChopPiece(piece: FieldAwarePiece): boolean {
     !atom?.pageRef &&
     !atom?.formControl
   );
+}
+
+/**
+ * Line-break points inside a piece. A content-control tag is one unit, so its only point is its
+ * end: a dash or a tab in the host's label never opens a line inside the chip.
+ */
+export function pieceBoundaries(piece: FieldAwarePiece, ideographic: boolean): number[] {
+  return piece.contentControlTag ? [piece.text.length] : wordBoundaries(piece.text, ideographic);
 }

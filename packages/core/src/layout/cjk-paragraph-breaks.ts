@@ -16,6 +16,7 @@ import {
   kinsokuCharacters,
   type CjkParagraphTypography,
 } from './cjk-typography.ts';
+import { pieceBoundaries } from './layout-owned-piece.ts';
 
 export function isHangul(cp: number): boolean {
   return (
@@ -201,7 +202,7 @@ export function cjkParagraphBreaks(
   for (const piece of pieces) {
     const start = starts.get(piece)!;
     if (!isText(piece)) {
-      boundaries.set(piece, wordBoundaries(piece.text, false));
+      boundaries.set(piece, pieceBoundaries(piece, false));
       continue;
     }
     const cuts: number[] = [];
