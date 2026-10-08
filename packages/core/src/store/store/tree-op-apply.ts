@@ -186,6 +186,7 @@ import {
 import { contentControlAtCaret, validateTreeOp } from './tree-op-validate.ts';
 import { isDrawingTreeDocOp } from './tree-op-drawings.ts';
 import { applyInsertFragment } from './tree-op-fragment.ts';
+import { settleDeletionCoverage } from './content-control-deletion-coverage.ts';
 import { applyDrawingContentEdit } from './drawing-content-edit.ts';
 import { applyInsertBuildingBlock } from './building-block-insert.ts';
 import {
@@ -1368,7 +1369,8 @@ function applyDeleteText(
     const failure = sweep(after.children, 0);
     if (failure) return failure;
   }
-  return finishContentEdit(ok(current, effect), control, options);
+  const settled = settleDeletionCoverage(ok(current, effect), { paragraph, start, end }, options);
+  return finishContentEdit(settled, control, options);
 }
 
 /** The `r:id` namespace — the one attribute on a `w:hyperlink` that is not in `w:`. */

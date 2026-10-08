@@ -66,9 +66,29 @@ export function restoreEmptiedPlaceholder(
   if (summary.showingPlaceholder || !PROMPT_KINDS.has(summary.type)) return result;
   const content = contentControlContentOf(control);
   if (!content || holdsContent(content, 0)) return result;
+  return rewritePrompt(result, controlId, options);
+}
+
+/**
+ * Write a control's prompt back whole, over whatever its content holds now: `text` when the
+ * caller read the prompt the control showed, the type's own prompt otherwise. A prompt is state,
+ * not text — an edit that took some of its letters, or all of them, leaves the prompt itself.
+ */
+export function rewritePrompt(
+  result: TreeOpResult,
+  controlId: string,
+  options?: EditOptions,
+  text: string = ''
+): TreeOpResult {
+  if (!result.ok) return result;
+  const control = findContentControl(result.part, controlId);
+  const content = control ? contentControlContentOf(control) : null;
+  if (!control || !content) return result;
+  const summary = contentControlPropertiesOf(control);
   const nextId = createNodeIdAllocator(result.part);
   const inline = isInlineControl(result.part, control.id);
-  const children = contentWithText(content, promptFor(summary.type, options), nextId, inline);
+  const prompt = text.length > 0 ? text : promptFor(summary.type, options);
+  const children = contentWithText(content, prompt, nextId, inline);
   if (!children) return result;
   const sdtPr = contentControlPropertiesContainerOf(control);
   const properties = editedProperties(sdtPr, { showingPlaceholder: true }, nextId);

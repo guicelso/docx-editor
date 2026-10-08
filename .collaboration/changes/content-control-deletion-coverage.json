@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "An untracked deleteText that covered an inline content control and reached past it kept the emptied wrapper as a zero-width shell with no prompt. A deletion inside a control showing its prompt removed letters of the prompt, or left an empty control still flagged as showing one.",
+  "after": "deleteText unwraps every inline control it covers and reaches past (markers it held stay in the paragraph); an sdtLocked wrapper stays and shows its prompt. The innermost control holding the whole range shows its prompt when emptied. A prompt the range reaches into is written back whole, with the text it showed.",
+  "reason": "The op and its replicated form are unchanged; the applier's result for the same deleteText changes, and every replica runs the same applier.",
+  "tests": ["packages/core/src/store/store/__tests__/content-control-deletion-coverage.test.ts"],
+  "changeset": "content-control-deletion-coverage",
+  "migration": null
+}
