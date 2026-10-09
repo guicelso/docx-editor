@@ -17,6 +17,7 @@ import {
   type OoxmlParagraphNode,
   type OoxmlPart,
 } from '../package/ooxml-tree.ts';
+import { landingBesideFieldChrome } from './tree-op-field-chrome-landing.ts';
 import { insertionSite, segmentsOf } from './tree-op-segments.ts';
 
 function contains(node: OoxmlNode, id: string): boolean {
@@ -126,11 +127,23 @@ export function insertRunPayloadAtOffset(
       };
     }
     const index = run.children.findIndex((child) => contains(child, site.segment.node.id));
-    return insertChildren(part, run.id, Math.max(0, index), payload, options);
+    return (
+      insertedBesideFieldChrome(part, run, Math.max(0, index), payload, nextId, options) ??
+      insertChildren(part, run.id, Math.max(0, index), payload, options)
+    );
   }
 
   if (site.kind === 'appendToRun') {
-    return insertChildren(part, site.run.id, site.run.children.length, payload, options);
+    return (
+      insertedBesideFieldChrome(
+        part,
+        site.run,
+        site.run.children.length,
+        payload,
+        nextId,
+        options
+      ) ?? insertChildren(part, site.run.id, site.run.children.length, payload, options)
+    );
   }
   if (site.kind === 'atRunIndex') {
     return insertChildren(part, site.run.id, site.index, payload, options);
@@ -143,6 +156,27 @@ export function insertRunPayloadAtOffset(
     [runElement(nextId, payload)],
     options
   );
+}
+
+/** The payload in a run of its own beside a field's chrome run, or null when the index is not at its edge. */
+function insertedBesideFieldChrome(
+  part: OoxmlPart,
+  run: OoxmlNode,
+  index: number,
+  payload: readonly OoxmlNode[],
+  nextId: () => string,
+  options?: EditOptions
+): OoxmlEditResult | null {
+  const landing = landingBesideFieldChrome(part, run, index, nextId);
+  return landing
+    ? insertChildren(
+        part,
+        landing.holderId,
+        landing.index,
+        [runElement(nextId, [...landing.properties, ...payload])],
+        options
+      )
+    : null;
 }
 
 /** Whether an offset lands strictly inside an atomic field/drawing/note segment. */

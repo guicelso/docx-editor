@@ -2,6 +2,7 @@ import { withDisplayedHyphens } from '../package/hyphen-text.ts';
 import { withTailStyle } from './tree-op-paragraph-tail.ts';
 import { applySetFieldCode } from './tree-op-field-code.ts';
 import { applyMergeFieldOp, isMergeFieldOp } from './tree-op-merge-fields.ts';
+import { landingBesideFieldChrome } from './tree-op-field-chrome-landing.ts';
 import { applyTableAuthoring } from './tree-op-table-batch.ts';
 import { applyTableProperties } from './tree-op-table-authoring.ts';
 import {
@@ -703,6 +704,27 @@ function applyInsertContent(
     );
   };
 
+  // At the edge of a run carrying field chrome, the content takes a run of its own beside it.
+  const besideFieldChrome = (run: OoxmlNode, index: number): TreeOpResult | null => {
+    const landing = landingBesideFieldChrome(part, run, index, nextId);
+    if (!landing) return null;
+    const minted = runElement(nextId, [...landing.properties, ...nodes]);
+    return finishContentEdit(
+      fromEdit(
+        insertChildren(
+          part,
+          landing.holderId,
+          landing.index,
+          [minted],
+          deferOptions(options, control)
+        ),
+        effect
+      ),
+      control,
+      options
+    );
+  };
+
   let inserted: TreeOpResult;
   // Inside a text value: split it and place the new content between the halves.
   if (site.kind === 'withinValue') {
@@ -770,6 +792,8 @@ function applyInsertContent(
       const run = findNode(part, site.segment.runId);
       if (!run || run.kind !== 'run') return { ok: false, reason: 'tree-invariant' };
       const index = run.children.findIndex((child) => contains(child, site.segment.node.id));
+      const beside = besideFieldChrome(run, Math.max(0, index));
+      if (beside) return beside;
       inserted = fromEdit(
         insertChildren(part, run.id, Math.max(0, index), nodes, deferOptions(options, control)),
         effect
@@ -781,6 +805,8 @@ function applyInsertContent(
         findLast(segments, (segment) => segment.runId === site.run.id && segment.end === offset)
       );
       if (plain) return plain;
+      const beside = besideFieldChrome(site.run, site.run.children.length);
+      if (beside) return beside;
       inserted = fromEdit(
         insertChildren(
           part,
@@ -872,6 +898,8 @@ function applyInsertContent(
     const plain = insertIntoText(before);
     if (plain) return plain;
     const index = run.children.findIndex((child) => contains(child, before.node.id));
+    const beside = besideFieldChrome(run, index < 0 ? run.children.length : index + 1);
+    if (beside) return beside;
     inserted = fromEdit(
       insertChildren(
         part,
@@ -924,6 +952,8 @@ function applyInsertContent(
     const plain = insertIntoText(after);
     if (plain) return plain;
     const index = run.children.findIndex((child) => contains(child, after.node.id));
+    const beside = besideFieldChrome(run, Math.max(0, index));
+    if (beside) return beside;
     inserted = fromEdit(
       insertChildren(part, run.id, Math.max(0, index), nodes, deferOptions(options, control)),
       effect
@@ -974,6 +1004,8 @@ function applyInsertContent(
     return finishContentEdit(inserted, control, options);
   }
   if (last) {
+    const beside = besideFieldChrome(last, last.children.length);
+    if (beside) return beside;
     inserted = fromEdit(
       insertChildren(part, last.id, last.children.length, nodes, deferOptions(options, control)),
       effect

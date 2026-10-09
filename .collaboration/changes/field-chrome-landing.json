@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Typing at a field's edge joined the run carrying the field's begin or end (one w:r held the w:fldChar and the typed w:t), and content placed after a field that ended a paragraph landed in the run that opened it, between the field's begin and its instruction.",
+  "after": "Content inserted at the edge of a run that carries field chrome goes in a run of its own beside it, with a copy of its run properties; after a complex field the landing is after the run carrying the field's end. isDeletedInstrText joins the store's exported field predicates.",
+  "reason": "The landing reduces to the same canonical primitive the journal replicates (a children insertion of a minted run); only which holder and index receive it changes. Released participants read the resulting shared state unchanged.",
+  "tests": ["packages/core/src/store/__tests__/field-chrome-landing.test.ts"],
+  "changeset": "field-chrome-landing",
+  "migration": null
+}

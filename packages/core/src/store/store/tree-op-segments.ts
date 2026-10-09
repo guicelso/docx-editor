@@ -592,6 +592,17 @@ export function orphanFieldEndAt(
   return ends.get(offset);
 }
 
+/**
+ * The node a segment's TRAILING edge sits in. A complex field atom's segment names the run that
+ * OPENS the field; content after the field belongs after the run carrying its last piece, or it
+ * lands between the field's `begin` and its instruction.
+ */
+function trailingEdgeNodeId(paragraph: OoxmlParagraphNode, segment: Segment): string {
+  const last = segment.removeNodeIds?.at(-1);
+  const run = last === undefined ? null : directParentOf(paragraph, last);
+  return run?.kind === 'run' ? run.id : segmentAncestryNodeId(segment);
+}
+
 function rawInsertionSite(
   paragraph: OoxmlParagraphNode,
   offset: number,
@@ -707,7 +718,8 @@ function rawInsertionSite(
   if (owner === null) {
     const trailing = segments[segments.length - 1];
     if (trailing?.end === offset) {
-      const containers = inlineContainersOf(paragraph, segmentAncestryNodeId(trailing));
+      const trailingNodeId = trailingEdgeNodeId(paragraph, trailing);
+      const containers = inlineContainersOf(paragraph, trailingNodeId);
       let outermostWrapper = -1;
       for (let index = 0; index < containers.length; index += 1) {
         if (isInlineRunContainer(containers[index]!)) outermostWrapper = index;
@@ -722,9 +734,7 @@ function rawInsertionSite(
           ...(index < 0 ? {} : { index: index + 1 }),
         };
       }
-      const direct = paragraph.children.find(
-        (child) => child.id === segmentAncestryNodeId(trailing)
-      );
+      const direct = paragraph.children.find((child) => child.id === trailingNodeId);
       if (direct?.kind === 'run') return { kind: 'appendToRun', run: direct };
     }
   }
