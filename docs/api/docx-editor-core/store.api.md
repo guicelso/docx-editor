@@ -2099,6 +2099,9 @@ export function isContinuationSeparatorNode(node: OoxmlNode): node is OoxmlConti
 export function isDangerousKey(key: string): boolean;
 
 // @public
+export function isDeletedInstrText(node: OoxmlNode): boolean;
+
+// @public
 export function isDrawingTreeDocOp(op: TreeDocOp): op is DrawingTreeDocOp;
 
 // @public

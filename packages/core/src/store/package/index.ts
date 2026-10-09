@@ -270,6 +270,7 @@ export {
   fldSimpleInstr,
   hasLegacyFormFieldData,
   instrTextValue,
+  isDeletedInstrText,
   isFieldChrome,
   isFldChar,
   isFldCharNode,
