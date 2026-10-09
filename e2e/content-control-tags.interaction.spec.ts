@@ -110,3 +110,27 @@ test('every chip draws its label centred, with the same room on both sides and n
     expect(Math.abs(room.left - room.right)).toBeLessThan(0.5);
   }
 });
+
+test('every chip is as tall as the text beside it, and its fill keeps its rounded corners', async ({
+  page,
+}) => {
+  const chips = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-cc-tag-control]')).map((chip) => {
+      const text = Array.from(
+        chip.closest('.layout-line')?.querySelectorAll<HTMLElement>('.layout-run[data-start]') ?? []
+      ).find((run) => !run.dataset.ccTagControl && (run.textContent ?? '').trim().length > 0);
+      const style = getComputedStyle(chip);
+      return {
+        chip: chip.getBoundingClientRect().height,
+        text: text?.getBoundingClientRect().height ?? Number.NaN,
+        border: parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth),
+        radius: parseFloat(style.borderTopLeftRadius),
+      };
+    })
+  );
+  for (const chip of chips) {
+    expect(Math.abs(chip.chip - chip.text)).toBeLessThan(0.5);
+    expect(chip.border).toBe(0);
+    expect(chip.radius).toBeGreaterThan(0);
+  }
+});

@@ -139,6 +139,31 @@ describe('content-control tags', () => {
     }
   });
 
+  test('a chip has the face, size and band of the text inside its control, not of its neighbours', () => {
+    const sized = (halfPoints: number, text: string, extra = '') =>
+      `<w:r><w:rPr>${extra}<w:sz w:val="${halfPoints}"/></w:rPr><w:t xml:space="preserve">${text}</w:t></w:r>`;
+    const body = `<w:p>${sized(20, 'CPF ')}${sdt('span:alternatives:g1', sized(28, 'RG', '<w:b/>'))}${sized(16, ' fim')}</w:p>`;
+    const spans = spansOf(
+      layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlTags: TAGS })
+    );
+    const text = spans.find((span) => span.text === 'RG')!;
+    const chips = spans.filter((span) => span.contentControlTag);
+    expect(chips).toHaveLength(2);
+    for (const chip of chips) {
+      expect(chip.style.fontSizePt).toBe(14);
+      expect(chip.style.bold).toBe(false);
+      expect(chip.box.height).toBeCloseTo(text.box.height, 6);
+    }
+  });
+
+  test('a chip with no text inside its control takes the text on its other side', () => {
+    const body = `<w:p><w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:t>CPF</w:t></w:r>${sdt('span:alternatives:g1', '')}</w:p>`;
+    const chips = spansOf(
+      layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlTags: TAGS })
+    ).filter((span) => span.contentControlTag);
+    expect(chips.map((chip) => chip.style.fontSizePt)).toEqual([14, 14]);
+  });
+
   test('tags push the following text right; the line is wider by their width', () => {
     const plain = spansOf(layoutOf()).find((span) => span.text === 'fim')!;
     const tagged = spansOf(layoutOf(TAGS)).find((span) => span.text === 'fim')!;

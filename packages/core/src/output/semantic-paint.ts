@@ -1211,7 +1211,8 @@ function paintLine(
       logicalAdvance += span.box.width;
     }
     const margin = pendingGap > 0 && !previousSpanAbsorbedGap ? pendingGap : slackAfterPicture;
-    if (margin > 0.001) painted.style.marginLeft = `${margin * scale}px`;
+    // A chip's own gap stays: the line's gap comes on top of it, never instead of it.
+    if (margin > 0.001) painted.style.marginLeft = `${(margin + chipGapPt(span)) * scale}px`;
     // A justify gap is drawn INSIDE the span before it wherever that span can stretch its
     // trailing space: the browser highlights a space's advance but never a margin, so a
     // margin gap broke the selection band into one block per word on justified lines.
@@ -2430,11 +2431,12 @@ import { tabLeaderPattern } from '../layout/tab-leader-pattern.ts';
  * A view-only content-control tag drawn as its own chip.
  *
  * The chip keeps EXACTLY the advance layout reserved — the caret and every following glyph are
- * placed from that number — so the gap between neighbouring chips is a transparent border
- * inside the box. Its height is its own text's, not the line band's, so it sits on the line's
- * baseline as a pill around the label. Colour, fill and outline belong to the stylesheet:
- * `.docx-cc-tag` draws a neutral chip from the `--doc-*` tokens, and a host restyles it by the
- * `data-cc-tag-tone` it chose. The data attributes are also the host's click target.
+ * placed from that number. The gap between neighbouring chips is a margin on each side, outside
+ * the fill: a transparent border there clipped the fill's corners square. Its height is the
+ * run's band, like any span's, so a selection or a boundary drawn over the line covers it
+ * exactly. Colour, fill and outline belong to the stylesheet: `.docx-cc-tag` draws a neutral chip
+ * from the `--doc-*` tokens, and a host restyles it by the `data-cc-tag-tone` it chose. The data
+ * attributes are also the host's click target.
  */
 function paintContentControlTagChip(
   element: HTMLElement,
@@ -2443,15 +2445,11 @@ function paintContentControlTagChip(
 ): void {
   const tag = span.contentControlTag!;
   const css = element.style;
-  const chipHeight = span.style.fontSizePt * CHIP_LINE_FACTOR * scale;
   element.classList.add('docx-cc-tag');
-  css.width = `${span.box.width * scale}px`;
-  css.height = `${chipHeight}px`;
-  css.paddingTop = '0';
-  css.lineHeight = `${chipHeight}px`;
   const { gapPt, padPt } = contentControlTagInsetsPt(span.style);
-  css.borderLeft = `${gapPt * scale}px solid transparent`;
-  css.borderRight = `${gapPt * scale}px solid transparent`;
+  css.width = `${(span.box.width - 2 * gapPt) * scale}px`;
+  css.marginLeft = `${gapPt * scale}px`;
+  css.marginRight = `${gapPt * scale}px`;
   css.paddingLeft = `${padPt * scale}px`;
   css.paddingRight = `${padPt * scale}px`;
   css.textAlign = 'center';
@@ -2464,5 +2462,7 @@ function paintContentControlTagChip(
   if (tag.tone !== undefined) element.dataset.ccTagTone = tag.tone;
 }
 
-/** The chip's line box as a multiple of its own font size: room for ascent and descent. */
-const CHIP_LINE_FACTOR = 1.3;
+/** The margin a chip keeps on its left, inside its advance; none for any other span. */
+function chipGapPt(span: StyleSpanRecord): number {
+  return span.contentControlTag ? contentControlTagInsetsPt(span.style).gapPt : 0;
+}

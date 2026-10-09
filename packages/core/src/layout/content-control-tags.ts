@@ -85,9 +85,6 @@ export interface ContentControlTagMark {
 }
 
 const TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-/** A tag reads as chrome, not prose: smaller than the run it sits in, never below 7pt. */
-const TAG_SCALE = 0.72;
-const TAG_MIN_PT = 7;
 
 /** The tone a chip may publish, or undefined: the host's string lands in an attribute. */
 export function contentControlTagToneOf(label: ContentControlTagLabel): string | undefined {
@@ -123,16 +120,53 @@ export function contentControlTagSubjectOf(control: OoxmlElement): ContentContro
 }
 
 /**
+ * Gives every tag the face and size of the text beside it: an open tag the text after it, a
+ * close tag the text before it, and the other side when that side has none. A tag derived from
+ * the paragraph's run properties alone is smaller than text formatted directly, and its chip
+ * then sits short of the band a selection or a boundary draws over the line. Two passes, so a
+ * paragraph of many empty controls stays linear.
+ */
+export function fitContentControlTagsToText(pieces: FieldAwarePiece[]): void {
+  const before: (FieldAwarePiece | undefined)[] = [];
+  let last: FieldAwarePiece | undefined;
+  for (const piece of pieces) {
+    before.push(last);
+    if (isText(piece)) last = piece;
+  }
+  let next: FieldAwarePiece | undefined;
+  for (let index = pieces.length - 1; index >= 0; index -= 1) {
+    const piece = pieces[index]!;
+    if (isText(piece)) next = piece;
+    if (!piece.contentControlTag) continue;
+    const inward = piece.contentControlTag.edge === 'open' ? next : before[index];
+    const text = inward ?? (piece.contentControlTag.edge === 'open' ? before[index] : next);
+    if (text) pieces[index] = { ...piece, style: contentControlTagStyle(text.style) };
+  }
+}
+
+function isText(piece: FieldAwarePiece): boolean {
+  return (
+    piece.text.length > 0 &&
+    !piece.contentControlTag &&
+    !piece.inlineDrawing &&
+    !piece.equation &&
+    !piece.anchoredAtom &&
+    !piece.noteSeparator
+  );
+}
+
+/**
  * The style a tag measures with, derived from the run it sits in.
  *
- * Everything that would change the glyphs of the surrounding prose is reset — a tag inside a
- * bold, struck-through, all-caps run must not inherit any of it. Colour and fill are not run
+ * The tag keeps the run's face and size, so its chip has the same band as the text beside it:
+ * a selection or a control's boundary drawn over the line covers the chip exactly. Everything
+ * else that would change the glyphs of the surrounding prose is reset — a tag inside a bold,
+ * struck-through, all-caps run must not inherit any of it. Colour and fill are not run
  * formatting: the chip is painted by `semantic-paint` from the stylesheet, by tone.
  */
 export function contentControlTagStyle(base: ResolvedRunStyle): ResolvedRunStyle {
   return {
     ...base,
-    fontSizePt: Math.max(TAG_MIN_PT, base.fontSizePt * TAG_SCALE),
     color: null,
     bold: false,
     italic: false,

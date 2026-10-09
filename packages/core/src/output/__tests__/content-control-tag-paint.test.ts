@@ -79,48 +79,87 @@ describe('painting a content-control tag', () => {
   });
 
   test('keeps the advance layout reserved, so nothing after it moves', () => {
-    const layout = layoutSemanticDocument(load(BODY), 1, {
+    const { chip, record } = paintedChip({ open: { text: 'Se' } });
+    const advance =
+      parseFloat(chip.style.marginLeft) +
+      parseFloat(chip.style.width) +
+      parseFloat(chip.style.marginRight);
+    expect(advance).toBeCloseTo(record.box.width * 2, 4);
+  });
+
+  test('draws the room layout measured: the same gap and padding on both sides of the label', () => {
+    const { chip, record } = paintedChip({ close: { text: '◂' } });
+    const { gapPt, padPt } = contentControlTagInsetsPt(record.style);
+    expect(chip.style.marginLeft).toBe(chip.style.marginRight);
+    expect(chip.style.paddingLeft).toBe(chip.style.paddingRight);
+    expect(parseFloat(chip.style.marginLeft)).toBeCloseTo(gapPt * 2, 4);
+    expect(parseFloat(chip.style.paddingLeft)).toBeCloseTo(padPt * 2, 4);
+    // The label alone fills what is left — it never overflows into one side.
+    const labelWidth = parseFloat(chip.style.width) - 2 * padPt * 2;
+    expect(labelWidth).toBeCloseTo(measurer.measure('◂', record.style) * 2, 4);
+  });
+
+  test('keeps the gap outside the fill, so no border clips its corners', () => {
+    const { chip } = paintedChip({ open: { text: 'Se' } });
+    expect(chip.style.borderLeftWidth).toBe('');
+    expect(chip.style.borderRightWidth).toBe('');
+  });
+
+  test('takes the band of the run it sits in, as the text beside it does', () => {
+    const { chip, container } = paintedChip({ open: { text: 'Se' } });
+    const text = container.querySelector<HTMLElement>('.layout-run[data-start]')!;
+    expect(chip.style.height).toBe(text.style.height);
+    expect(chip.style.lineHeight).toBe(text.style.lineHeight);
+  });
+
+  test('a justify gap before a chip comes on top of its own gap', () => {
+    // A scaled run cannot stretch its trailing space, so the justify gap after it is a margin.
+    const scaled = '<w:rPr><w:w w:val="90"/></w:rPr>';
+    const justified =
+      '<w:p><w:pPr><w:jc w:val="both"/></w:pPr>' +
+      `<w:r>${scaled}<w:t xml:space="preserve">um dois tres quatro cinco seis sete oito nove dez </w:t></w:r>` +
+      '<w:sdt><w:sdtPr><w:tag w:val="span:optional:1"/></w:sdtPr>' +
+      '<w:sdtContent><w:r><w:t xml:space="preserve">onze doze treze quatorze quinze dezesseis</w:t></w:r></w:sdtContent></w:sdt>' +
+      '<w:r><w:t xml:space="preserve"> dezessete dezoito dezenove vinte vinte e um vinte e dois</w:t></w:r></w:p>';
+    const layout = layoutSemanticDocument(load(justified), 1, {
       measurer,
       contentControlTags: { token: 't', labelsOf: () => ({ open: { text: 'Se' } }) },
     });
     const container = document.createElement('div');
-    paintSemanticLayout(container, layout, { scale: 2, ariaHidden: false });
+    paintSemanticLayout(container, layout, { scale: 1, ariaHidden: false });
     const chip = container.querySelector<HTMLElement>('[data-cc-tag-control]')!;
-    const record = layout.pages
-      .flatMap((page) => page.fragments)
-      .flatMap(
-        (fragment) =>
-          (
-            fragment as {
-              lines?: { spans: { contentControlTag?: unknown; box: { width: number } }[] }[];
-            }
-          ).lines ?? []
-      )
-      .flatMap((line) => line.spans)
-      .find((span) => span.contentControlTag)!;
-    expect(parseFloat(chip.style.width)).toBeCloseTo(record.box.width * 2, 4);
-  });
-
-  test('draws the room layout measured: the same gap and padding on both sides of the label', () => {
-    const layout = layoutSemanticDocument(load(BODY), 1, {
-      measurer,
-      contentControlTags: { token: 't', labelsOf: () => ({ close: { text: '◂' } }) },
-    });
-    const container = document.createElement('div');
-    paintSemanticLayout(container, layout, { scale: 2, ariaHidden: false });
-    const chip = container.querySelector<HTMLElement>('[data-cc-tag-control]')!;
-    const record = layout.pages
+    const line = layout.pages
       .flatMap((page) => page.fragments)
       .flatMap((fragment) => (fragment as { lines?: { spans: StyleSpanRecord[] }[] }).lines ?? [])
-      .flatMap((line) => line.spans)
-      .find((span) => span.contentControlTag)!;
-    const { gapPt, padPt } = contentControlTagInsetsPt(record.style);
-    expect(chip.style.borderLeftWidth).toBe(chip.style.borderRightWidth);
-    expect(chip.style.paddingLeft).toBe(chip.style.paddingRight);
-    expect(parseFloat(chip.style.borderLeftWidth)).toBeCloseTo(gapPt * 2, 4);
-    expect(parseFloat(chip.style.paddingLeft)).toBeCloseTo(padPt * 2, 4);
-    // The label alone fills what is left — it never overflows into one side.
-    const labelWidth = parseFloat(chip.style.width) - 2 * (gapPt + padPt) * 2;
-    expect(labelWidth).toBeCloseTo(measurer.measure('◂', record.style) * 2, 4);
+      .find((candidate) => candidate.spans.some((span) => span.contentControlTag))!;
+    const index = line.spans.findIndex((span) => span.contentControlTag);
+    const [previous, record] = [line.spans[index - 1]!, line.spans[index]!];
+    const justifyGap = record.box.x - (previous.box.x + previous.box.width);
+    expect(justifyGap).toBeGreaterThan(0.001);
+    const { gapPt } = contentControlTagInsetsPt(record.style);
+    expect(parseFloat(chip.style.marginLeft)).toBeCloseTo(justifyGap + gapPt, 4);
   });
 });
+
+function tagRecordOf(layout: ReturnType<typeof layoutSemanticDocument>): StyleSpanRecord {
+  return layout.pages
+    .flatMap((page) => page.fragments)
+    .flatMap((fragment) => (fragment as { lines?: { spans: StyleSpanRecord[] }[] }).lines ?? [])
+    .flatMap((line) => line.spans)
+    .find((span) => span.contentControlTag)!;
+}
+
+function paintedChip(labels: ReturnType<ContentControlTagDisplay['labelsOf']>): {
+  chip: HTMLElement;
+  record: StyleSpanRecord;
+  container: HTMLElement;
+} {
+  const layout = layoutSemanticDocument(load(BODY), 1, {
+    measurer,
+    contentControlTags: { token: 't', labelsOf: () => labels },
+  });
+  const container = document.createElement('div');
+  paintSemanticLayout(container, layout, { scale: 2, ariaHidden: false });
+  const chip = container.querySelector<HTMLElement>('[data-cc-tag-control]')!;
+  return { chip, record: tagRecordOf(layout), container };
+}

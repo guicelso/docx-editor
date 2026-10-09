@@ -988,10 +988,9 @@ a.docx-hyperlink:focus-visible {
  * View-only content-control tags (Design Mode): a chip at each edge of an inline control,
  * painted by the engine with the advance layout reserved. This is the neutral look; a host
  * colours a chip by the `data-cc-tag-tone` its labels chose. The gap between chips is a
- * transparent border, so the fill stops at the padding box.
+ * margin, outside the fill.
  */
 .docx-cc-tag {
-  background-clip: padding-box;
   background-color: color-mix(in srgb, var(--doc-primary) 10%, var(--doc-page-bg-rendered));
   color: var(--doc-primary);
   border-radius: 4px;

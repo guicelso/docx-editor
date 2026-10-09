@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tag measured its label at 72% of the paragraph's run size and painted its chip with a height of its own, 1.3 times that size. The chip was shorter than the text beside it, so a selection or a control's boundary drawn over the line showed above it. The gap between chips was a transparent border inside the fill's box, which clipped the fill's corners square.",
+  "after": "A tag takes the face and size of the text beside it inside its control: an open tag the text after it, a close tag the text before it, the other side when that side has none. The chip takes that run's band, as every span does. The gap between chips is a margin on each side, outside the fill, and a justify gap before a chip comes on top of it.",
+  "reason": "Tags are view-only layout pieces: nothing changes in the document, in the store or in any shared update. Only the size and the advance of a tag on a laid-out line change.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-tags.test.ts",
+    "packages/core/src/output/__tests__/content-control-tag-paint.test.ts",
+    "e2e/content-control-tags.interaction.spec.ts"
+  ],
+  "changeset": "content-control-tag-text-band",
+  "migration": null
+}

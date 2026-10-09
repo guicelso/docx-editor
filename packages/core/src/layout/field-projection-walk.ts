@@ -107,6 +107,7 @@ import {
 import {
   contentControlTagPiece,
   contentControlTagSubjectOf,
+  fitContentControlTagsToText,
   type ContentControlTagDisplay,
   type ContentControlTagEdge,
   type ContentControlTagLabel,
@@ -1018,6 +1019,7 @@ export function unmergedPiecesOfParagraphForDisplay(
   for (const child of paragraph.children) processInline(child, 1, paragraphScope, 0);
   // Malformed field missing end: demote — surface cached/buffered text, no live projection.
   abandonPending();
+  if (contentControlTags) fitContentControlTagsToText(pieces);
 
   return applyEastAsiaFontSlots(
     showFieldCodes
