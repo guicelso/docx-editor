@@ -168,13 +168,16 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     const target = plan.replaceAt ?? plan.collapseTo;
     const joined = lines.join('');
     const ops: TreeDocOp[] = [...plan.ops];
-    // At a caret where control edges meet, the slot names the place, as it does for typing.
+    // At a caret where control edges meet, the slot names the place, as it does for typing. The
+    // slot outside a block control's tag is a place between blocks, which no paste lands at.
+    const placement = plan.ops.length === 0 ? deps.placement() : null;
+    if (placement && 'block' in placement) return;
     const insert: Extract<TreeDocOp, { op: 'insertText' }> = {
       op: 'insertText',
       paragraphId: target.paragraphId,
       offset: target.offset,
       text: joined,
-      ...(plan.ops.length === 0 ? deps.placement() : null),
+      ...placement,
     };
     // Plain text pasted at a caret takes the armed typing format, like typed text — Word
     // formats a plain paste as if you had typed it. Written over the PRE-SPLIT offsets, so
@@ -324,6 +327,8 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     const plan = deps.deleteSelectionPlan();
     const target = plan.replaceAt ?? plan.collapseTo;
     const placement = plan.ops.length === 0 ? deps.placement() : null;
+    // A place between blocks takes no fragment, and no other flavour may land it inside a control.
+    if (placement && 'block' in placement) return 'unsupported-content';
     // The caret stays at the paste's start, in front of what was pasted.
     const kept = plan.ops.length === 0 ? deps.keep('left') : undefined;
     let landed = false;

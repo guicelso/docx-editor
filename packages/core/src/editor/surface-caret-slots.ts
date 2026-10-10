@@ -16,12 +16,17 @@ import {
   type SemanticPosition,
   type SemanticSelection,
 } from '@docx-editor.dev/core/layout';
+import type { BlockPlace } from '../store/store/tree-op-block-place.ts';
 import type { ContentControlSurfaceState } from './surface-content-control-contract.ts';
 
-/** Where text typed in a slot goes: beside a control, or at the start or end of one. */
+/**
+ * Where text typed in a slot goes: beside an inline control, at the start or end of one, or — in
+ * the slot outside a block control's tag — at the place between blocks before or after it.
+ */
 export type SlotPlacement =
   | { readonly beside: { readonly controlId: string; readonly side: 'before' | 'after' } }
-  | { readonly inside: string };
+  | { readonly inside: string }
+  | { readonly block: BlockPlace };
 
 /** The edge on each side of a slot; `null` is text. */
 export interface SlotNeighbours {
@@ -208,10 +213,16 @@ function slotsBetween(edges: readonly CaretSlotNeighbour[]): readonly SlotNeighb
  */
 export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
   if (slot.right?.edge === 'open') {
-    return { beside: { controlId: slot.right.controlId, side: 'before' } };
+    const controlId = slot.right.controlId;
+    return slot.right.level === 'block'
+      ? { block: { before: controlId } }
+      : { beside: { controlId, side: 'before' } };
   }
   if (slot.left?.edge === 'close') {
-    return { beside: { controlId: slot.left.controlId, side: 'after' } };
+    const controlId = slot.left.controlId;
+    return slot.left.level === 'block'
+      ? { block: { after: controlId } }
+      : { beside: { controlId, side: 'after' } };
   }
   const owner = (slot.left ?? slot.right)!;
   return owner.level === 'block' ? null : { inside: owner.controlId };

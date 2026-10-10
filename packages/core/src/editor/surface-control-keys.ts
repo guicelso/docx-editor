@@ -169,7 +169,7 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
     const from = Math.min(anchor.offset, head.offset);
     const to = Math.max(anchor.offset, head.offset);
     const placement = isCollapsedSelection(deps.selection()) ? deps.placement() : null;
-    if (placement && 'beside' in placement) return undefined;
+    if (placement && ('beside' in placement || 'block' in placement)) return undefined;
     const owner = inlineControlsOf(head.paragraphId)
       .filter((control) =>
         placement

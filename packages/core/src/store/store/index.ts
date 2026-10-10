@@ -35,6 +35,7 @@ export type {
   InsertBlockContentControlOp,
   WrapBlocksInContentControlOp,
 } from './tree-op-block-structure.ts';
+export type { InsertParagraphOp } from './tree-op-insert-paragraph.ts';
 export {
   extractFragmentPackage,
   type FragmentCoverage,

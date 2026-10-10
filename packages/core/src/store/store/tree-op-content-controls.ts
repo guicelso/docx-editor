@@ -373,6 +373,7 @@ const TREE_OP_REACH: {
   // replaces that control's content, as a value write does. A place of no known shape fails wide.
   wrapBlocksInContentControl: (op) => whole(op.firstBlockId),
   insertBlockContentControl: (op) => blockPlaceReach(op.at),
+  insertParagraph: (op) => blockPlaceReach(op.at),
   insertInlineContentControl: (op) => splittingControlAt(op.paragraphId, op.offset),
   insertFragment: (op) => siblingAt(op.paragraphId, op.offset),
   // A split at a control's edge moves the whole control to one side of the break and changes

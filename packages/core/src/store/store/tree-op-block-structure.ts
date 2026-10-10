@@ -1,8 +1,8 @@
-// Writing at the BLOCK level (store lane): sibling blocks wrapped whole in a new control, or a new
-// control at a place between blocks (`tree-op-block-place.ts`).
+// Writing at the BLOCK level (store lane): sibling blocks wrapped whole in a new control, a new
+// control at a place between blocks (`tree-op-block-place.ts`), or a new paragraph there.
 //
-// A wrap is addressed by the blocks it takes, a new control by the place it goes, and each
-// refuses for its own reasons. The controls are `w:sdt` around blocks, the `CT_SdtBlock`
+// A wrap is addressed by the blocks it takes, a new control or paragraph by the place it goes,
+// and each refuses for its own reasons. The controls are `w:sdt` around blocks, the `CT_SdtBlock`
 // of §17.5.2.29; unwrapping either is `removeContentControl`, which already splices a control's
 // children into its place at any level.
 
@@ -50,6 +50,11 @@ import type {
   TreeOpResult,
 } from './tree-op-types.ts';
 import { CONTENT_CONTROL_LOCKS } from './tree-op-validate-controls.ts';
+import {
+  applyInsertParagraph,
+  validateInsertParagraph,
+  type InsertParagraphOp,
+} from './tree-op-insert-paragraph.ts';
 import { contentControlPropertiesContainerOf } from '../package/content-control-nodes.ts';
 
 /**
@@ -88,17 +93,23 @@ export interface InsertBlockContentControlOp {
 type BlockControlOp = WrapBlocksInContentControlOp | InsertBlockContentControlOp;
 
 /** The ops that write at the block level. */
-export type BlockStructureOp = BlockControlOp;
+export type BlockStructureOp = BlockControlOp | InsertParagraphOp;
 
 export function isBlockStructureOp(op: TreeDocOp): op is BlockStructureOp {
-  return op.op === 'wrapBlocksInContentControl' || op.op === 'insertBlockContentControl';
+  return (
+    op.op === 'wrapBlocksInContentControl' ||
+    op.op === 'insertBlockContentControl' ||
+    op.op === 'insertParagraph'
+  );
 }
 
 export function validateBlockStructureOp(
   part: OoxmlPart,
   op: BlockStructureOp
 ): TreeOpRejection | null {
-  return validateBlockControlOp(part, op);
+  return op.op === 'insertParagraph'
+    ? validateInsertParagraph(part, op)
+    : validateBlockControlOp(part, op);
 }
 
 export function applyBlockStructureOp(
@@ -106,7 +117,9 @@ export function applyBlockStructureOp(
   op: BlockStructureOp,
   options?: EditOptions
 ): TreeOpResult {
-  return applyBlockControlOp(part, op, options);
+  return op.op === 'insertParagraph'
+    ? applyInsertParagraph(part, op, options)
+    : applyBlockControlOp(part, op, options);
 }
 
 function validateBlockControlOp(part: OoxmlPart, op: BlockControlOp): TreeOpRejection | null {

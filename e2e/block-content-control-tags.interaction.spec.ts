@@ -87,3 +87,26 @@ test('the right half of the opening tag types at the start of the control', asyn
   await page.keyboard.type('Y');
   expect(await savedText(page)).toContain('Before.|block-1{Yfirst line|second line|}After.|');
 });
+
+test('the left half of the opening tag types in a new paragraph before the control', async ({
+  page,
+}) => {
+  const chip = page.locator('[data-cc-tag-edge="open"]');
+  const box = await chip.boundingBox();
+  if (!box) throw new Error('no opening chip');
+  await page.mouse.click(box.x + box.width * 0.2, box.y + box.height / 2);
+  await page.keyboard.type('XY');
+  expect(await savedText(page)).toContain('Before.|XY|block-1{first line|second line|}After.|');
+});
+
+test('Enter on the right half of the closing tag opens a paragraph after the control', async ({
+  page,
+}) => {
+  const chip = page.locator('[data-cc-tag-edge="close"]');
+  const box = await chip.boundingBox();
+  if (!box) throw new Error('no closing chip');
+  await page.mouse.click(box.x + box.width * 0.8, box.y + box.height / 2);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Z');
+  expect(await savedText(page)).toContain('block-1{first line|second line|}Z|After.|');
+});

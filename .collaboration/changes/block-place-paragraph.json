@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "No op wrote a paragraph beside a block, so the slot outside a block control's tag had no place for typing or Enter.",
+  "after": "insertParagraph { at: { before | after: blockId }, text? } writes a paragraph at a place between blocks and publishes it as the caret; the surface sends it for typing and Enter in the slot outside a block tag.",
+  "reason": "The op reduces to one children replacement in the container it writes into, which the journal already replicates; released participants receive the resulting shared state, never the new op kind.",
+  "tests": [
+    "packages/core/src/store/__tests__/insert-paragraph-op.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+    "packages/core/src/editor/__tests__/block-place-writes.test.ts"
+  ],
+  "changeset": "block-place-paragraph",
+  "migration": null
+}

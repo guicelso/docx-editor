@@ -162,6 +162,7 @@ import {
   isCollapsedSelection,
   type SlotKeep,
 } from './surface-caret-slots.ts';
+import { createBlockPlaceWrites } from './surface-block-place-writes.ts';
 import { contentControlEdgesAt } from '../store/store/content-control-edges.ts';
 import { createControlKeys } from './surface-control-keys.ts';
 import { attachListResolveChangeEvidence } from '../layout/list-resolve.ts';
@@ -4473,6 +4474,12 @@ export function mountPaginatedSurface(
   }
 
   let destroyed = false;
+  const writeAtBlockPlace = createBlockPlaceWrites({
+    subscribe: (listener) => session.subscribe(listener),
+    commit: (run, after, commitOptions) => commit(run, after, commitOptions),
+    applyOps: (ops) => applyOps(ops, selectionMark()),
+    collapsedAt,
+  });
   const surface: ScaleMutableSurface = {
     session,
     // The internal gated write — see the `ScaleMutableSurface` note. The content-control
@@ -4589,14 +4596,15 @@ export function mountPaginatedSurface(
       // fold them into one `Replaced "x" with "y"` card. The plan's `replaceAt` owns that
       // rule for every replacing lane, including where the range spans paragraph marks.
       const target = plan.replaceAt ?? plan.collapseTo;
-      // Consume the stored caret format (armed only at a collapsed caret, so it cannot
-      // coexist with the delete ops below): the typed range gets the caret run's own
-      // properties plus the armed ones, in the SAME transaction — one undo step.
-      const pendingOps = consumePendingFormatOps(target.paragraphId, target.offset, text.length);
       // The caret's own control OWNS the insert: at a control's trailing edge the store's
       // default lands beside it (right for a link), but Word keeps typing inside a control.
       // Where control edges meet, the caret's SLOT names the destination exactly.
       const placement = plan.ops.length === 0 ? caretSlots.placement() : null;
+      if (placement && 'block' in placement) return writeAtBlockPlace(placement.block, text);
+      // Consume the stored caret format (armed only at a collapsed caret, so it cannot
+      // coexist with the delete ops below): the typed range gets the caret run's own
+      // properties plus the armed ones, in the SAME transaction — one undo step.
+      const pendingOps = consumePendingFormatOps(target.paragraphId, target.offset, text.length);
       const insert = placement
         ? typedInsertText(target, text, placement)
         : typedInsertText(target, text, {
@@ -4741,6 +4749,9 @@ export function mountPaginatedSurface(
     },
 
     splitParagraph() {
+      // Outside a block control's tag there is no paragraph to divide: Enter opens one there.
+      const slot = caretSlots.placement();
+      if (slot && 'block' in slot) return writeAtBlockPlace(slot.block);
       // Enter REPLACES a selection, like every other insertion — splitting at the head left
       // the selected text in place and cut the paragraph at whichever end the user happened
       // to drag to. `replaceAt` puts the break AFTER the words a suggestion strikes, so the

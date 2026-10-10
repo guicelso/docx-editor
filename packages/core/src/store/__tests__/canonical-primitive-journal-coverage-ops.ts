@@ -635,6 +635,11 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
       at: { after: firstParagraphId(store) },
       tag: 'span:optional:7c1f0a52-3b64-4d8e-9a10-2f5c6d7e8b90',
     })),
+    story('insertParagraph', plainDoc(), (store) => ({
+      op: 'insertParagraph',
+      at: { after: firstParagraphId(store) },
+      text: 'between',
+    })),
     {
       kind: 'insertFragment',
       bytes: plainDoc(),
