@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A split at the end of a complex field spelt over several runs kept only the run holding the field's begin on the head and sent the instruction, separator, result and end runs to the tail, cutting the field in two.",
+  "after": "Every paragraph child holding a piece of a field owns the field's span, so a split at either edge leaves the whole field on its side.",
+  "reason": "The splits still reduce to the same canonical tree primitives the journal replicates; only which existing runs land in each half changes. Released participants read the resulting shared state unchanged.",
+  "tests": ["packages/core/src/store/__tests__/field-split-boundaries.test.ts"],
+  "changeset": "split-at-field-edge",
+  "migration": null
+}

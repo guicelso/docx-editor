@@ -2446,7 +2446,11 @@ function splitIdentityOf(
   return { headId: headParaId.toUpperCase(), prefix };
 }
 
-/** Every segment owned by one paragraph child, including atoms that have no run. */
+/**
+ * Every segment owned by one paragraph child, including atoms that have no run. A complex field
+ * is one segment that names only its `begin` run, so a child holding any other piece of the field
+ * owns it too: measured as zero-length, those pieces took the side of the walk's cursor.
+ */
 export function segmentsForChild(child: OoxmlNode, segments: readonly Segment[]): Segment[] {
   const descendantIds = new Set<string>();
   const collect = (node: OoxmlNode): void => {
@@ -2455,7 +2459,11 @@ export function segmentsForChild(child: OoxmlNode, segments: readonly Segment[])
     for (const inner of node.children) collect(inner);
   };
   collect(child);
-  return segments.filter((segment) => descendantIds.has(segmentAncestryNodeId(segment)));
+  return segments.filter(
+    (segment) =>
+      descendantIds.has(segmentAncestryNodeId(segment)) ||
+      (segment.removeNodeIds?.some((id) => descendantIds.has(id)) ?? false)
+  );
 }
 
 /**

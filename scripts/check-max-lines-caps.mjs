@@ -43,7 +43,7 @@ const SLACK_EXEMPT = new Map([
  */
 const BLANKET_DISABLES = new Map([
   ['packages/core/src/editor/paginated-surface.ts', 6495],
-  ['packages/core/src/store/store/tree-op-apply.ts', 3531],
+  ['packages/core/src/store/store/tree-op-apply.ts', 3539],
   ['packages/core/src/output/semantic-paint.ts', 2470],
   ['packages/core/src/layout/note-pagination.ts', 2954],
   ['packages/core/src/store/package/note-lifecycle.ts', 1320],
