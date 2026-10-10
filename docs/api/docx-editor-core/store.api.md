@@ -2030,11 +2030,11 @@ export interface InsertBlockContentControlOp {
     // (undocumented)
     readonly at: BlockPlace;
     // (undocumented)
+    readonly blocks?: readonly OoxmlElement[];
+    // (undocumented)
     readonly lock?: ContentControlLock;
     // (undocumented)
     readonly op: 'insertBlockContentControl';
-    // (undocumented)
-    readonly paragraphs?: readonly OoxmlParagraphNode[];
     readonly revision?: RevisionAttributionInput;
     // (undocumented)
     readonly tag?: string;

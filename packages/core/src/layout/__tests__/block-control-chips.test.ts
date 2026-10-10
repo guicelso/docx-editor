@@ -47,6 +47,26 @@ function paintedParagraphs(layout: SemanticLayout): string[] {
   return [...byParagraph.values()];
 }
 
+/** Each paragraph's painted text, the ones inside table cells too, in reading order. */
+function cellParagraphs(layout: SemanticLayout): string[] {
+  const byParagraph = new Map<string, string>();
+  type Fragment = {
+    lines?: { spans: StyleSpanRecord[] }[];
+    rows?: { cells: { blocks: Fragment[] }[] }[];
+  };
+  const visit = (fragment: Fragment): void => {
+    for (const line of fragment.lines ?? [])
+      for (const span of line.spans) {
+        const id = span.range.paragraphId;
+        byParagraph.set(id, (byParagraph.get(id) ?? '') + span.text.replace(/ /g, ' '));
+      }
+    for (const row of fragment.rows ?? []) for (const cell of row.cells) cell.blocks.forEach(visit);
+  };
+  for (const page of layout.pages)
+    for (const fragment of page.fragments) visit(fragment as Fragment);
+  return [...byParagraph.values()];
+}
+
 function spansOf(layout: SemanticLayout): (StyleSpanRecord & { pageIndex: number })[] {
   const spans: (StyleSpanRecord & { pageIndex: number })[] = [];
   layout.pages.forEach((page, pageIndex) => {
@@ -65,6 +85,15 @@ describe('block-control tags', () => {
     );
 
     expect(paintedParagraphs(layout)).toEqual(['a', '[B[ixi]', 'm', 'yB]']);
+  });
+
+  test('a control that starts and ends with a table has its tags in the edge cell paragraphs', () => {
+    const cell = (text: string) => `<w:tc>${paragraph(run(text))}</w:tc>`;
+    const table = (left: string, right: string) =>
+      `<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr>${cell(left)}${cell(right)}</w:tr></w:tbl>`;
+    const layout = layoutOf(paragraph(run('a')) + block('T', table('x', 'y') + table('z', 'w')));
+
+    expect(cellParagraphs(layout)).toEqual(['a', '[Tx', 'y', 'z', 'wT]']);
   });
 
   test('nested block controls open outer first and close inner first', () => {

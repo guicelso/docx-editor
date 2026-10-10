@@ -14,18 +14,14 @@ import {
   replaceChildren,
   type EditOptions,
 } from '../package/ooxml-edit.ts';
-import type {
-  OoxmlElement,
-  OoxmlNode,
-  OoxmlParagraphNode,
-  OoxmlPart,
-} from '../package/ooxml-tree.ts';
+import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { usedParaIds, w14PrefixInScopeAt, withFreshParaIds } from '../package/para-id.ts';
 import {
   blockLandingOf,
   blockOf,
   cellKeepsItsLastBlock,
   holdsPrompt,
+  isBlockNode,
   type BlockLanding,
   type BlockPlace,
 } from './tree-op-block-place.ts';
@@ -58,11 +54,12 @@ import {
 import { contentControlPropertiesContainerOf } from '../package/content-control-nodes.ts';
 
 /**
- * Wrap sibling blocks — paragraphs and block-level controls — in a new rich-text control.
+ * Wrap sibling blocks — paragraphs, tables and block-level controls — in a new rich-text control.
  *
  * Addressed by the BLOCKS, not by paragraphs inside them: naming a control as both edges wraps
- * the control itself, naming its first and last child wraps its content. A table is refused,
- * since a tag drawn at its edge would have no line to stand on. @public
+ * the control itself, naming its first and last child wraps its content. A control that starts
+ * or ends with a table opens at its first cell paragraph and closes at its last, the paragraphs
+ * its tags stand on in reading order. @public
  */
 export interface WrapBlocksInContentControlOp {
   readonly op: 'wrapBlocksInContentControl';
@@ -77,15 +74,16 @@ export interface WrapBlocksInContentControlOp {
 /**
  * A new rich-text block control at a place between blocks. @public
  *
- * With `paragraphs` it holds them, each with fresh node and paragraph ids; without, it holds one
- * paragraph showing the prompt, which the first keystroke replaces.
+ * With `blocks` — paragraphs, tables and block-level controls — it holds them, each with fresh node
+ * and paragraph ids; without, it holds one paragraph showing the prompt, which the first keystroke
+ * replaces.
  */
 export interface InsertBlockContentControlOp {
   readonly op: 'insertBlockContentControl';
   readonly at: BlockPlace;
   readonly tag?: string;
   readonly lock?: ContentControlLock;
-  readonly paragraphs?: readonly OoxmlParagraphNode[];
+  readonly blocks?: readonly OoxmlElement[];
   /** A tracked block control has no implementation yet: an attributed insertion is refused. */
   readonly revision?: RevisionAttributionInput;
 }
@@ -132,8 +130,8 @@ function validateBlockControlOp(part: OoxmlPart, op: BlockControlOp): TreeOpReje
   }
   const landing = blockLandingOf(part, op.at);
   if (typeof landing === 'string') return landing;
-  if (op.paragraphs !== undefined) {
-    const refused = paragraphsRefusal(op.paragraphs);
+  if (op.blocks !== undefined) {
+    const refused = blocksRefusal(op.blocks);
     if (refused) return refused;
   }
   return cellKeepsItsLastBlock(landing.holder, landing.index) ? null : 'block-required';
@@ -172,9 +170,6 @@ function wrappedBlocks(
   const from = holder.children.findIndex((child) => child.id === first.id);
   const to = holder.children.findIndex((child) => child.id === last.id);
   if (from > to) return 'not-adjacent-siblings';
-  if (holder.children.slice(from, to + 1).some((child) => child.kind === 'table')) {
-    return 'unsupported';
-  }
   if (holdsPrompt(part, holder)) return 'invalidArgs';
   return cellKeepsItsLastBlock(holder, to + 1)
     ? { holder, first: from, last: to }
@@ -202,10 +197,10 @@ function applyInsert(
   const landing = blockLandingOf(part, op.at);
   if (typeof landing === 'string') return { ok: false, reason: landing };
   const nextId = createNodeIdAllocator(part);
-  const prompted = op.paragraphs === undefined;
+  const prompted = op.blocks === undefined;
   const authored = prompted
     ? contentWithText(undefined, promptFor('richText', options), nextId, false)
-    : op.paragraphs.map((paragraph) => cloneWithNewIds(paragraph, nextId));
+    : op.blocks.map((block) => cloneWithNewIds(block, nextId));
   if (!authored) return { ok: false, reason: 'unsupported' };
   const content = withNewIdentities(part, landing, authored);
   const control = controlElement(newControlProperties(part, op, prompted, nextId), content, nextId);
@@ -250,20 +245,21 @@ function promptReplacedBy(
 }
 
 /**
- * Every paragraph the op writes gets a fresh `w14:paraId`: the given ones carry ids that belong
- * elsewhere, and the prompt's has none, which would leave it unaddressable.
+ * Every paragraph the op writes — a cell's and a nested control's too — gets a fresh `w14:paraId`:
+ * the given ones carry ids that belong elsewhere, and the prompt's has none, which would leave it
+ * unaddressable.
  */
 function withNewIdentities(
   part: OoxmlPart,
   landing: BlockLanding,
-  paragraphs: readonly OoxmlNode[]
+  blocks: readonly OoxmlNode[]
 ): readonly OoxmlNode[] {
   const paraIds = new Set(usedParaIds(part.root as OoxmlElement));
   const counter = { value: 0 };
   const prefix = w14PrefixInScopeAt(part, landing.holder);
-  return paragraphs.map((paragraph, index) =>
+  return blocks.map((block, index) =>
     withFreshParaIds(
-      paragraph,
+      block,
       paraIds,
       actorScopedSeed(`${landing.holder.id}:${landing.index}:block-control:${index}`),
       counter,
@@ -272,13 +268,13 @@ function withNewIdentities(
   );
 }
 
-function paragraphsRefusal(paragraphs: readonly OoxmlParagraphNode[]): TreeOpRejection | null {
-  if (!Array.isArray(paragraphs) || paragraphs.length === 0) return 'invalidArgs';
-  if (paragraphs.length > MAX_FRAGMENT_INSERT_BLOCKS) return 'fragment-resource-budget';
+function blocksRefusal(blocks: readonly OoxmlElement[]): TreeOpRejection | null {
+  if (!Array.isArray(blocks) || blocks.length === 0) return 'invalidArgs';
+  if (blocks.length > MAX_FRAGMENT_INSERT_BLOCKS) return 'fragment-resource-budget';
   const budget = { nodes: 0 };
-  for (const paragraph of paragraphs) {
-    if (paragraph?.kind !== 'paragraph') return 'fragment-invalid-block';
-    const refused = fragmentShape(paragraph, 1, budget);
+  for (const block of blocks) {
+    if (!block || !isBlockNode(block)) return 'fragment-invalid-block';
+    const refused = fragmentShape(block, 1, budget);
     if (refused) return refused;
   }
   return null;

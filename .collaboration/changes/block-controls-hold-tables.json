@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "wrapBlocksInContentControl refused a range holding a table, and insertBlockContentControl took paragraphs only.",
+  "after": "wrapBlocksInContentControl wraps tables with their sibling blocks, and insertBlockContentControl { at, tag?, lock?, blocks? } holds paragraphs, tables and block-level controls, each with fresh node and paragraph ids.",
+  "reason": "Both ops still reduce to one children replacement in the container they write into, which the journal already replicates; a table inside a block control is markup the store already read, painted and saved intact.",
+  "tests": [
+    "packages/core/src/store/__tests__/block-content-control-ops.test.ts",
+    "packages/core/src/store/__tests__/block-control-edges.test.ts",
+    "packages/core/src/layout/__tests__/block-control-chips.test.ts"
+  ],
+  "changeset": "block-controls-hold-tables",
+  "migration": null
+}

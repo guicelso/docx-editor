@@ -73,6 +73,25 @@ describe('blockControlEdgesOf', () => {
     expect(index.get(paragraphNamed(part, 'a').id)).toBeUndefined();
   });
 
+  test('a control that starts or ends with a table opens and closes at its edge cell paragraphs', () => {
+    const cell = (inner: string) => `<w:tc>${inner}</w:tc>`;
+    const table = `<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="100"/><w:gridCol w:w="100"/></w:tblGrid><w:tr>${cell(paragraph('x1') + paragraph('x2'))}${cell(paragraph('y'))}</w:tr></w:tbl>`;
+    const part = documentOf(
+      paragraph('a') +
+        block('T', table) +
+        block(
+          'M',
+          paragraph('m') + table.replace('x1', 'z1').replace('x2', 'z2').replace('>y<', '>w<')
+        )
+    );
+    const index = blockControlEdgesOf(part);
+
+    expect(index.get(paragraphNamed(part, 'x1').id)?.opens.map(tagOf)).toEqual(['T']);
+    expect(index.get(paragraphNamed(part, 'y').id)?.closes.map(tagOf)).toEqual(['T']);
+    expect(index.get(paragraphNamed(part, 'm').id)?.opens.map(tagOf)).toEqual(['M']);
+    expect(index.get(paragraphNamed(part, 'w').id)?.closes.map(tagOf)).toEqual(['M']);
+  });
+
   test('nested controls open outer first and close inner first', () => {
     const part = documentOf(block('L', block('I1', paragraph('x')) + block('I2', paragraph('y'))));
     const index = blockControlEdgesOf(part);

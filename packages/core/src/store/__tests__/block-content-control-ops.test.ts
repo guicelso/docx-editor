@@ -161,12 +161,16 @@ describe('wrapBlocksInContentControl', () => {
     expect(refusalOf(base, wrap(base, 'c', 'a'))).toBe('not-adjacent-siblings');
   });
 
-  test('a table in the range is refused explicitly', () => {
+  test('a table is a block like any other: it is wrapped with its neighbours', () => {
     const table =
       '<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="100"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>t</w:t></w:r></w:p></w:tc></w:tr></w:tbl>';
     const base = documentOf(paragraph('1A', 'a') + table + paragraph('1C', 'c'));
+    const tableId = nodeWhere(base, (node) => node.kind === 'table').id;
 
-    expect(refusalOf(base, wrap(base, 'a', 'c'))).toBe('unsupported');
+    expect(reading(applied(base, wrap(base, 'a', 'c')))).toBe(`${TAG}[a|table|c]`);
+    expect(
+      reading(applied(base, wrap(base, 'a', 'a', { firstBlockId: tableId, lastBlockId: tableId })))
+    ).toBe(`a|${TAG}[table]|c`);
   });
 
   test('an id that is no block is refused', () => {
@@ -229,13 +233,13 @@ describe('insertBlockContentControl', () => {
   test('before a block, holding the paragraphs given with fresh identities', () => {
     const base = documentOf(paragraph('1A', 'a') + paragraph('1B', 'b'));
     const given = documentOf(paragraph('1A', 'um', centered) + paragraph('1B', 'dois'));
-    const paragraphs = [paragraphNamed(given, 'um'), paragraphNamed(given, 'dois')];
-    const part = applied(base, insertAt({ before: paragraphNamed(base, 'b').id }, { paragraphs }));
+    const blocks = [paragraphNamed(given, 'um'), paragraphNamed(given, 'dois')];
+    const part = applied(base, insertAt({ before: paragraphNamed(base, 'b').id }, { blocks }));
     const xml = serializeOoxmlPart(part);
 
     expect(reading(part)).toBe(`a|${TAG}[um|dois]|b`);
     expect(contentControlPropertiesOf(controlNamed(part, TAG)).showingPlaceholder).toBe(false);
-    expect(paragraphNamed(part, 'um').id).not.toBe(paragraphs[0]!.id);
+    expect(paragraphNamed(part, 'um').id).not.toBe(blocks[0]!.id);
     expect(xml).toContain('<w:jc w:val="center"/>');
     expect(xml.match(/w14:paraId="1A"/g)?.length).toBe(1);
     expect(xml.match(/w14:paraId="1B"/g)?.length).toBe(1);
@@ -276,13 +280,42 @@ describe('insertBlockContentControl', () => {
     );
   });
 
-  test('the paragraphs given must be paragraphs, and at least one', () => {
+  test('the blocks given may be tables and block controls, each with fresh identities', () => {
+    const base = documentOf(paragraph('1A', 'a'));
+    const table = `<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="100"/></w:tblGrid><w:tr><w:tc>${paragraph('2A', 'x')}</w:tc></w:tr></w:tbl>`;
+    const given = documentOf(
+      paragraph('1A', 'um') + table + blockControl('I', paragraph('3A', 'y'))
+    );
+    const body = given.root.kind === 'textValue' ? [] : given.root.children[0]!;
+    const blocks =
+      body.kind === 'textValue'
+        ? []
+        : body.children.filter(
+            (node) =>
+              node.kind === 'paragraph' || node.kind === 'table' || node.kind === 'contentControl'
+          );
+    const part = applied(base, insertAt({ after: paragraphNamed(base, 'a').id }, { blocks }));
+    const xml = serializeOoxmlPart(part);
+
+    expect(reading(part)).toBe(`a|${TAG}[um|table|I[y]]`);
+    expect(xml.match(/w14:paraId="2A"/g)?.length ?? 0).toBeLessThanOrEqual(1);
+    expect(xml.match(/w14:paraId="1A"/g)?.length).toBe(1);
+  });
+
+  test('the blocks given must be blocks, and at least one', () => {
     const base = documentOf(paragraph('1A', 'a'));
     const run = nodeWhere(base, (node) => node.kind === 'run');
+    const inline = nodeWhere(
+      documentOf(
+        `<w:p><w:sdt><w:sdtPr><w:tag w:val="i"/></w:sdtPr><w:sdtContent><w:r><w:t>i</w:t></w:r></w:sdtContent></w:sdt></w:p>`
+      ),
+      (node) => node.kind === 'contentControl'
+    );
     const at = { after: paragraphNamed(base, 'a').id };
 
-    expect(refusalOf(base, insertAt(at, { paragraphs: [] }))).toBe('invalidArgs');
-    expect(refusalOf(base, insertAt(at, { paragraphs: [run] }))).toBe('fragment-invalid-block');
+    expect(refusalOf(base, insertAt(at, { blocks: [] }))).toBe('invalidArgs');
+    expect(refusalOf(base, insertAt(at, { blocks: [run] }))).toBe('fragment-invalid-block');
+    expect(refusalOf(base, insertAt(at, { blocks: [inline] }))).toBe('fragment-invalid-block');
   });
 
   test('a control whose content is locked refuses a place inside it', () => {
