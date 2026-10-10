@@ -21,15 +21,7 @@ export type {
   ScrollToAnchorOptions,
 } from './editor-anchor.ts';
 import type { EditorHighlights, HighlightRect } from './editor-highlights.ts';
-export type {
-  EditorHighlights,
-  HighlightBlend,
-  HighlightHit,
-  HighlightOptions,
-  HighlightRange,
-  HighlightRect,
-  HighlightResult,
-} from './editor-highlights.ts';
+export type * from './editor-highlights.ts';
 export type { DocumentChange, EditorEvents } from './editor-events.ts';
 import type { DocumentEditingMode, ResolveReviewChangesOptions } from './editor-review.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';

@@ -34,7 +34,7 @@ export function useHighlightAt<R extends HighlightRange = HighlightRange>(
   name?: MaybeRefOrGetter<string>
 ): Readonly<ShallowRef<HighlightHit<R> | null>> {
   const editorRef = useDocxEditor();
-  const hit = shallowRef<HighlightHit<R> | null>(null);
+  const hit: ShallowRef<HighlightHit<R> | null> = shallowRef(null);
 
   scopeDispose(
     watch(

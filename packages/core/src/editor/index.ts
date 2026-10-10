@@ -459,11 +459,16 @@ export type {
   AnchorHighlightOptions,
   ClearAnchorHighlightOptions,
   HighlightBlend,
+  HighlightControl,
+  HighlightControlHit,
   HighlightHit,
+  HighlightMarkHit,
   HighlightOptions,
   HighlightRange,
+  HighlightRangeHit,
   HighlightRect,
   HighlightResult,
+  HighlightTarget,
   ScrollToAnchorOptions,
 } from '../contracts/editor.ts';
 

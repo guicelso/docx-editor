@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "setHighlights marked text ranges only, and a range could not cover the view-only tags at a control's edges: a veil over a control dimmed its text and left its tags lit.",
+  "after": "setHighlights takes { controlId } targets beside ranges; a control target paints the control's boundary fragments, tags included, at either level.",
+  "reason": "Highlights are view state: they never change the document, are never saved, and are not shared with collaborators, so no peer reads them.",
+  "tests": ["packages/core/src/editor/__tests__/highlight-controls.test.ts"],
+  "changeset": "highlight-control-targets",
+  "migration": null
+}

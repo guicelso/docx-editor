@@ -1600,14 +1600,25 @@ export const HIGHLIGHT_REFRESH_MS = 150;
 export type HighlightBlend = 'tint' | 'cover';
 
 // @public
-export interface HighlightHit<R extends HighlightRange = HighlightRange> {
+export interface HighlightControl {
+    readonly controlId: string;
+}
+
+// @public
+export interface HighlightControlHit<R extends HighlightControl = HighlightControl> extends HighlightMarkHit<R> {
+    readonly controlId: string;
+}
+
+// @public
+export type HighlightHit<R extends HighlightTarget = HighlightRange> = R extends HighlightControl ? HighlightControlHit<R> : R extends HighlightRange ? HighlightRangeHit<R> : never;
+
+// @public
+export interface HighlightMarkHit<R extends HighlightTarget> {
     readonly active: boolean;
     readonly index: number;
-    readonly length: number;
     readonly name: string;
     readonly range: R;
     readonly rect: HighlightRect;
-    readonly start: number;
 }
 
 // @public
@@ -1626,6 +1637,12 @@ export interface HighlightRange {
     readonly expectedText?: string;
     readonly length: number;
     readonly scope?: ViewScope;
+    readonly start: number;
+}
+
+// @public
+export interface HighlightRangeHit<R extends HighlightRange = HighlightRange> extends HighlightMarkHit<R> {
+    readonly length: number;
     readonly start: number;
 }
 
@@ -1657,6 +1674,9 @@ export interface HighlightResult {
 
 // @public
 export type HighlightSource = readonly HighlightRange[] | ((editor: Editor) => readonly HighlightRange[]);
+
+// @public
+export type HighlightTarget = HighlightRange | HighlightControl;
 
 // @public
 export interface HighlightWatch {

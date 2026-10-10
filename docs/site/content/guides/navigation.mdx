@@ -18,7 +18,7 @@ These methods belong to the browser `Editor` API, separate from the Office.js-sh
 | `clearAnchorHighlight(options)` | Dismiss the paragraph highlight. | No |
 | `findMatches(query, options)` | Find text in every document region. | No |
 | `selectMatch(match)` | Select a match and show it. | Yes |
-| `setHighlights(name, ranges, options)` | Mark text ranges, such as search results or glossary terms. | No |
+| `setHighlights(name, ranges, options)` | Mark text ranges, such as search results or glossary terms, and content controls. | No |
 | `clearHighlights(name)` | Remove one set of text highlights, or all of them. | No |
 | `getHighlightsAt(clientX, clientY)` | Read the text highlights under a pointer position. | No |
 | `exec({ type: 'setSelection', anchor })` | Move the caret to a paragraph reference. | Yes |
@@ -517,6 +517,19 @@ editor.clearHighlights('findings'); // Or clearHighlights() for every set.
 | `priority` | `0` | Integer from `-1000` to `1000`. Higher sets paint on top. |
 
 `setHighlights()` returns `{ applied, unavailable }`. Invalid input throws `TypeError` or `RangeError` and preserves the existing set. For custom ranges, pass `blockId`, `start`, and `length`. `start` and `length` count UTF-16 units in paragraph text. For ranges computed outside the editor, add `expectedText` to prevent highlights over changed text.
+
+### Mark a content control
+
+To mark a content control whole, pass `{ controlId }` in place of a range. The mark covers the control's content in every paragraph it reaches, and the tags drawn at its edges and at the edges of the controls inside it. It covers the same area as the control's boundary, for a control inside a paragraph and for a control around paragraphs. A set can hold ranges and controls together.
+
+```ts
+editor.setHighlights('veil', [{ controlId }], {
+  blend: 'cover',
+  color: 'color-mix(in srgb, var(--doc-page-bg-rendered) 72%, transparent)',
+});
+```
+
+A control mark stops painting when the document no longer holds the control. `getHighlightsAt()` reports a control mark with `controlId` in place of `start` and `length`.
 
 ### Style highlights
 

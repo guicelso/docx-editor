@@ -14,12 +14,18 @@ import { findNode, paragraphTextOf } from '@docx-editor.dev/core/store';
 import type {
   EditorHighlights,
   HighlightBlend,
+  HighlightControl,
   HighlightHit,
   HighlightOptions,
   HighlightRange,
   HighlightResult,
+  HighlightTarget,
 } from '../contracts/editor-highlights.ts';
-import type { PageRecord, SemanticLayout } from '../layout/semantic-records.ts';
+import type {
+  ContentControlBoundaryRecord,
+  PageRecord,
+  SemanticLayout,
+} from '../layout/semantic-records.ts';
 import {
   paragraphRangeRects,
   placedParagraphIds,
@@ -43,7 +49,9 @@ const PRIORITY_LIMIT = 1000;
 interface HighlightSet {
   readonly name: string;
   /** The caller's array, copied, so a later mutation of theirs cannot move a mark. */
-  readonly ranges: readonly HighlightRange[];
+  readonly ranges: readonly HighlightTarget[];
+  /** The control a target marks whole, or null for a text range. */
+  readonly controlIds: readonly (string | null)[];
   /** Ranges past {@link HIGHLIGHT_RANGE_LIMIT}, dropped and counted as unavailable. */
   readonly overflow: number;
   readonly blockIds: readonly string[];
@@ -122,12 +130,20 @@ function buildSet(
   }
   // A set past the cap keeps its first ranges and reports the rest as unavailable. The count
   // depends on the document, not on the caller's code, so it must never throw.
-  const copy = ranges.slice(0, HIGHLIGHT_RANGE_LIMIT) as HighlightRange[];
+  const copy = ranges.slice(0, HIGHLIGHT_RANGE_LIMIT) as HighlightTarget[];
   const overflow = ranges.length - copy.length;
   const blockIds: string[] = [];
+  const controlIds: (string | null)[] = [];
   const starts = new Int32Array(copy.length);
   const ends = new Int32Array(copy.length);
-  for (const [index, range] of copy.entries()) {
+  for (const [index, target] of copy.entries()) {
+    const control = controlTargetOf(target, index);
+    controlIds.push(control);
+    if (control !== null) {
+      blockIds.push('');
+      continue;
+    }
+    const range = target as HighlightRange;
     const valid =
       typeof range === 'object' &&
       range !== null &&
@@ -176,6 +192,7 @@ function buildSet(
   return {
     name,
     ranges: copy,
+    controlIds,
     overflow,
     blockIds,
     starts,
@@ -193,6 +210,19 @@ function buildSet(
     live: new Uint8Array(copy.length),
     checkedAt: null,
   };
+}
+
+/**
+ * The control a target names, or null for a text range. A target naming both a paragraph and a
+ * control says two things about one mark, and is refused.
+ */
+function controlTargetOf(target: HighlightTarget, index: number): string | null {
+  if (typeof target !== 'object' || target === null || !('controlId' in target)) return null;
+  const { controlId } = target as HighlightControl;
+  if (typeof controlId !== 'string' || controlId.length === 0 || 'blockId' in target) {
+    throw new TypeError(`ranges[${index}] names a control by a controlId string and nothing else.`);
+  }
+  return controlId;
 }
 
 /**
@@ -298,8 +328,17 @@ function check(set: HighlightSet, surface: PaginatedSurface, layout: SemanticLay
   const expected = set.expected ?? new Array<string | null>(set.ranges.length).fill(null);
   // One edit window per paragraph and prior text, shared by the ranges that measure from it.
   const windows = new Map<string, { readonly seen: string; readonly edit: EditWindow }>();
+  const controls = controlRecords(layout);
   for (let index = 0; index < set.ranges.length; index += 1) {
-    const range = set.ranges[index]!;
+    const controlId = set.controlIds[index];
+    if (controlId !== null && controlId !== undefined) {
+      // A control target stands while the document holds the control, and paints where it is laid out.
+      const record = controls.get(controlId);
+      set.resolved[index] = record ? 1 : 0;
+      set.live[index] = record && record.fragments.length > 0 ? 1 : 0;
+      continue;
+    }
+    const range = set.ranges[index] as HighlightRange;
     const text = set.ends[index]! > set.starts[index]! ? read(set.blockIds[index]!) : null;
     // Fast path: the paragraph is the same string as at the last check (the tree reuses an
     // untouched paragraph's text), so only placement can have changed.
@@ -350,6 +389,20 @@ function check(set: HighlightSet, surface: PaginatedSurface, layout: SemanticLay
   set.checkedAt = { session, revision, layout };
 }
 
+/** The controls a layout published, by node id: what a control target resolves against. */
+const controlRecordCache = new WeakMap<
+  SemanticLayout,
+  ReadonlyMap<string, ContentControlBoundaryRecord>
+>();
+function controlRecords(layout: SemanticLayout): ReadonlyMap<string, ContentControlBoundaryRecord> {
+  let records = controlRecordCache.get(layout);
+  if (!records) {
+    records = new Map((layout.contentControls ?? []).map((record) => [record.id, record]));
+    controlRecordCache.set(layout, records);
+  }
+  return records;
+}
+
 /** Rectangles per set and page record; see `setRects`. */
 const rectCache = new WeakMap<HighlightSet, WeakMap<PageRecord, KeyedParagraphRect[]>>();
 const sheetCache = new WeakMap<HighlightSet, HTMLElement>();
@@ -384,7 +437,7 @@ const markState = new WeakMap<HTMLElement, { key: string }>();
 function liveRangesByParagraph(set: HighlightSet): Map<string, ParagraphRange[]> {
   const byParagraph = new Map<string, ParagraphRange[]>();
   for (let index = 0; index < set.ranges.length; index += 1) {
-    if (!set.live[index]) continue;
+    if (!set.live[index] || set.controlIds[index] !== null) continue;
     const blockId = set.blockIds[index]!;
     const bucket = byParagraph.get(blockId) ?? [];
     bucket.push({ key: index, start: set.starts[index]!, end: set.ends[index]! });
@@ -553,6 +606,9 @@ export function createTextHighlights(deps: {
         frame.measurer
       );
       for (const rect of missingRects) missingPages.get(rect.pageIndex)!.rects.push(rect);
+      for (const rect of controlRects(set, frame.layout)) {
+        missingPages.get(rect.pageIndex)?.rects.push(rect);
+      }
       for (const { page, rects } of missingPages.values()) byPage.set(page, rects);
     }
     const rects: KeyedParagraphRect[] = [];
@@ -565,6 +621,19 @@ export function createTextHighlights(deps: {
     if (set.activeIndex >= 0) {
       rects.sort((a, b) => Number(a.key === set.activeIndex) - Number(b.key === set.activeIndex));
     }
+    return rects;
+  }
+
+  /** A live control target's rectangles: the boundary layout outlines it with, tags included. */
+  function controlRects(set: HighlightSet, layout: SemanticLayout): KeyedParagraphRect[] {
+    const records = controlRecords(layout);
+    const rects: KeyedParagraphRect[] = [];
+    set.controlIds.forEach((controlId, key) => {
+      if (controlId === null || !set.live[key]) return;
+      for (const { pageIndex, box } of records.get(controlId)?.fragments ?? []) {
+        rects.push({ key, pageIndex, ...box });
+      }
+    });
     return rects;
   }
 
@@ -638,7 +707,7 @@ export function createTextHighlights(deps: {
       }
       repaint();
     },
-    getHighlightsAt<R extends HighlightRange = HighlightRange>(
+    getHighlightsAt<R extends HighlightTarget = HighlightRange>(
       clientX: number,
       clientY: number
     ): readonly HighlightHit<R>[] {
@@ -660,12 +729,10 @@ export function createTextHighlights(deps: {
         seen.add(id);
         const left = origin.left + mark.left;
         const top = origin.top + mark.top;
-        hits.push({
+        const base = {
           name: mark.set.name,
           index: mark.index,
           range: mark.set.ranges[mark.index]! as R,
-          start: mark.set.starts[mark.index]!,
-          length: mark.set.ends[mark.index]! - mark.set.starts[mark.index]!,
           active: mark.index === mark.set.activeIndex,
           rect: {
             x: left,
@@ -677,7 +744,17 @@ export function createTextHighlights(deps: {
             right: left + mark.width,
             bottom: top + mark.height,
           },
-        });
+        };
+        const controlId = mark.set.controlIds[mark.index];
+        hits.push(
+          (controlId !== null && controlId !== undefined
+            ? { ...base, controlId }
+            : {
+                ...base,
+                start: mark.set.starts[mark.index]!,
+                length: mark.set.ends[mark.index]! - mark.set.starts[mark.index]!,
+              }) as HighlightHit<R>
+        );
       }
       return hits;
     },

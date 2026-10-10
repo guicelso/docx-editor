@@ -21,6 +21,18 @@ export interface HighlightRange {
   readonly expectedText?: string;
 }
 
+/**
+ * A content control to mark whole: its content in every paragraph it reaches and the tags drawn
+ * at its edges and at its children's — the area its boundary outlines, at either level. @public
+ */
+export interface HighlightControl {
+  /** The control's node id, as `ContentControlBoundaryRecord.id` names it. */
+  readonly controlId: string;
+}
+
+/** What one highlight marks: a text range, or a content control whole. @public */
+export type HighlightTarget = HighlightRange | HighlightControl;
+
 /** Presentation for one named highlight set. Every field is optional. @public */
 export interface HighlightOptions {
   /**
@@ -61,9 +73,9 @@ export interface HighlightResult {
   /** Ranges that resolve to their text in the open document and can paint. */
   readonly applied: number;
   /**
-   * Ranges that do not resolve or cannot paint: an unknown paragraph, offsets past the
-   * paragraph end, a zero length, text that differs from `expectedText`, or a story without
-   * a layout position.
+   * Targets that do not resolve or cannot paint: an unknown paragraph, offsets past the
+   * paragraph end, a zero length, text that differs from `expectedText`, a control the
+   * document does not hold, or a story without a layout position.
    */
   readonly unavailable: number;
 }
@@ -80,29 +92,47 @@ export interface HighlightRect {
   readonly left: number;
 }
 
-/**
- * One painted mark under a point. `R` is your range type: pass ranges with extra fields,
- * such as a glossary definition, and read them back from `range`. @public
- */
-export interface HighlightHit<R extends HighlightRange = HighlightRange> {
+/** What every painted mark under a point reports, whatever it marks. @public */
+export interface HighlightMarkHit<R extends HighlightTarget> {
   /** Set name passed to `setHighlights()`. */
   readonly name: string;
-  /** Index of the range in the array passed to `setHighlights()`. */
+  /** Index of the target in the array passed to `setHighlights()`. */
   readonly index: number;
-  /**
-   * The range object exactly as it was passed, including your own fields. Its offsets are
-   * the ones you passed; `start` and `length` are where the text is now.
-   */
+  /** The target object exactly as it was passed, including your own fields. */
   readonly range: R;
+  /** Whether this target is the set's active one. */
+  readonly active: boolean;
+  /** The marked box under the point, in client coordinates. Anchor popovers to it. */
+  readonly rect: HighlightRect;
+}
+
+/** A mark of a text range under a point. `range` keeps the offsets you passed. @public */
+export interface HighlightRangeHit<
+  R extends HighlightRange = HighlightRange,
+> extends HighlightMarkHit<R> {
   /** Current start of the highlighted text in its paragraph, after edits moved it. */
   readonly start: number;
   /** Current length of the highlighted text. */
   readonly length: number;
-  /** Whether this range is the set's active range. */
-  readonly active: boolean;
-  /** The marked line box under the point, in client coordinates. Anchor popovers to it. */
-  readonly rect: HighlightRect;
 }
+
+/** A mark of a whole content control under a point. @public */
+export interface HighlightControlHit<
+  R extends HighlightControl = HighlightControl,
+> extends HighlightMarkHit<R> {
+  /** The content control the mark covers. */
+  readonly controlId: string;
+}
+
+/**
+ * One painted mark under a point. `R` is your target type: pass targets with extra fields,
+ * such as a glossary definition, and read them back from `range`. @public
+ */
+export type HighlightHit<R extends HighlightTarget = HighlightRange> = R extends HighlightControl
+  ? HighlightControlHit<R>
+  : R extends HighlightRange
+    ? HighlightRangeHit<R>
+    : never;
 
 /**
  * Paint-only text highlights: search results, glossary terms, review findings.
@@ -112,7 +142,9 @@ export interface HighlightHit<R extends HighlightRange = HighlightRange> {
  */
 export interface EditorHighlights {
   /**
-   * Mark text ranges as one named set, replacing the set's previous ranges and options.
+   * Mark text ranges and content controls as one named set, replacing the set's previous
+   * targets and options. A control target marks the control whole, tags included; it stops
+   * painting when the document no longer holds the control.
    *
    * Names are 1 to 64 letters, digits, `-`, or `_`, and start with a letter. Each set paints
    * in its own layer, so sets never replace each other. An empty `ranges` array clears the
@@ -137,7 +169,7 @@ export interface EditorHighlights {
    */
   setHighlights(
     name: string,
-    ranges: readonly HighlightRange[],
+    ranges: readonly HighlightTarget[],
     options?: HighlightOptions
   ): HighlightResult;
   /** Remove one highlight set, or every set when `name` is omitted. @public */
@@ -147,7 +179,7 @@ export interface EditorHighlights {
    * handlers on the editor to show definitions or details for a marked term.
    * Only marks on painted pages are reported. @public
    */
-  getHighlightsAt<R extends HighlightRange = HighlightRange>(
+  getHighlightsAt<R extends HighlightTarget = HighlightRange>(
     clientX: number,
     clientY: number
   ): readonly HighlightHit<R>[];
