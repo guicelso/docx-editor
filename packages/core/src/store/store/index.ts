@@ -48,8 +48,10 @@ export {
 } from './clipboard-fragment-extract.ts';
 export {
   mergeFragmentIntoPackage,
+  type FragmentMergeOptions,
   type FragmentMergeRejection,
   type FragmentMergeResult,
+  type FragmentStyleSource,
 } from './clipboard-fragment-merge.ts';
 export {
   MAX_FRAGMENT_DECODED_BYTES,

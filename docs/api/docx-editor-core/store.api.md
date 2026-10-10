@@ -1584,6 +1584,12 @@ export type FragmentExtractResult = {
 };
 
 // @public (undocumented)
+export interface FragmentMergeOptions {
+    // (undocumented)
+    readonly styles?: FragmentStyleSource;
+}
+
+// @public (undocumented)
 export type FragmentMergeRejection = 'no-fragment-document' | 'no-target-part' | 'merge-refused' | 'unsupported-content';
 
 // @public (undocumented)
@@ -1618,6 +1624,9 @@ export type FragmentPasteResult = (Extract<PackageTransactResult, {
 }) | Extract<PackageTransactResult, {
     ok: false;
 }>;
+
+// @public
+export type FragmentStyleSource = 'source' | 'destination';
 
 // @public
 export function glossaryPartOf(pkg: OoxmlPackage): OoxmlPart | null;
@@ -2455,7 +2464,7 @@ export interface MergeFieldRange {
 export function mergeFieldsOf(paragraph: OoxmlParagraphNode): readonly MergeFieldRange[];
 
 // @public
-export function mergeFragmentIntoPackage(target: OoxmlPackage, fragment: OoxmlPackage, ownerPartName: string): FragmentMergeResult;
+export function mergeFragmentIntoPackage(target: OoxmlPackage, fragment: OoxmlPackage, ownerPartName: string, options?: FragmentMergeOptions): FragmentMergeResult;
 
 // @public
 export function mintedParagraphIdentityAttributes(prefix: string, value: string): readonly OoxmlAttribute[];

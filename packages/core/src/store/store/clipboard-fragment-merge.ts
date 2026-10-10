@@ -47,6 +47,7 @@ import {
   materializeDefaults,
   styleSignature,
   stylesInfoOf,
+  type StylesInfo,
   walkAll,
 } from './clipboard-fragment-defaults.ts';
 import { withRequiredNamespaceBindings } from './tree-op-fragment.ts';
@@ -80,6 +81,19 @@ export type FragmentMergeRejection =
   | 'no-target-part'
   | 'merge-refused'
   | 'unsupported-content';
+
+/**
+ * Whose styles govern the merged content. `source` keeps the fragment's look, as a paste does: a style
+ * whose definition differs from the target's same-id style is imported under a fresh id, and the
+ * fragment's defaults are stamped where the target's would re-resolve. `destination` is Word's "Use
+ * Destination Styles", the way a building block lands: a style the target has by name and type is the
+ * target's, one it lacks is imported, and nothing is stamped — the content takes the target's look.
+ */
+export type FragmentStyleSource = 'source' | 'destination';
+
+export interface FragmentMergeOptions {
+  readonly styles?: FragmentStyleSource;
+}
 
 export type FragmentMergeResult =
   | {
@@ -238,8 +252,10 @@ function admittedMediaMime(bytes: Uint8Array, declaredType: string): string | nu
 export function mergeFragmentIntoPackage(
   target: OoxmlPackage,
   fragment: OoxmlPackage,
-  ownerPartName: string
+  ownerPartName: string,
+  options: FragmentMergeOptions = {}
 ): FragmentMergeResult {
+  const styleSource = options.styles ?? 'source';
   for (const part of fragment.parts.values()) {
     if (containsClipboardObject([part.root])) return { ok: false, reason: 'unsupported-content' };
   }
@@ -324,16 +340,26 @@ export function mergeFragmentIntoPackage(
       ),
     }) as OoxmlElement;
 
+  const targetIdByName = styleSource === 'destination' ? styleIdsByName(targetStyles) : null;
   for (const style of fragmentStyles.styles) {
     const id = attributeValueOf(style, 'styleId');
     if (!id) continue;
+    const named = targetIdByName?.get(styleNameKey(style));
+    if (named !== undefined) {
+      styleIdMap.set(id, named);
+      continue;
+    }
     const existing = targetStyles.byId.get(id);
     // Compare AFTER applying the maps built so far: the target's copy of a previously
     // imported style already carries rewritten numbering/style references.
     const comparable = styleSignature(
       rewriteIdentifiers(style, { styleIds: styleIdMap, numIds: numIdMap }) as OoxmlElement
     );
-    if (existing && targetSignatureOf(id, existing) === comparable) {
+    if (
+      existing &&
+      (targetIdByName === null || styleNameKey(existing) === styleNameKey(style)) &&
+      targetSignatureOf(id, existing) === comparable
+    ) {
       styleIdMap.set(id, id);
       continue;
     }
@@ -762,7 +788,9 @@ export function mergeFragmentIntoPackage(
     );
     let bodies = withoutDanglingDrawings(transplant.bodies, noteRels.dropRelIds);
     // Materialize before the rewrite — same original-id reason as the blocks below.
-    bodies = [...materializeDefaults(bodies, fragmentStyles, targetStyles)];
+    if (styleSource === 'source') {
+      bodies = [...materializeDefaults(bodies, fragmentStyles, targetStyles)];
+    }
     bodies = bodies.map((body) =>
       rewriteIdentifiers(body, {
         styleIds: styleIdMap,
@@ -862,9 +890,11 @@ export function mergeFragmentIntoPackage(
   // Materialize BEFORE the identifier rewrite: `chainDefines` resolves style chains in
   // the FRAGMENT's styles part, which is keyed by original ids — a collision-remapped
   // `pStyle` would never resolve and the default value would stamp over the style's own.
-  const materialized = [...materializeDefaults(blocks, fragmentStyles, targetStyles)].map(
-    scrubDanglingNoteRefs
-  );
+  const materialized = [
+    ...(styleSource === 'source'
+      ? materializeDefaults(blocks, fragmentStyles, targetStyles)
+      : blocks),
+  ].map(scrubDanglingNoteRefs);
   const rewritten = materialized.map((block) =>
     rewriteIdentifiers(block, {
       styleIds: styleIdMap,
@@ -880,4 +910,21 @@ export function mergeFragmentIntoPackage(
   );
 
   return { ok: true, pkg, blocks: rewritten };
+}
+
+/** A style's identity across documents: its type and its name (Word's style ids are localized). */
+function styleNameKey(style: OoxmlElement): string {
+  const nameNode = style.children.find((inner) => isWml(inner, 'name'));
+  const name = nameNode ? attributeValueOf(nameNode, 'val') : undefined;
+  return `${attributeValueOf(style, 'type') ?? 'paragraph'}|${name ?? `#${attributeValueOf(style, 'styleId') ?? ''}`}`;
+}
+
+function styleIdsByName(styles: StylesInfo): ReadonlyMap<string, string> {
+  const ids = new Map<string, string>();
+  for (const style of styles.styles) {
+    const id = attributeValueOf(style, 'styleId');
+    const key = styleNameKey(style);
+    if (id && !ids.has(key)) ids.set(key, id);
+  }
+  return ids;
 }

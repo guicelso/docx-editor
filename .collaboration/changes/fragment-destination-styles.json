@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A merged fragment always kept its own look: a style that differed from the target's same-id style was imported as a copy, and the fragment's defaults were stamped onto the content.",
+  "after": "mergeFragmentIntoPackage(target, fragment, owner, { styles: 'destination' }) lands the fragment with the target's styles, matched by name and type, importing only the styles the target lacks and stamping nothing; 'source' is the previous behaviour and stays the default.",
+  "reason": "The policy only chooses which style definitions and direct formatting the merged package carries; the result reaches the journal through the same package edit and insertFragment primitives as before.",
+  "tests": ["packages/core/src/store/__tests__/clipboard-fragment-destination-styles.test.ts"],
+  "changeset": "fragment-destination-styles",
+  "migration": null
+}
