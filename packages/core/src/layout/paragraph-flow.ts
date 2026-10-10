@@ -1122,6 +1122,25 @@ export function breakParagraph(
     // piece range, so a per-ideograph split painted dozens of spans claiming one range. An
     // oversized result is cut once per line instead, and checks kinsoku by its own text,
     // because the paragraph table holds a field as one unit.
+    // An edge tag has no text, so the word loop below would emit nothing for it, and without a
+    // span it would stand between no slots. It is a zero-width span at its edge, as a break is.
+    if (piece.contentControlTag?.variant === 'edge') {
+      line.spans.push({
+        range: { paragraphId, start: piece.start, end: piece.end },
+        text: '',
+        props: piece.props,
+        style: piece.style,
+        box: {
+          x: lineOrigin() + line.width,
+          y: 0,
+          width: 0,
+          height: measurer.lineMetrics(faceStyle).height,
+        },
+        ...paragraphSpanMetadata(piece),
+      });
+      line.end = piece.end;
+      continue;
+    }
     const layoutOwned = isLayoutOwnedPiece(piece);
     const canChopWord = canChopPiece(piece);
     const textBreaks = layoutOwned ? null : cjkBreaks;

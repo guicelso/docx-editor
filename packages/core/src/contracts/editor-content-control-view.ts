@@ -3,8 +3,14 @@
  * written to the document, exported or printed.
  */
 
-/** What a host draws at one edge of a content control. @public */
-export interface ContentControlTagLabel {
+/**
+ * What a host draws at one edge of a content control: a label, or an edge that draws nothing.
+ * Both are a tag, with a caret slot on each side of it. @public
+ */
+export type ContentControlTagLabel = ContentControlTagInk | ContentControlTagEdgeOnly;
+
+/** A label drawn at a control's edge. @public */
+export interface ContentControlTagInk {
   /** What the tag shows, laid out as one unbreakable unit. */
   readonly text: string;
   /**
@@ -19,6 +25,15 @@ export interface ContentControlTagLabel {
    * document's own, styled by the tone.
    */
   readonly variant?: 'chip' | 'text';
+}
+
+/**
+ * An edge that draws nothing and takes no room, and still stands as a tag: the place just inside
+ * the control is its own slot, as it is beside a label. For a control a host draws no label at
+ * on one side, whose content must still be reachable from that side. @public
+ */
+export interface ContentControlTagEdgeOnly {
+  readonly variant: 'edge';
 }
 
 /** A content control as the file states it. `tag` is untrusted file data. @public */

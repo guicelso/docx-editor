@@ -155,11 +155,20 @@ export interface ContentControlTagDisplay {
 }
 
 // @public
-export interface ContentControlTagLabel {
+export interface ContentControlTagEdgeOnly {
+    // (undocumented)
+    readonly variant: 'edge';
+}
+
+// @public
+export interface ContentControlTagInk {
     readonly text: string;
     readonly tone?: string;
     readonly variant?: 'chip' | 'text';
 }
+
+// @public
+export type ContentControlTagLabel = ContentControlTagInk | ContentControlTagEdgeOnly;
 
 // @public
 export type ContentControlType = 'richText' | 'plainText' | 'checkbox' | 'dropdown' | 'comboBox' | 'date' | 'picture' | 'buildingBlockGallery' | 'repeatingSection';

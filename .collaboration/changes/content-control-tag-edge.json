@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tag was drawn only for a label with text, so the side of a control a host left undrawn had no slot inside it: typing there landed beside the control.",
+  "after": "A host can return { variant: 'edge' } for a side: a zero-width tag that paints nothing and has a slot on each side, like any tag.",
+  "reason": "Tags are view-only: layout and paint read them, nothing is written to the document, the journal or the shared state.",
+  "tests": [
+    "packages/core/src/output/__tests__/chip-label-edge.test.ts",
+    "packages/core/src/editor/__tests__/content-control-edge-slots.test.ts"
+  ],
+  "changeset": "content-control-tag-edge",
+  "migration": null
+}

@@ -1008,6 +1008,12 @@ a.docx-hyperlink:focus-visible {
   font-weight: inherit;
 }
 
+/* An edge tag draws nothing: it is only the place between its two slots. */
+.docx-cc-tag[data-cc-tag-variant='edge'] {
+  background-color: transparent;
+  box-shadow: none;
+}
+
 @media print {
   .docx-cc-tag {
     display: none;

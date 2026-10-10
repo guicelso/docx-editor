@@ -4,12 +4,15 @@
 // ZERO-WIDTH model range at the control's edge, exactly as a `w:ptab` does. Nothing is written
 // to the document, so every offset after a tag still agrees with the store.
 
-import type { ContentControlTagLabel } from '../contracts/editor-content-control-view.ts';
+import type {
+  ContentControlTagInk,
+  ContentControlTagLabel,
+} from '../contracts/editor-content-control-view.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
 /** The text a tag measures and paints: one unbreakable unit, its spaces made non-breaking. */
-export function contentControlTagText(label: ContentControlTagLabel): string {
+export function contentControlTagText(label: ContentControlTagInk): string {
   return label.text.replace(/ /g, '\u00A0');
 }
 
@@ -20,7 +23,7 @@ const CHIP_PAD_EM = 0.35;
 
 /**
  * The room a tag keeps on EACH side of its label, in points: the gap between neighbours and the
- * padding inside the fill, none for a `text` tag. Geometry, not characters — layout adds it to
+ * padding inside the fill, none for a `text` or an `edge` tag. Geometry, not characters — layout adds it to
  * the measured label and paint draws exactly it, so the label is centred in the space reserved
  * for it whatever font paints it.
  */
@@ -31,7 +34,7 @@ export function contentControlTagInsetsPt(
   readonly gapPt: number;
   readonly padPt: number;
 } {
-  if (mark.variant === 'text') return { gapPt: 0, padPt: 0 };
+  if (mark.variant !== undefined) return { gapPt: 0, padPt: 0 };
   return { gapPt: CHIP_GAP_PT, padPt: style.fontSizePt * CHIP_PAD_EM };
 }
 
@@ -57,20 +60,22 @@ export interface ContentControlTagMark {
   readonly level: ContentControlTagLevel;
   /** The host's tone, already checked against {@link contentControlTagToneOf}. */
   readonly tone?: string;
-  /** Present for a tag drawn as text in the line; absent for a chip. */
-  readonly variant?: 'text';
+  /** Present for a tag drawn as text in the line, or one that draws nothing; absent for a chip. */
+  readonly variant?: 'text' | 'edge';
 }
 
 const TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
 
 /** The tone a chip may publish, or undefined: the host's string lands in an attribute. */
 export function contentControlTagToneOf(label: ContentControlTagLabel): string | undefined {
+  if (label.variant === 'edge') return undefined;
   return label.tone !== undefined && TONE.test(label.tone) ? label.tone : undefined;
 }
 
 /**
  * The piece a tag lays out as: its text over a ZERO-WIDTH range at the control's edge, so it
- * measures and paints like a word and never moves an offset. None for an empty label.
+ * measures and paints like a word and never moves an offset. None for an empty label; an `edge`
+ * is a piece with no text, which takes no room and still stands between its two slots.
  */
 export function contentControlTagPiece(
   mark: Omit<ContentControlTagMark, 'tone' | 'variant'>,
@@ -78,11 +83,11 @@ export function contentControlTagPiece(
   run: ResolvedRunStyle,
   offset: number
 ): FieldAwarePiece | null {
-  if (label.text.length === 0) return null;
+  if (label.variant !== 'edge' && label.text.length === 0) return null;
   const tone = contentControlTagToneOf(label);
   return {
     // A tag is one unit: line breaking must never open a line inside it.
-    text: contentControlTagText(label),
+    text: label.variant === 'edge' ? '' : contentControlTagText(label),
     props: [],
     style: contentControlTagStyle(run),
     start: offset,
@@ -91,7 +96,7 @@ export function contentControlTagPiece(
     contentControlTag: {
       ...mark,
       ...(tone === undefined ? {} : { tone }),
-      ...(label.variant === 'text' ? { variant: 'text' as const } : {}),
+      ...(label.variant === 'text' || label.variant === 'edge' ? { variant: label.variant } : {}),
     },
   };
 }
