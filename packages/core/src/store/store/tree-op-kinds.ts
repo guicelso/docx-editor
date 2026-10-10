@@ -73,6 +73,8 @@ export const TREE_DOC_OP_KINDS = [
   'setNoteProperties',
   'setContentControlProperties',
   'insertContentControl',
+  'splitContentControl',
+  'joinContentControls',
   'wrapBlocksInContentControl',
   'insertBlockContentControl',
   'insertParagraph',

@@ -7,8 +7,8 @@
   "baseGitCommitDate": "2026-08-24 14:45:47 +0200",
   "inventoryNote": "Kinds, reach, properties, chrome slots, and lifecycle sets are taken from the implementation after rebase onto origin/main. Main added replaceStoryBlocks, setMathEquation, removeMathEquation, and insertFragment (rich-clipboard-fidelity).",
   "counts": {
-    "treeDocOpKinds": 88,
-    "singlePartApply": 75,
+    "treeDocOpKinds": 90,
+    "singlePartApply": 77,
     "headerFooterLifecycle": 6,
     "noteLifecycle": 5,
     "treeDocOpUnsupported": 2,
@@ -101,6 +101,8 @@
       "setTableCellVerticalAlignment",
       "setContentControlProperties",
       "insertContentControl",
+      "splitContentControl",
+      "joinContentControls",
       "wrapBlocksInContentControl",
       "insertBlockContentControl",
       "insertParagraph",
@@ -208,6 +210,8 @@
     "setNoteProperties",
     "setContentControlProperties",
     "insertContentControl",
+    "splitContentControl",
+    "joinContentControls",
     "wrapBlocksInContentControl",
     "insertBlockContentControl",
     "insertParagraph",
@@ -966,6 +970,24 @@
       "commandExposure": ["insertContentControl"],
       "packageIntents": [],
       "openSpec": ["typed-content-controls"]
+    },
+    {
+      "kind": "splitContentControl",
+      "commitPath": "applyTreeOp",
+      "storyScopes": ["body", "headerFooter", "notesPart"],
+      "storyParity": "all",
+      "commandExposure": [],
+      "packageIntents": [],
+      "openSpec": []
+    },
+    {
+      "kind": "joinContentControls",
+      "commitPath": "applyTreeOp",
+      "storyScopes": ["body", "headerFooter", "notesPart"],
+      "storyParity": "all",
+      "commandExposure": [],
+      "packageIntents": [],
+      "openSpec": []
     },
     {
       "kind": "wrapBlocksInContentControl",

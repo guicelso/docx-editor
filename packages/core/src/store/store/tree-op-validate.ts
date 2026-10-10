@@ -4,6 +4,7 @@ import { validateHyperlinkRange } from './tree-op-hyperlink-range.ts';
 import { validateSetFieldCode } from './tree-op-field-code.ts';
 import { isMergeFieldOp, validateMergeFieldOp } from './tree-op-merge-fields.ts';
 import { isBlockStructureOp, validateBlockStructureOp } from './tree-op-block-structure.ts';
+import { isInlineControlOp, validateInlineControlOp } from './tree-op-inline-control-structure.ts';
 import { validateTableAuthoring } from './tree-op-table-batch.ts';
 import { validateTableProperties } from './tree-op-table-authoring.ts';
 import { validateCommitTextFormField } from './tree-op-field-results.ts';
@@ -320,8 +321,6 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
     const control = findNode(part, op.controlId);
     if (!control) return 'unknown-content-control';
     if (control.kind !== 'contentControl') return 'not-a-content-control';
-    // After the type question, which the applier answers with `typeMismatch`: only a checkbox
-    // control's content shape decides whether a checkbox value can be written in place.
     // Only after the type question, which the applier answers with `typeMismatch`: the content
     // shape decides whether a value the control's type accepts can be written in place.
     if (op.op === 'setContentControlValue' && typeof op.value !== 'string') {
@@ -347,6 +346,7 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
   }
   if (op.op === 'insertContentControl') return validateInsertContentControl(part, op);
   if (isBlockStructureOp(op)) return validateBlockStructureOp(part, op);
+  if (isInlineControlOp(op)) return validateInlineControlOp(part, op);
 
   // Package-level furniture ops cannot run against a single part. Shape-check here so
   // applyTreeOp refuses them; TreePackageStore.applyLifecycleOp is the commit path.

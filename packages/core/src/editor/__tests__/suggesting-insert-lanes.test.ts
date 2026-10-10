@@ -541,4 +541,28 @@ describe('insert lanes in suggesting mode', () => {
       expect(serializeOoxmlPart(surface.session.part())).toBe(before);
     });
   });
+
+  test('dividing or joining an inline control has no proposal, so suggesting refuses it', () => {
+    const sdt = (tag: string, text: string) =>
+      `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/><w:richText/></w:sdtPr><w:sdtContent><w:r><w:t>${text}</w:t></w:r></w:sdtContent></w:sdt>`;
+    withSurface(`<w:p>${sdt('a', 'Alpha')}${sdt('b', 'Beta')}</w:p>`, (surface) => {
+      const ids: string[] = [];
+      const walk = (node: OoxmlNode): void => {
+        if (node.kind === 'textValue') return;
+        if (node.kind === 'contentControl') ids.push(node.id);
+        node.children.forEach(walk);
+      };
+      walk(surface.session.part().root);
+      const before = serializeOoxmlPart(surface.session.part());
+      const split = surface.applyAutomationOps(() => [
+        { op: 'splitContentControl', controlId: ids[0]!, offset: 2, tag: 'c' },
+      ]);
+      const join = surface.applyAutomationOps(() => [
+        { op: 'joinContentControls', firstId: ids[0]!, secondId: ids[1]! },
+      ]);
+
+      expect([split.committed, join.committed]).toEqual([false, false]);
+      expect(serializeOoxmlPart(surface.session.part())).toBe(before);
+    });
+  });
 });

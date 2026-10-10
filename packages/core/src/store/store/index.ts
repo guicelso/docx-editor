@@ -36,6 +36,10 @@ export type {
   WrapBlocksInContentControlOp,
 } from './tree-op-block-structure.ts';
 export type { InsertParagraphOp } from './tree-op-insert-paragraph.ts';
+export type {
+  JoinContentControlsOp,
+  SplitContentControlOp,
+} from './tree-op-inline-control-structure.ts';
 export {
   extractFragmentPackage,
   type FragmentCoverage,

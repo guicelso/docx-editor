@@ -375,6 +375,16 @@ const TREE_OP_REACH: {
   insertBlockContentControl: (op) => blockPlaceReach(op.at),
   insertParagraph: (op) => blockPlaceReach(op.at),
   insertInlineContentControl: (op) => splittingControlAt(op.paragraphId, op.offset),
+  // A split or a join moves content between wrappers and changes no character. The controls named
+  // answer for their own wrappers in the applier; what they hold, and what holds them, answer here.
+  splitContentControl: (op) => restructuring(op.controlId),
+  joinContentControls: (op) => ({
+    kind: 'nodes',
+    targets: [
+      { nodeId: op.firstId, structural: true },
+      { nodeId: op.secondId, structural: true },
+    ],
+  }),
   insertFragment: (op) => siblingAt(op.paragraphId, op.offset),
   // A split at a control's edge moves the whole control to one side of the break and changes
   // nothing it holds, so neither edge is inside. A split WITHIN it is, and the range says so.

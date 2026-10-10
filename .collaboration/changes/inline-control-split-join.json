@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "No op divided an inline content control or joined two of them. A paragraph split through a control copied its properties, tag and w:id included, to the tail.",
+  "after": "splitContentControl { controlId, offset, tag } divides an inline control in its holder, the tail with the given tag and a fresh w:id; joinContentControls { firstId, secondId } moves the second control's content to the end of the first and removes the second. Both refuse a revision.",
+  "reason": "Both ops reduce to one children replacement in the element holding the controls, which the journal already replicates; released participants receive the resulting shared state, never the new op kinds.",
+  "tests": [
+    "packages/core/src/store/__tests__/inline-control-structure-ops.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+    "packages/core/src/editor/__tests__/suggesting-insert-lanes.test.ts"
+  ],
+  "changeset": "inline-control-split-join",
+  "migration": null
+}
