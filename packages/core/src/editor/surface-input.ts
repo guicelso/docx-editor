@@ -8,6 +8,7 @@
 
 import type { TreeDocxSessionView } from '@docx-editor.dev/core/binding';
 import type { NavigationCommand } from '@docx-editor.dev/core/layout';
+import type { EditIntent } from '../contracts/editor-edit-policy.ts';
 import { paragraphTextOf } from '@docx-editor.dev/core/store';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
 import { plainTextFromTransfer } from './clipboard-plain-text.ts';
@@ -131,6 +132,8 @@ export function createKeyDownHandler(
     readonly onToggleParagraphMarks?: () => void;
     /** @internal */
     readonly onToggleFieldCodes?: () => void;
+    /** Whether the host took a structural edit over (`EditPolicy`); the key then writes nothing. */
+    readonly takesEdit?: (intent: EditIntent) => boolean;
   } = {}
 ): (event: KeyboardEvent) => void {
   return (event: KeyboardEvent): void => {
@@ -279,17 +282,14 @@ export function createKeyDownHandler(
       event.preventDefault();
       return;
     }
-    if (event.key === 'Backspace') {
+    if (event.key === 'Backspace' || event.key === 'Delete') {
       // Ctrl/Alt+Backspace deletes the word before the caret — Word, and every native
       // text field on both platforms.
-      if (accel || event.altKey) surface.deleteWordBackward();
-      else surface.deleteBackward();
-      event.preventDefault();
-      return;
-    }
-    if (event.key === 'Delete') {
-      if (accel || event.altKey) surface.deleteWordForward();
-      else surface.deleteForward();
+      const word = accel || event.altKey;
+      const direction = event.key === 'Backspace' ? 'backward' : 'forward';
+      if (!hooks.takesEdit?.({ kind: 'delete', direction, unit: word ? 'word' : 'character' })) {
+        deleteBy(surface, direction, word);
+      }
       event.preventDefault();
       return;
     }
@@ -323,8 +323,10 @@ export function createKeyDownHandler(
       //   Ctrl+Enter   a hard page break (`w:br w:type="page"`)
       if (accel) surface.insertPageBreak();
       else if (event.shiftKey) surface.insertLineBreak();
-      // Enter on an empty list item ends the list rather than making another empty one.
-      else if (!surface.exitListOnEmptyItem()) surface.splitParagraph();
+      else if (!hooks.takesEdit?.({ kind: 'paragraphBreak' })) {
+        // Enter on an empty list item ends the list rather than making another empty one.
+        if (!surface.exitListOnEmptyItem()) surface.splitParagraph();
+      }
       event.preventDefault();
       return;
     }
@@ -501,6 +503,8 @@ export function createBeforeInputHandler(
      * selection and treats the queued echo as the browser's, not the user's.
      */
     readonly onBrowserSelectionFixup?: () => void;
+    /** Whether the host took a structural edit over (`EditPolicy`); the input then writes nothing. */
+    readonly takesEdit?: (intent: EditIntent) => boolean;
   }
 ): (event: InputEvent) => void {
   return (event: InputEvent): void => {
@@ -540,20 +544,12 @@ export function createBeforeInputHandler(
       hooks.onBrowserSelectionFixup?.();
       return;
     }
-    if (event.inputType === 'deleteContentBackward') {
-      surface.deleteBackward();
-      return;
-    }
-    if (event.inputType === 'deleteWordBackward') {
-      surface.deleteWordBackward();
-      return;
-    }
-    if (event.inputType === 'deleteContentForward') {
-      surface.deleteForward();
-      return;
-    }
-    if (event.inputType === 'deleteWordForward') {
-      surface.deleteWordForward();
+    const deletion = DELETIONS.get(event.inputType);
+    if (deletion) {
+      const unit = deletion.word ? 'word' : 'character';
+      if (!hooks.takesEdit?.({ kind: 'delete', direction: deletion.direction, unit })) {
+        deleteBy(surface, deletion.direction, deletion.word);
+      }
       return;
     }
     if (event.inputType === 'insertLineBreak') {
@@ -568,10 +564,35 @@ export function createBeforeInputHandler(
       if (dropped) hooks.insertPlainText(dropped);
       return;
     }
-    if (event.inputType === 'insertParagraph') {
+    if (event.inputType === 'insertParagraph' && !hooks.takesEdit?.({ kind: 'paragraphBreak' })) {
       surface.splitParagraph();
     }
   };
+}
+
+/** The input methods' deletions, by direction and unit. */
+const DELETIONS: ReadonlyMap<
+  string,
+  { readonly direction: 'backward' | 'forward'; readonly word: boolean }
+> = new Map([
+  ['deleteContentBackward', { direction: 'backward', word: false }],
+  ['deleteWordBackward', { direction: 'backward', word: true }],
+  ['deleteContentForward', { direction: 'forward', word: false }],
+  ['deleteWordForward', { direction: 'forward', word: true }],
+]);
+
+function deleteBy(
+  surface: PaginatedSurface,
+  direction: 'backward' | 'forward',
+  word: boolean
+): void {
+  if (direction === 'backward') {
+    if (word) surface.deleteWordBackward();
+    else surface.deleteBackward();
+    return;
+  }
+  if (word) surface.deleteWordForward();
+  else surface.deleteForward();
 }
 
 /** The text one static range covers, or null when it cannot be read. */

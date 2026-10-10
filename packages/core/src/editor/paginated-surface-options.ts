@@ -157,4 +157,6 @@ export interface PaginatedSurfaceOptions {
   readonly fieldTone?: import('../contracts/editor-content-control-view.ts').FieldTone;
   /** Which fields a plain press selects whole, by instruction. */
   readonly fieldSelection?: (instruction: string) => boolean;
+  /** The host's policy over paragraph breaks and deletions, asked before the engine writes. */
+  readonly editPolicy?: import('../contracts/editor-edit-policy.ts').EditPolicy;
 }

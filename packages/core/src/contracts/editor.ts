@@ -24,6 +24,8 @@ import type { EditorHighlights, HighlightRect } from './editor-highlights.ts';
 export type * from './editor-highlights.ts';
 import type { EditorContentControlView } from './editor-content-control-view.ts';
 export type * from './editor-content-control-view.ts';
+import type { EditorEditPolicy } from './editor-edit-policy.ts';
+export type * from './editor-edit-policy.ts';
 export type { DocumentChange, EditorEvents } from './editor-events.ts';
 import type { DocumentEditingMode, ResolveReviewChangesOptions } from './editor-review.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
@@ -305,7 +307,8 @@ export type CanResult = { ok: true } | { ok: false; code: ExecErrorCode; reason:
  * const bytesOut = await editor.save();
  * ```
  */
-export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView {
+export interface Editor
+  extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView, EditorEditPolicy {
   /**
    * Load a new document (DOCX bytes, `'blank'`, or a handle), replacing the current one.
    *

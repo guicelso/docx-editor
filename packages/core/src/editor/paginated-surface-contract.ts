@@ -636,6 +636,8 @@ export interface PaginatedSurface {
   setFieldTones(tone: import('../contracts/editor-content-control-view.ts').FieldTone | null): void;
   /** The facade's channel for which fields a plain press selects whole. */
   setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+  /** The facade's channel for the host's policy over paragraph breaks and deletions. */
+  setEditPolicy(policy: import('../contracts/editor-edit-policy.ts').EditPolicy | null): void;
   /**
    * Where the selection is painted, in client coordinates, from layout: one rectangle per line
    * of a range, or a zero-width one at a collapsed caret (in its slot at a tagged edge). The

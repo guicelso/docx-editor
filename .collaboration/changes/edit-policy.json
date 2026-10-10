@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A host could only intercept Enter and Backspace by listening to keydown in the capture phase, which an input method's beforeinput never passes through.",
+  "after": "An edit policy installed on the editor is asked before every paragraph break and deletion, from keydown and from beforeinput, and can take the edit over.",
+  "reason": "The policy only decides which ops a keystroke produces; whatever a host writes in its place goes through the same op lanes the journal already replicates.",
+  "tests": ["packages/core/src/editor/__tests__/edit-policy.test.ts"],
+  "changeset": "edit-policy",
+  "migration": null
+}

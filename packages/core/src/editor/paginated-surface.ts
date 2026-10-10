@@ -911,6 +911,9 @@ export function mountPaginatedSurface(
   let contentControlView = options.contentControlView;
   let fieldTone = options.fieldTone;
   let fieldSelection = options.fieldSelection;
+  let editPolicy = options.editPolicy;
+  const takesEdit = (intent: Parameters<NonNullable<typeof editPolicy>>[0]) =>
+    editPolicy?.(intent) === 'handled';
 
   const controlEdgesAt = ({ paragraphId, offset }: SemanticPosition) => {
     const part = partOfNodeId(session, paragraphId) ?? session.part();
@@ -5514,6 +5517,9 @@ export function mountPaginatedSurface(
     setFieldSelection(select) {
       fieldSelection = select ?? undefined;
     },
+    setEditPolicy(policy) {
+      editPolicy = policy ?? undefined;
+    },
     setFieldTones(tone) {
       if (destroyed || fieldTone === (tone ?? undefined)) return;
       fieldTone = tone ?? undefined;
@@ -6133,6 +6139,7 @@ export function mountPaginatedSurface(
   });
   const dispatchKeyDown = createKeyDownHandler(surface, {
     ...options,
+    takesEdit,
     onToggleFieldCodes: () => {
       flushPendingInputAndLayout();
       showFieldCodes = !showFieldCodes;
@@ -6157,6 +6164,7 @@ export function mountPaginatedSurface(
   const { onCopy, onCut, onPaste } = createClipboardHandlers(surface);
   const dispatchBeforeInput = createBeforeInputHandler(surface, {
     isComposing: () => selectionSync.isComposing(),
+    takesEdit,
     insertPlainText,
     // The browser parked its own selection over the text a substitution replaced. Rewrite
     // the DOM selection now for a park that already happened, and flag the queued echo for

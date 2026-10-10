@@ -23,7 +23,7 @@ import { formattingCommandActive } from './docx-editor-active.ts';
 import { createEditorScrolling } from './docx-editor-scroll.ts';
 import { createAnchorNavigation } from './docx-editor-anchor-navigation.ts';
 import { createTextHighlights } from './text-highlights.ts';
-import { createEditorContentControlView } from './docx-editor-content-control-view.ts';
+import { createEditorHostPolicies } from './docx-editor-host-policies.ts';
 import { captureSearchResult } from './document-search-result.ts';
 import { createDocumentProtectionCommands } from './docx-editor-protection.ts';
 
@@ -530,7 +530,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     container: () => container,
     flushOpen: () => openScheduler.flush(),
   });
-  const contentControlView = createEditorContentControlView({ surface: () => surface });
+  const hostPolicies = createEditorHostPolicies({ surface: () => surface });
 
   function mountBytes(...args: Parameters<typeof mountBytesNow>): void {
     const refreshing = refreshHost?.source !== undefined;
@@ -622,7 +622,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         emitSelectionChange();
       },
       tocLabels: hostConfig.tocLabels(),
-      ...contentControlView.mountOptions(),
+      ...hostPolicies.mountOptions(),
       onChange: (state) => {
         // The mount-time render reports before `surface` is assigned; nothing observable
         // has changed at that point, so it is not a selection change.
@@ -2608,7 +2608,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
 
     ...zoomFacadeMembers(zoomLane, () => surface),
     ...highlights.members,
-    ...contentControlView.members,
+    ...hostPolicies.members,
 
     relayout(options?: { sync?: boolean }) {
       // `layout()` flushes any commit the scheduler has not published yet; the surface

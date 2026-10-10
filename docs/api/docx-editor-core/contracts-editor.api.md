@@ -514,7 +514,16 @@ export interface DrawingPositionInput {
 export type DrawingVerticalReferenceFrame = 'bottomMargin' | 'insideMargin' | 'line' | 'margin' | 'outsideMargin' | 'page' | 'paragraph' | 'topMargin';
 
 // @public
-export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView {
+export type EditIntent = {
+    readonly kind: 'paragraphBreak';
+} | {
+    readonly direction: 'backward' | 'forward';
+    readonly kind: 'delete';
+    readonly unit: 'character' | 'word';
+};
+
+// @public
+export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView, EditorEditPolicy {
     acceptReviewItem(key: string): ExecResult;
     addComment(text: string, author?: string): ExecResult;
     beginHistoryGroup(): HistoryGroup;
@@ -953,6 +962,11 @@ export interface EditorContentControlView {
 }
 
 // @public
+export interface EditorEditPolicy {
+    setEditPolicy(policy: EditPolicy | null): void;
+}
+
+// @public
 export interface EditorError extends Error {
     // (undocumented)
     readonly code?: string;
@@ -1221,6 +1235,9 @@ export interface EditorSnapshot {
     readonly zoom: number;
     readonly zoomMode?: ZoomMode;
 }
+
+// @public
+export type EditPolicy = (intent: EditIntent) => 'handled' | 'default';
 
 // @public
 export type ExecErrorCode = 'notFound' | 'ambiguous' | 'locked' | 'bound' | 'typeMismatch' | 'kindMismatch' | 'outOfBounds' | 'unsupported' | 'invalidArgs';
