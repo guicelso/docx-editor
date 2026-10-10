@@ -907,14 +907,10 @@ export function mountPaginatedSurface(
   });
   // Layout, furniture, and formatting writes share the view's current projection (#497).
   let showFieldCodes = false;
-  /** View-only start/end tags for inline content controls (Design Mode), or none. */
-  let contentControlTags:
-    | import('../layout/content-control-tags.ts').ContentControlTagDisplay
-    | undefined;
-  /** The host's name for each field, from its instruction, published for its stylesheet. */
-  let fieldTone: import('../output/semantic-paint.ts').FieldTone | undefined;
-  /** Which fields a press selects whole, by instruction; none without a host rule. */
-  let fieldSelection: ((instruction: string) => boolean) | undefined;
+  // The host's view, as the facade hands it to every surface it mounts.
+  let contentControlView = options.contentControlView;
+  let fieldTone = options.fieldTone;
+  let fieldSelection = options.fieldSelection;
 
   const controlEdgesAt = ({ paragraphId, offset }: SemanticPosition) => {
     const part = partOfNodeId(session, paragraphId) ?? session.part();
@@ -922,7 +918,7 @@ export function mountPaginatedSurface(
     return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(part, paragraph, offset) : [];
   };
   const caretSlots = createCaretSlots({
-    enabled: () => contentControlTags !== undefined,
+    enabled: () => contentControlView?.tags !== undefined,
     selection: () => selection,
     layout: () => editingLayout(),
     edgesAt: controlEdgesAt,
@@ -934,7 +930,7 @@ export function mountPaginatedSurface(
   const controlKeys = createControlKeys({
     part: (paragraphId) => partOfNodeId(session, paragraphId) ?? session.part(),
     selection: () => selection,
-    tagsDrawn: () => contentControlTags !== undefined,
+    tagsDrawn: () => contentControlView?.tags !== undefined,
     drawnSlot: () => caretSlots.current(),
     placement: () => caretSlots.placement(),
     edgesAt: controlEdgesAt,
@@ -1392,7 +1388,7 @@ export function mountPaginatedSurface(
       // constructed `proposed` never shares cached pages with an `all-markup` one.
       displayMode: revisionDisplayMode(),
       showFieldCodes: context ? false : showFieldCodes,
-      contentControlTags: context ? undefined : contentControlTags,
+      contentControlView: context ? undefined : contentControlView,
       revisionAuthorFilter: activeAuthorFilter,
     } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
   }
@@ -5524,17 +5520,12 @@ export function mountPaginatedSurface(
       // Paint only: the tone never changes what a line measures.
       render();
     },
-    setContentControlTags(display) {
-      if (destroyed) return;
-      // The token names the labeling: the same one answers the same labels, so nothing to lay out.
-      const unchanged =
-        display === null
-          ? contentControlTags === undefined
-          : display.token === contentControlTags?.token;
-      if (unchanged) return;
+    setContentControlView(view) {
+      if (destroyed || contentControlView === (view ?? undefined)) return;
       flushPendingInputAndLayout();
-      contentControlTags = display ?? undefined;
-      scheduler.invalidateAll(session.packageRevision(), 'content-control-tags');
+      // A pass over every paragraph, but only those whose answers moved are measured again.
+      contentControlView = view ?? undefined;
+      scheduler.invalidateAll(session.packageRevision(), 'content-control-view');
       scheduler.flush();
     },
     setRevisionDisplayMode(mode) {

@@ -5,7 +5,7 @@ import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '../../store/package/ooxml-tree.ts';
 import { createFixedMeasurer, layoutSemanticDocument } from '../semantic-layout.ts';
 import type { SemanticLayout, StyleSpanRecord } from '../semantic-records.ts';
-import type { ContentControlTagDisplay } from '../content-control-tags.ts';
+import type { ContentControlTagDisplay } from '../../contracts/editor-content-control-view.ts';
 import { caretSlotsAt } from '../content-control-tag-slots.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -27,7 +27,6 @@ const block = (tag: string, inner: string) =>
   `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/><w:richText/></w:sdtPr><w:sdtContent>${inner}</w:sdtContent></w:sdt>`;
 
 const TAGS: ContentControlTagDisplay = {
-  token: 'chips',
   labelsOf: ({ tag }) => {
     if (tag === 'only-open') return { open: { text: '[O' } };
     return tag === undefined ? null : { open: { text: `[${tag}` }, close: { text: `${tag}]` } };
@@ -36,7 +35,7 @@ const TAGS: ContentControlTagDisplay = {
 
 const measurer = createFixedMeasurer(6, 14);
 const layoutOf = (body: string): SemanticLayout =>
-  layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlTags: TAGS });
+  layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlView: { tags: TAGS } });
 
 /** Each paragraph's painted text, chips included, in document order. */
 function paintedParagraphs(layout: SemanticLayout): string[] {

@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A host installed tags, field tones and field selection on the surface, which a load or an attach rebuilt without them, and a tag display carried a token folded into every paragraph's cache key.",
+  "after": "The editor holds the three policies and hands them to every surface it mounts. Each paragraph's cache key carries the tag answers for the controls it draws, so a changed tag lays out only its paragraph.",
+  "reason": "Tags, tones and field selection are view state: they never change the document, are never saved, and are not shared with collaborators, so no peer reads them.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-view.test.ts",
+    "packages/core/src/editor/__tests__/content-control-view-facade.test.ts",
+    "packages/core/src/editor/__tests__/content-control-tags-surface.test.ts"
+  ],
+  "changeset": "editor-content-control-view",
+  "migration": null
+}

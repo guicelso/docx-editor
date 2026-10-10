@@ -54,7 +54,7 @@ export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
   projectLink: 'document-coordinator',
   projectFieldLink: 'document-coordinator',
   showFieldCodes: 'document-coordinator',
-  contentControlTags: 'document-coordinator',
+  contentControlView: 'document-coordinator',
   blockControlEdges: 'layout-internal',
   documentProperties: 'document-coordinator',
   notes: 'document-coordinator',
@@ -102,8 +102,8 @@ export interface LayoutDocumentViewOptions {
   readonly projectFieldLink?: FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
-  /** View-only content-control tags (Design Mode). */
-  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The host's view over content controls. */
+  readonly contentControlView?: import('./content-control-view.ts').ContentControlView;
   readonly inlineDrawingLayout?: InlineDrawingLayoutContext;
   readonly inlineDrawingLayoutForPart?: (
     partName: string
@@ -134,7 +134,7 @@ const _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS = {
   linkProjectors: 'both',
   projectFieldLink: 'both',
   showFieldCodes: 'both',
-  contentControlTags: 'semantic-layout',
+  contentControlView: 'semantic-layout',
   inlineDrawingLayout: 'semantic-layout',
   inlineDrawingLayoutForPart: 'notes',
   drawingTokenForParagraph: 'semantic-layout',
@@ -198,7 +198,7 @@ export function layoutDocumentView(options: LayoutDocumentViewOptions): Semantic
     linkProjectors: options.linkProjectors,
     projectFieldLink: options.projectFieldLink,
     showFieldCodes: options.showFieldCodes,
-    contentControlTags: options.contentControlTags,
+    contentControlView: options.contentControlView,
     inlineDrawingLayout: options.inlineDrawingLayout,
     drawingTokenForParagraph: options.drawingTokenForParagraph,
     drawingLayoutEpoch: options.drawingLayoutEpoch,
@@ -222,7 +222,7 @@ export function layoutDocumentView(options: LayoutDocumentViewOptions): Semantic
     projectLink: semanticInputs.linkProjectors.projectLink,
     projectFieldLink: semanticInputs.projectFieldLink,
     showFieldCodes: semanticInputs.showFieldCodes,
-    contentControlTags: semanticInputs.contentControlTags,
+    contentControlView: semanticInputs.contentControlView,
     documentProperties: semanticInputs.view.documentProperties(),
     inlineDrawingLayout: semanticInputs.inlineDrawingLayout,
     drawingTokenForParagraph: semanticInputs.drawingTokenForParagraph,

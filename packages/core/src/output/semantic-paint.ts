@@ -12,6 +12,7 @@ import { DEFAULT_RUN_STYLE } from '../layout/run-style.ts';
 
 import { paintedSpanText } from '../layout/optional-hyphen-break.ts';
 import { contentControlTagInsetsPt } from '../layout/content-control-tags.ts';
+import type { FieldTone } from '../contracts/editor-content-control-view.ts';
 import {
   paintParagraphMark,
   paintManualLineBreak,
@@ -759,12 +760,6 @@ function positioned(
  * the active-item highlight is set by attribute rather than by building a CSS rule out of an
  * id — comment and revision metadata are attacker-controlled.
  */
-/**
- * The host's name for a field, from its instruction (untrusted file text), or undefined for
- * none. Letters, digits and `-`, starting with a letter, at most 32: it lands in an attribute.
- * @public
- */
-export type FieldTone = (instruction: string) => string | undefined;
 
 const FIELD_TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
 

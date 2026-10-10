@@ -607,7 +607,7 @@ export function openDocumentForExport(
             : revisionAuthorFilter,
         showFieldCodes: false,
         // View-only chrome: an exported or printed document never carries tags.
-        contentControlTags: undefined,
+        contentControlView: undefined,
       } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
       if (!layoutHasPendingImages(layout)) {
         const restartedBeforePublish = restartOnRevisionDrift();

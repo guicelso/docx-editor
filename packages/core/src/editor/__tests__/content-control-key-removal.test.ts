@@ -40,9 +40,8 @@ function plain(body: string): { surface: PaginatedSurface; container: HTMLElemen
 
 function tagged(body: string): PaginatedSurface {
   const { surface } = plain(body);
-  surface.setContentControlTags({
-    token: 'keys',
-    labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+  surface.setContentControlView({
+    tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
   });
   return surface;
 }
@@ -156,9 +155,8 @@ describe('with the tags drawn, a key beside a tag', () => {
 
   test('the control selected whole is painted as selected', () => {
     const { surface, container } = plain(OPTIONAL);
-    surface.setContentControlTags({
-      token: 'keys',
-      labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+    surface.setContentControlView({
+      tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
     });
     caretBeside(surface, 5, 'O', 'close', 'after');
     surface.deleteBackward();

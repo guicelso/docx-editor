@@ -924,6 +924,26 @@ export interface ContentControlSummary {
 }
 
 // @public
+export interface ContentControlTagDisplay {
+    readonly labelsOf: (control: ContentControlTagSubject) => {
+        readonly close?: ContentControlTagLabel;
+        readonly open?: ContentControlTagLabel;
+    } | null;
+}
+
+// @public
+export interface ContentControlTagLabel {
+    readonly text: string;
+    readonly tone?: string;
+}
+
+// @public
+export interface ContentControlTagSubject {
+    readonly controlId: string;
+    readonly tag: string | undefined;
+}
+
+// @public
 export type ContentControlType = 'richText' | 'plainText' | 'checkbox' | 'dropdown' | 'comboBox' | 'date' | 'picture' | 'buildingBlockGallery' | 'repeatingSection';
 
 // @public
@@ -1379,7 +1399,7 @@ export interface DrawingPositionInput {
 export type DrawingVerticalReferenceFrame = 'bottomMargin' | 'insideMargin' | 'line' | 'margin' | 'outsideMargin' | 'page' | 'paragraph' | 'topMargin';
 
 // @public
-export interface Editor extends EditorAnchorNavigation, EditorHighlights {
+export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView {
     acceptReviewItem(key: string): ExecResult;
     addComment(text: string, author?: string): ExecResult;
     beginHistoryGroup(): HistoryGroup;
@@ -1810,6 +1830,13 @@ export type EditorCommandShape<T> = {
 };
 
 // @public
+export interface EditorContentControlView {
+    setContentControlTags(display: ContentControlTagDisplay | null): void;
+    setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+    setFieldTones(tone: FieldTone | null): void;
+}
+
+// @public
 export interface EditorError extends Error {
     // (undocumented)
     readonly code?: string;
@@ -2113,6 +2140,9 @@ export interface Extent {
     // (undocumented)
     readonly widthEmu: number;
 }
+
+// @public
+export type FieldTone = (instruction: string) => string | undefined;
 
 // @public
 export const FONT_RESOLVER_BRAND: unique symbol;

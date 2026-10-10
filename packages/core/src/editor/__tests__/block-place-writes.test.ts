@@ -29,9 +29,8 @@ function open(tags = true): PaginatedSurface {
   const { surface } = mount(BODY);
   mounted.push(surface);
   if (tags) {
-    surface.setContentControlTags({
-      token: 'place',
-      labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+    surface.setContentControlView({
+      tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
     });
   }
   return surface;

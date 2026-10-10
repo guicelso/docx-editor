@@ -1,12 +1,12 @@
-// Installing view-only content-control tags on a mounted surface: they paint, the token is the
-// cache key, and nothing about them reaches the document.
+// Installing view-only content-control tags on a mounted surface: they paint, a new view is a new
+// layout, and nothing about them reaches the document.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import { strFromU8, unzipSync } from 'fflate';
-import type { ContentControlTagDisplay } from '../../layout/content-control-tags.ts';
+import type { ContentControlView } from '../../layout/content-control-view.ts';
 import { contentControlsInLayout } from '../../layout/semantic-interaction.ts';
 import type { PaginatedSurface } from '../paginated-surface.ts';
 import { createPublishSignal } from '../surface-publish-signal.ts';
@@ -17,9 +17,8 @@ const BODY =
   '<w:sdt><w:sdtPr><w:tag w:val="t"/></w:sdtPr>' +
   '<w:sdtContent><w:r><w:t>RG</w:t></w:r></w:sdtContent></w:sdt></w:p>';
 
-const tags = (token: string): ContentControlTagDisplay => ({
-  token,
-  labelsOf: () => ({ open: { text: `${token} ▸` }, close: { text: '◂' } }),
+const tags = (name: string): ContentControlView => ({
+  tags: { labelsOf: () => ({ open: { text: `${name} ▸` }, close: { text: '◂' } }) },
 });
 
 const mounted: PaginatedSurface[] = [];
@@ -42,21 +41,22 @@ const documentXmlOf = (surface: PaginatedSurface) =>
   strFromU8(unzipSync(surface.save())['word/document.xml']!);
 
 describe('content-control tags on the surface', () => {
-  test('installing a display paints the chips, and null takes them away', () => {
+  test('installing a view paints the chips, and null takes them away', () => {
     const { surface, container } = surfaceOf();
-    surface.setContentControlTags(tags('A'));
+    surface.setContentControlView(tags('A'));
     expect(chipsIn(container)).toEqual(['A ▸', '◂']);
-    surface.setContentControlTags(null);
+    surface.setContentControlView(null);
     expect(chipsIn(container)).toEqual([]);
   });
 
-  test('the token already installed lays out nothing; a new token does', () => {
+  test('the view already installed lays out nothing; a new view does', () => {
     const { surface, container } = surfaceOf();
-    surface.setContentControlTags(tags('A'));
+    const installed = tags('A');
+    surface.setContentControlView(installed);
     const laidOut = surface.layout();
-    surface.setContentControlTags(tags('A'));
+    surface.setContentControlView(installed);
     expect(surface.layout()).toBe(laidOut);
-    surface.setContentControlTags(tags('B'));
+    surface.setContentControlView(tags('B'));
     expect(surface.layout()).not.toBe(laidOut);
     expect(chipsIn(container)).toEqual(['B ▸', '◂']);
   });
@@ -64,13 +64,13 @@ describe('content-control tags on the surface', () => {
   test('the saved document is the same with the tags on or off', () => {
     const { surface } = surfaceOf();
     const untagged = documentXmlOf(surface);
-    surface.setContentControlTags(tags('A'));
+    surface.setContentControlView(tags('A'));
     expect(documentXmlOf(surface)).toBe(untagged);
   });
 
   test('the selected text never carries a tag', () => {
     const { surface } = surfaceOf();
-    surface.setContentControlTags(tags('A'));
+    surface.setContentControlView(tags('A'));
     surface.selectAll();
     expect(surface.selectedText()).toBe('CPF RG');
   });

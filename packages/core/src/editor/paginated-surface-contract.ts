@@ -625,23 +625,16 @@ export interface PaginatedSurface {
   /** Change the review display without accepting, rejecting, or changing author filters. */
   setRevisionDisplayMode(mode: ReviewDisplayMode): void;
   /**
-   * Draw view-only start and end tags for inline content controls (Word's Design Mode), or
-   * none with `null`. Nothing is written to the document, exported or printed. Re-install with
-   * a new `token` when the labels change; the token already installed lays out nothing.
+   * The facade's channel for the host's view (`EditorContentControlView`); a host installs it on
+   * the editor, which keeps it across surfaces. A new view lays out again only the paragraphs
+   * whose answers moved; the view already installed lays out nothing.
    */
-  setContentControlTags(
-    display: import('../layout/content-control-tags.ts').ContentControlTagDisplay | null
+  setContentControlView(
+    view: import('../layout/content-control-view.ts').ContentControlView | null
   ): void;
-  /**
-   * Name each field for the host's stylesheet, from its instruction, or stop with `null`. The
-   * name lands on the field's painted result as `data-field-tone`; nothing is written to the
-   * document, and changing it repaints without laying anything out.
-   */
-  setFieldTones(tone: import('../output/semantic-paint.ts').FieldTone | null): void;
-  /**
-   * Which fields a plain press selects whole, from their instruction, or none with `null`. The
-   * selected field's painted result carries `data-selected`; nothing is written to the document.
-   */
+  /** The facade's channel for field tones: repaints without laying anything out. */
+  setFieldTones(tone: import('../contracts/editor-content-control-view.ts').FieldTone | null): void;
+  /** The facade's channel for which fields a plain press selects whole. */
   setFieldSelection(select: ((instruction: string) => boolean) | null): void;
   /**
    * Where the selection is painted, in client coordinates, from layout: one rectangle per line

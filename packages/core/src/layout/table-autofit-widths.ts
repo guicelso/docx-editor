@@ -1,5 +1,5 @@
 import { withDefaultTabInterval } from './paragraph-tabs.ts';
-import { contentControlTagFlow } from './content-control-tags.ts';
+import { contentControlViewFlow } from './content-control-view.ts';
 import {
   cellSpacingGapPt,
   cellSpacingScale,
@@ -103,8 +103,8 @@ export interface AutofitFieldContext {
   readonly fieldCodeRanges?: FieldCodeRanges;
   /** Table-of-contents link styling by paragraph id. */
   readonly tocLinkStyleRanges?: TocLinkRanges;
-  /** View-only content-control tags: a cell's widest line includes its chips. */
-  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The host's view over content controls: a cell's widest line includes its chips. */
+  readonly contentControlView?: import('./content-control-view.ts').ContentControlView;
   /** The block controls each paragraph opens and closes. @internal */
   readonly blockControlEdges?: ReadonlyMap<
     string,
@@ -159,7 +159,7 @@ export function autofitContextOf(deps: AutofitFlowDeps): TableAutofitContext {
     ...(deps.showFieldCodes ? { showFieldCodes: true } : {}),
     ...(deps.fieldCodeRanges ? { fieldCodeRanges: deps.fieldCodeRanges } : {}),
     ...(deps.tocLinkStyleRanges ? { tocLinkStyleRanges: deps.tocLinkStyleRanges } : {}),
-    ...contentControlTagFlow(deps),
+    ...contentControlViewFlow(deps),
   };
   // Values, not identities: a pass builds these objects afresh and the cache must survive it.
   // Every part is compact: the producer is a digest, the value objects are digested.
@@ -169,7 +169,6 @@ export function autofitContextOf(deps: AutofitFlowDeps): TableAutofitContext {
     valueDigest(deps.pageContext),
     valueDigest(deps.documentProperties),
     deps.showFieldCodes === true ? 'codes' : '',
-    deps.contentControlTags ? `cc-tags:${deps.contentControlTags.token}` : '',
     deps.refFields?.valuesToken ?? '',
     deps.drawingLayoutToken ?? '',
     deps.inlineDrawingLayout ? 'drawings' : '',
@@ -345,7 +344,7 @@ export function paragraphContentWidthsPt(
     fields?.fieldCodeRanges?.get(paragraph.id),
     fields?.tocLinkStyleRanges?.get(paragraph.id),
     undefined,
-    fields?.contentControlTags,
+    fields?.contentControlView,
     fields?.blockControlEdges
   );
   // The bidi pass gives each piece the shaping and joining context line breaking measures with;

@@ -151,4 +151,10 @@ export interface PaginatedSurfaceOptions {
    * its own labels. The engine paints no menu of its own.
    */
   readonly tocLabels?: { readonly title: string };
+  /** The host's view over content controls, laid out from the first pass. */
+  readonly contentControlView?: import('../layout/content-control-view.ts').ContentControlView;
+  /** The host's name for each field, published for its stylesheet. */
+  readonly fieldTone?: import('../contracts/editor-content-control-view.ts').FieldTone;
+  /** Which fields a plain press selects whole, by instruction. */
+  readonly fieldSelection?: (instruction: string) => boolean;
 }

@@ -29,8 +29,7 @@ afterEach(() => {
 function mount(): { editor: DocxEditorInstance; host: HTMLElement } {
   const mounted = mountAnchorEditor(docx(BODY));
   cleanups.push(mounted.destroy);
-  mounted.editor.surface!.setContentControlTags({
-    token: 'veil',
+  mounted.editor.setContentControlTags({
     labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
   });
   return mounted;

@@ -8,7 +8,8 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '@docx-editor.dev/core/store';
 import { createFixedMeasurer, layoutSemanticDocument } from '../../layout/semantic-layout.ts';
-import { paintSemanticLayout, type FieldTone } from '../semantic-paint.ts';
+import type { FieldTone } from '../../contracts/editor-content-control-view.ts';
+import { paintSemanticLayout } from '../semantic-paint.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const measurer = createFixedMeasurer(6, 14);

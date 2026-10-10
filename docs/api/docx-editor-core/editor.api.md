@@ -2185,7 +2185,7 @@ export interface PaginatedSurface {
     setAllRevisionAuthorsVisible(visible: boolean): void;
     setAuthor(author: string | undefined): void;
     setCellSelection(next: CellSelection | null): void;
-    setContentControlTags(display: ContentControlTagDisplay | null): void;
+    setContentControlView(view: ContentControlView | null): void;
     setDrawingStrings(strings: DrawingPaintStrings): void;
     setEditable(editable: boolean): void;
     // (undocumented)
@@ -2263,10 +2263,13 @@ export interface PaginatedSurface {
 export interface PaginatedSurfaceOptions {
     readonly author?: string;
     readonly collaborationModel?: CollaborationModuleContribution;
+    readonly contentControlView?: ContentControlView;
     readonly defaultFontFamily?: string;
     readonly drawingStrings?: DrawingPaintStrings;
     readonly editingMode?: SurfaceEditingMode;
+    readonly fieldSelection?: (instruction: string) => boolean;
     readonly fieldShading?: FieldShadingMode;
+    readonly fieldTone?: FieldTone;
     readonly fontAlias?: (family: string) => string | undefined;
     readonly hiddenRevisionAuthors?: readonly string[];
     readonly imageDecodePort?: ImageDecodePort;

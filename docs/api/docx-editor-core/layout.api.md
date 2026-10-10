@@ -79,7 +79,7 @@ export interface AutofitFieldContext {
     // @internal
     readonly blockControlEdges?: ReadonlyMap<string, BlockControlEdges>;
     readonly bodyPageFields?: BodyPageFieldContext | false;
-    readonly contentControlTags?: ContentControlTagDisplay;
+    readonly contentControlView?: ContentControlView;
     readonly documentProperties?: DocumentProperties;
     readonly fieldCodeRanges?: FieldCodeRanges;
     readonly noteMarks?: NoteMarkContext;
@@ -565,25 +565,7 @@ export function contentControlsInLayout(layout: SemanticLayout): readonly Conten
 export function contentControlsOfLayout(layout: SemanticLayout): readonly ContentControlBoundaryRecord[];
 
 // @public
-export interface ContentControlTagDisplay {
-    // (undocumented)
-    readonly labelsOf: (control: ContentControlTagSubject) => {
-        readonly close?: ContentControlTagLabel;
-        readonly open?: ContentControlTagLabel;
-    } | null;
-    readonly token: string;
-}
-
-// @public
 export type ContentControlTagEdge = 'open' | 'close';
-
-// @public
-export interface ContentControlTagLabel {
-    // (undocumented)
-    readonly text: string;
-    // (undocumented)
-    readonly tone?: string;
-}
 
 // @public
 export type ContentControlTagLevel = 'inline' | 'block';
@@ -600,11 +582,8 @@ export interface ContentControlTagMark {
 }
 
 // @public
-export interface ContentControlTagSubject {
-    // (undocumented)
-    readonly controlId: string;
-    // (undocumented)
-    readonly tag: string | undefined;
+export interface ContentControlView {
+    readonly tags?: ContentControlTagDisplay;
 }
 
 // @public
@@ -3698,7 +3677,7 @@ export interface SemanticLayoutOptions {
     readonly blockControlEdges?: ReadonlyMap<string, BlockControlEdges>;
     readonly cache?: ParagraphLayoutCache<readonly PendingLine[]>;
     readonly compatibilityMode?: number;
-    readonly contentControlTags?: ContentControlTagDisplay;
+    readonly contentControlView?: ContentControlView;
     readonly defaultTabStopPt?: number;
     readonly displayMode?: RevisionDisplayMode;
     readonly documentProperties?: DocumentProperties;

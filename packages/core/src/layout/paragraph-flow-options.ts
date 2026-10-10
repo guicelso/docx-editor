@@ -50,8 +50,8 @@ export interface ParagraphFlowOptions {
   readonly projectFieldLink?: FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
-  /** View-only content-control tags (Design Mode). Absent draws none. */
-  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The host's view over content controls. Absent draws none. */
+  readonly contentControlView?: import('./content-control-view.ts').ContentControlView;
   /** The block controls each paragraph opens and closes, read off the part the tags are drawn on. @internal */
   readonly blockControlEdges?: ReadonlyMap<
     string,

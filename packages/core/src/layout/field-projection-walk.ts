@@ -108,11 +108,11 @@ import {
   contentControlTagPiece,
   contentControlTagSubjectOf,
   fitContentControlTagsToText,
-  type ContentControlTagDisplay,
   type ContentControlTagEdge,
-  type ContentControlTagLabel,
   type ContentControlTagLevel,
 } from './content-control-tags.ts';
+import type { ContentControlTagLabel } from '../contracts/editor-content-control-view.ts';
+import type { ContentControlView } from './content-control-view.ts';
 import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
 
 /** Internal view projection; the public field-reader signature stays unchanged. @internal */
@@ -136,12 +136,13 @@ export function unmergedPiecesOfParagraphForDisplay(
   fieldCodeRanges?: readonly import('./field-code-toc.ts').FieldCodeRange[],
   tocLinkStyleRanges?: readonly import('./toc-link-formatting.ts').TocLinkRange[],
   changeSites?: MutableChangeSite[],
-  contentControlTags?: ContentControlTagDisplay,
+  contentControlView?: ContentControlView,
   blockControlEdges?: ReadonlyMap<string, BlockControlEdges>
 ): FieldAwarePiece[] {
   if (paragraph.kind === 'textValue') return [];
   if (paragraph.kind !== 'paragraph') return [];
   const recordRemoved = removedSiteRecorder(changeSites, displayMode, authorFilter);
+  const contentControlTags = contentControlView?.tags;
   /** The formatting change the view resolved into the run being walked, if any. */
   let runFormatSite: RevisionAttribution | null = null;
 
@@ -1024,7 +1025,7 @@ export function unmergedPiecesOfParagraphForDisplay(
   const blockEdges = contentControlTags ? blockControlEdges?.get(paragraph.id) : undefined;
   const pushBlockTags = (controls: readonly OoxmlElement[], edge: ContentControlTagEdge): void => {
     for (const control of controls) {
-      const label = contentControlTags!.labelsOf(contentControlTagSubjectOf(control))?.[edge];
+      const label = contentControlTags?.labelsOf(contentControlTagSubjectOf(control))?.[edge];
       if (label) pushContentControlTag(control.id, edge, label, 'block');
     }
   };

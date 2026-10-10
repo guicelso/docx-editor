@@ -18,10 +18,8 @@ test.beforeEach(async ({ page }) => {
   await page.goto(`${origin}/?fixture=content-control-tags.docx&e2e=1`);
   await page.waitForFunction(() => window.__DOCX_EDITOR_E2E__?.fontMeasurer() === 'shaped');
   await page.evaluate(() => {
-    const surface = (window.__DOCX_EDITOR_E2E__!.getEditor() as DocxEditorInstance).surface;
-    if (!surface) throw new Error('the editor has no surface yet');
-    surface.setContentControlTags({
-      token: 'tag-names',
+    const editor = window.__DOCX_EDITOR_E2E__!.getEditor() as DocxEditorInstance;
+    editor.setContentControlTags({
       labelsOf: ({ tag }) => ({ open: { text: `${tag} ▸` }, close: { text: `◂ ${tag}` } }),
     });
   });

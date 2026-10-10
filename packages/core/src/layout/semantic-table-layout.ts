@@ -1,5 +1,5 @@
 import { adjustedBreakIndex, paragraphKeeps } from './pagination-keeps.ts';
-import { contentControlTagFlow } from './content-control-tags.ts';
+import { contentControlViewFlow } from './content-control-view.ts';
 import { firstRowContentDeps } from './table-fragment-content-insets.ts';
 import { cellContextualSpacing, contextualCellNeighbours } from './contextual-paragraph-spacing.ts';
 import { emitNestedTable } from './nested-table-layout.ts';
@@ -242,8 +242,8 @@ export interface TableFlowDeps {
   readonly projectFieldLink?: FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
-  /** View-only content-control tags (Design Mode), drawn in cells as in the body. */
-  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The host's view over content controls, drawn in cells as in the body. */
+  readonly contentControlView?: import('./content-control-view.ts').ContentControlView;
   readonly blockControlEdges?: ReadonlyMap<
     string,
     import('../store/store/block-control-edges.ts').BlockControlEdges
@@ -526,7 +526,7 @@ function placeCellParagraph(
         ...(deps.projectLink ? { projectLink: deps.projectLink } : {}),
         ...(deps.projectFieldLink ? { projectFieldLink: deps.projectFieldLink } : {}),
         showFieldCodes: deps.showFieldCodes,
-        ...contentControlTagFlow(deps),
+        ...contentControlViewFlow(deps),
         fieldCodeRanges: deps.fieldCodeRanges?.get(paragraphId),
         tocLinkStyleRanges: deps.tocLinkStyleRanges?.get(paragraphId),
         suppressEmptyPlaceholderLine: deps.fieldCodeRanges

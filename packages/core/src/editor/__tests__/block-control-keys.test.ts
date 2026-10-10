@@ -28,9 +28,8 @@ function open(body: string, tags: boolean): PaginatedSurface {
   const { surface } = mount(body);
   mounted.push(surface);
   if (tags) {
-    surface.setContentControlTags({
-      token: 'keys',
-      labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+    surface.setContentControlView({
+      tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
     });
   }
   return surface;

@@ -436,9 +436,8 @@ describe('content-control tags inside a text box story', () => {
       measurer,
       producer: 'test',
       inlineDrawingLayout: drawingLayoutFor(part),
-      contentControlTags: {
-        token: 'tags',
-        labelsOf: () => ({ open: { text: '[' }, close: { text: ']' } }),
+      contentControlView: {
+        tags: { labelsOf: () => ({ open: { text: '[' }, close: { text: ']' } }) },
       },
     });
     const [text] = storyTexts(boxLine(layout).drawing);

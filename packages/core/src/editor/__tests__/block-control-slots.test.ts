@@ -27,9 +27,8 @@ afterEach(() => {
 function tagged(): PaginatedSurface {
   const { surface } = mount(BODY);
   mounted.push(surface);
-  surface.setContentControlTags({
-    token: 'slots',
-    labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+  surface.setContentControlView({
+    tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
   });
   return surface;
 }
@@ -93,9 +92,8 @@ describe('the slots beside a block tag', () => {
   test('inside the opening tag, with text right after it, is the start of the first paragraph', () => {
     const { surface } = mount(paragraph(run('a')) + control('C', paragraph(run('w'))));
     mounted.push(surface);
-    surface.setContentControlTags({
-      token: 'slots',
-      labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+    surface.setContentControlView({
+      tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
     });
     const paragraphId = idOf(surface, (node) => node.kind === 'paragraph' && textOf(node) === 'w');
     const caret = { paragraphId, offset: 0 };

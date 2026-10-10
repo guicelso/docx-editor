@@ -15,7 +15,7 @@
 // convergence counter never moves because a textbox changed. All bounds are explicit:
 // nesting depth, fragment count, and the extent clip all fail closed with reasons.
 
-import { contentControlTagFlow } from './content-control-tags.ts';
+import { contentControlViewFlow } from './content-control-view.ts';
 import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
 import type { DrawingProjection } from '../store/package/drawing-projection.ts';
 import { emuToPoints } from './drawing-layout.ts';
@@ -112,8 +112,8 @@ export interface TextboxStoryLayoutOptions {
   readonly projectFieldLink?: import('./field-pieces.ts').FieldLinkProjector;
   /** Field-code inspection projection. @internal */
   readonly showFieldCodes?: boolean;
-  /** View-only content-control tags (Design Mode), drawn in the story as in the body. */
-  readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The host's view over content controls, drawn in the story as in the body. */
+  readonly contentControlView?: import('./content-control-view.ts').ContentControlView;
   readonly blockControlEdges?: ReadonlyMap<
     string,
     import('../store/store/block-control-edges.ts').BlockControlEdges
@@ -524,9 +524,7 @@ export function layoutTextboxStory(
   const flow = flowBlocksInBox(blocks, 0, contentWidth, 0, 0, {
     measurer: options.measurer,
     cache: options.cache,
-    producer: `${options.producer}${options.showFieldCodes ? '|field-codes' : ''}${
-      options.contentControlTags ? `|cc-tags:${options.contentControlTags.token}` : ''
-    }|txbx:${projection.drawingNodeId}`,
+    producer: `${options.producer}${options.showFieldCodes ? '|field-codes' : ''}|txbx:${projection.drawingNodeId}`,
     nextLineId: () => `${prefix}-line-${lineCounter++}`,
     styleCascade: options.styleCascade,
     ...(listItems ? { listItems } : {}),
@@ -535,7 +533,7 @@ export function layoutTextboxStory(
     ...(options.projectLink ? { projectLink: options.projectLink } : {}),
     ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
     showFieldCodes: options.showFieldCodes,
-    ...contentControlTagFlow(options),
+    ...contentControlViewFlow(options),
     compatibilityMode: options.compatibilityMode,
     tableNestingOffset: 1,
     ...(options.defaultTabStopPt !== undefined

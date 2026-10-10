@@ -40,9 +40,8 @@ function plain(body: string): PaginatedSurface {
 
 function tagged(body: string): PaginatedSurface {
   const surface = plain(body);
-  surface.setContentControlTags({
-    token: 'slots',
-    labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+  surface.setContentControlView({
+    tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
   });
   return surface;
 }
@@ -191,7 +190,7 @@ describe('the caret slot at a tagged edge', () => {
 
   test('without tags there is no slot, and typing keeps the store’s own rule', () => {
     const surface = tagged(GROUP);
-    surface.setContentControlTags(null);
+    surface.setContentControlView(null);
     putCaret(surface, 4);
     expect(surface.state().contentControls.caretSlot).toBeNull();
   });
@@ -280,9 +279,8 @@ describe('the caret after an edit stays where the edit happened', () => {
   test('a composed accent lands in the slot, as a typed one does', () => {
     const { surface, container } = mount(`<w:p>${GROUP}</w:p>`);
     mounted.push(surface);
-    surface.setContentControlTags({
-      token: 'slots',
-      labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }),
+    surface.setContentControlView({
+      tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
     });
     putCaret(surface, 6);
     surface.navigate('left');

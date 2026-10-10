@@ -5,10 +5,13 @@
 // to the document, so every offset after a tag still agrees with the store.
 
 import type { OoxmlElement } from '@docx-editor.dev/core/store';
+import type {
+  ContentControlTagLabel,
+  ContentControlTagSubject,
+} from '../contracts/editor-content-control-view.ts';
 import { contentControlPropertiesOf, propertyVal } from './content-control-properties.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
-import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
 
 /** The text a tag measures and paints: one unbreakable unit, its spaces made non-breaking. */
 export function contentControlTagText(label: ContentControlTagLabel): string {
@@ -41,41 +44,6 @@ export function contentControlTagChromePt(style: Pick<ResolvedRunStyle, 'fontSiz
 
 /** Which edge of the control a tag stands at. @public */
 export type ContentControlTagEdge = 'open' | 'close';
-
-/**
- * What a host draws at one edge. @public
- *
- * `tone` is an opaque name the chip publishes as `data-cc-tag-tone`, so the host's stylesheet
- * colours it with its own theme. Letters, digits and `-`, starting with a letter, at most 32;
- * anything else draws the neutral chip.
- */
-export interface ContentControlTagLabel {
-  readonly text: string;
-  readonly tone?: string;
-}
-
-/** The control a host labels, as the file states it. `tag` is untrusted file data. @public */
-export interface ContentControlTagSubject {
-  readonly controlId: string;
-  readonly tag: string | undefined;
-}
-
-/**
- * The host's answer for every inline control: the two labels, or null to draw none. @public
- *
- * Must be pure and cheap — it runs once per control per layout pass. When its answers change
- * the host re-installs it, which invalidates every cached page, as toggling field codes does.
- */
-export interface ContentControlTagDisplay {
-  /**
-   * Names this labeling for the layout caches: change it whenever `labelsOf` would answer
-   * differently, or cached paragraphs keep the old tags.
-   */
-  readonly token: string;
-  readonly labelsOf: (
-    control: ContentControlTagSubject
-  ) => { readonly open?: ContentControlTagLabel; readonly close?: ContentControlTagLabel } | null;
-}
 
 /** Whether a tag's control sits inside a paragraph or holds whole paragraphs. @public */
 export type ContentControlTagLevel = 'inline' | 'block';
@@ -188,21 +156,4 @@ export function contentControlTagStyle(base: ResolvedRunStyle): ResolvedRunStyle
     horizontalScalePercent: 100,
     hidden: false,
   };
-}
-
-/** What a lane forwards to draw tags: the host's labels and the block edges of the part. */
-export interface ContentControlTagFlow {
-  readonly contentControlTags?: ContentControlTagDisplay;
-  readonly blockControlEdges?: ReadonlyMap<string, BlockControlEdges>;
-}
-
-/**
- * The tag inputs a lane hands the next one. The two travel together: block edges mean nothing
- * without labels to draw at them, and labels without them would draw no block tag.
- */
-export function contentControlTagFlow(inputs: ContentControlTagFlow): ContentControlTagFlow {
-  if (!inputs.contentControlTags) return {};
-  return inputs.blockControlEdges
-    ? { contentControlTags: inputs.contentControlTags, blockControlEdges: inputs.blockControlEdges }
-    : { contentControlTags: inputs.contentControlTags };
 }

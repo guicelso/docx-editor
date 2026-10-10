@@ -30,7 +30,7 @@ export type LeadingBreakView = Pick<
   | 'displayMode'
   | 'revisionAuthorFilter'
   | 'showFieldCodes'
-  | 'contentControlTags'
+  | 'contentControlView'
   | 'blockControlEdges'
   | 'fieldCodeRanges'
   | 'styleCascade'
@@ -81,7 +81,7 @@ export function createLeadingBreakGroups(
       undefined,
       undefined,
       // Tags are displayed text: a chip before the break is what the first line holds.
-      view.contentControlTags,
+      view.contentControlView,
       view.blockControlEdges
     );
     // The same test `opensWithPageBreak` applies to the lines: the first line holds only the

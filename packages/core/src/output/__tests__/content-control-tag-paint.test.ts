@@ -7,10 +7,8 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '@docx-editor.dev/core/store';
-import {
-  contentControlTagInsetsPt,
-  type ContentControlTagDisplay,
-} from '../../layout/content-control-tags.ts';
+import { contentControlTagInsetsPt } from '../../layout/content-control-tags.ts';
+import type { ContentControlTagDisplay } from '../../contracts/editor-content-control-view.ts';
 import { createFixedMeasurer, layoutSemanticDocument } from '../../layout/semantic-layout.ts';
 import type { StyleSpanRecord } from '../../layout/semantic-records.ts';
 import { paintSemanticLayout } from '../semantic-paint.ts';
@@ -33,7 +31,10 @@ const BODY =
   '<w:sdtContent><w:r><w:t>RG</w:t></w:r></w:sdtContent></w:sdt></w:p>';
 
 function chips(display: ContentControlTagDisplay): HTMLElement[] {
-  const layout = layoutSemanticDocument(load(BODY), 1, { measurer, contentControlTags: display });
+  const layout = layoutSemanticDocument(load(BODY), 1, {
+    measurer,
+    contentControlView: { tags: display },
+  });
   const container = document.createElement('div');
   paintSemanticLayout(container, layout, { scale: 1, ariaHidden: false });
   return [...container.querySelectorAll<HTMLElement>('[data-cc-tag-control]')];
@@ -42,7 +43,6 @@ function chips(display: ContentControlTagDisplay): HTMLElement[] {
 describe('painting a content-control tag', () => {
   test('publishes the control, the edge and the host tone, and is a chip by class', () => {
     const [open, close] = chips({
-      token: 't',
       labelsOf: () => ({ open: { text: 'Se', tone: 'optional' }, close: { text: '◂' } }),
     });
     expect(open?.classList.contains('docx-cc-tag')).toBe(true);
@@ -55,7 +55,6 @@ describe('painting a content-control tag', () => {
 
   test('a tone that is not a plain name never reaches the attribute', () => {
     const [open] = chips({
-      token: 't',
       labelsOf: () => ({ open: { text: 'Se', tone: 'x" onclick="alert(1)' } }),
     });
     expect(open?.dataset.ccTagTone).toBeUndefined();
@@ -63,7 +62,6 @@ describe('painting a content-control tag', () => {
 
   test('writes no colour, fill or shadow of its own: those are the stylesheet’s', () => {
     const [open] = chips({
-      token: 't',
       labelsOf: () => ({ open: { text: 'Se', tone: 'optional' } }),
     });
     expect(open?.style.color).toBe('');
@@ -72,7 +70,7 @@ describe('painting a content-control tag', () => {
   });
 
   test('is furniture: hidden from assistive technology and not editable', () => {
-    const [open] = chips({ token: 't', labelsOf: () => ({ open: { text: 'Se' } }) });
+    const [open] = chips({ labelsOf: () => ({ open: { text: 'Se' } }) });
     expect(open?.getAttribute('aria-hidden')).toBe('true');
     expect(open?.contentEditable).toBe('false');
     expect(open?.dataset.paragraphId).toBeUndefined();
@@ -123,7 +121,7 @@ describe('painting a content-control tag', () => {
       '<w:r><w:t xml:space="preserve"> dezessete dezoito dezenove vinte vinte e um vinte e dois</w:t></w:r></w:p>';
     const layout = layoutSemanticDocument(load(justified), 1, {
       measurer,
-      contentControlTags: { token: 't', labelsOf: () => ({ open: { text: 'Se' } }) },
+      contentControlView: { tags: { labelsOf: () => ({ open: { text: 'Se' } }) } },
     });
     const container = document.createElement('div');
     paintSemanticLayout(container, layout, { scale: 1, ariaHidden: false });
@@ -156,7 +154,7 @@ function paintedChip(labels: ReturnType<ContentControlTagDisplay['labelsOf']>): 
 } {
   const layout = layoutSemanticDocument(load(BODY), 1, {
     measurer,
-    contentControlTags: { token: 't', labelsOf: () => labels },
+    contentControlView: { tags: { labelsOf: () => labels } },
   });
   const container = document.createElement('div');
   paintSemanticLayout(container, layout, { scale: 2, ariaHidden: false });

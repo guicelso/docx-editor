@@ -502,13 +502,11 @@ export {
   contentControlRecordsInPart,
 } from './content-control-boundary-layout.ts';
 export type {
-  ContentControlTagDisplay,
   ContentControlTagEdge,
-  ContentControlTagLabel,
   ContentControlTagLevel,
   ContentControlTagMark,
-  ContentControlTagSubject,
 } from './content-control-tags.ts';
+export type { ContentControlView } from './content-control-view.ts';
 export {
   caretSlotsAt,
   sameCaretSlotNeighbour,

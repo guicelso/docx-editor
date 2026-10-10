@@ -8,10 +8,8 @@ import { forEachSemanticSpan } from '../export-traversal.ts';
 import { hitTestPage } from '../semantic-hit-test.ts';
 import { anchorLineStartsByModelOffset } from '../anchor-line-probe.ts';
 import { DEFAULT_RUN_STYLE } from '../run-style.ts';
-import {
-  contentControlTagChromePt,
-  type ContentControlTagDisplay,
-} from '../content-control-tags.ts';
+import { contentControlTagChromePt } from '../content-control-tags.ts';
+import type { ContentControlTagDisplay } from '../../contracts/editor-content-control-view.ts';
 import {
   caretAt,
   caretStops,
@@ -48,7 +46,6 @@ const LABELS: Record<string, readonly [string, string]> = {
 };
 
 const TAGS: ContentControlTagDisplay = {
-  token: 'spike',
   labelsOf: ({ tag }) => {
     const pair = tag === undefined ? undefined : LABELS[tag];
     return pair ? { open: { text: pair[0] }, close: { text: pair[1] } } : null;
@@ -59,7 +56,7 @@ const measurer = createFixedMeasurer(6, 14);
 const layoutOf = (tags?: ContentControlTagDisplay) =>
   layoutSemanticDocument(documentOf(BODY), 0, {
     measurer,
-    ...(tags ? { contentControlTags: tags } : {}),
+    ...(tags ? { contentControlView: { tags } } : {}),
   });
 
 function spansOf(layout: ReturnType<typeof layoutSemanticDocument>): StyleSpanRecord[] {
@@ -118,7 +115,6 @@ describe('content-control tags', () => {
 
   test('a label is one chip at every break opportunity: a dash, a tab, a line too narrow', () => {
     const label = (text: string): ContentControlTagDisplay => ({
-      token: text,
       labelsOf: () => ({ open: { text }, close: { text } }),
     });
     for (const text of ['group-1 ▸', 'a\tb', `wide-${'x'.repeat(200)}`]) {
@@ -144,7 +140,7 @@ describe('content-control tags', () => {
       `<w:r><w:rPr>${extra}<w:sz w:val="${halfPoints}"/></w:rPr><w:t xml:space="preserve">${text}</w:t></w:r>`;
     const body = `<w:p>${sized(20, 'CPF ')}${sdt('span:alternatives:g1', sized(28, 'RG', '<w:b/>'))}${sized(16, ' fim')}</w:p>`;
     const spans = spansOf(
-      layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlTags: TAGS })
+      layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlView: { tags: TAGS } })
     );
     const text = spans.find((span) => span.text === 'RG')!;
     const chips = spans.filter((span) => span.contentControlTag);
@@ -159,7 +155,7 @@ describe('content-control tags', () => {
   test('a chip with no text inside its control takes the text on its other side', () => {
     const body = `<w:p><w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:t>CPF</w:t></w:r>${sdt('span:alternatives:g1', '')}</w:p>`;
     const chips = spansOf(
-      layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlTags: TAGS })
+      layoutSemanticDocument(documentOf(body), 0, { measurer, contentControlView: { tags: TAGS } })
     ).filter((span) => span.contentControlTag);
     expect(chips.map((chip) => chip.style.fontSizePt)).toEqual([14, 14]);
   });
@@ -250,7 +246,7 @@ describe('content-control tags in a table cell', () => {
   const cellTexts = (tags?: ContentControlTagDisplay) => {
     const layout = layoutSemanticDocument(documentOf(CELL), 0, {
       measurer,
-      ...(tags ? { contentControlTags: tags } : {}),
+      ...(tags ? { contentControlView: { tags } } : {}),
     });
     const texts: string[] = [];
     forEachSemanticSpan(layout, ({ span }) => texts.push(span.text));
@@ -263,13 +259,12 @@ describe('content-control tags in a table cell', () => {
 
   test('a label stays one chip in an auto-width cell and beside CJK prose', () => {
     const hyphenated: ContentControlTagDisplay = {
-      token: 'hyphenated',
       labelsOf: () => ({ open: { text: 'group-1' }, close: { text: 'group-1' } }),
     };
     for (const body of [CELL, `<w:p>${run('漢字 ')}${sdt('span:optional:c1', run('RG'))}</w:p>`]) {
       const layout = layoutSemanticDocument(documentOf(body), 0, {
         measurer,
-        contentControlTags: hyphenated,
+        contentControlView: { tags: hyphenated },
       });
       const chips: string[] = [];
       forEachSemanticSpan(layout, ({ span }) => {
@@ -287,9 +282,10 @@ describe('content-control tags in a table cell', () => {
       `<w:tr>${autoCell(sdt('c1', run('a')))}${autoCell(run('zzzz '.repeat(200)))}</w:tr></w:tbl><w:p/>`;
     const layout = layoutSemanticDocument(documentOf(table), 0, {
       measurer,
-      contentControlTags: {
-        token: 'squeezed',
-        labelsOf: () => ({ open: { text: `wide-${'y'.repeat(12)}` }, close: { text: '◂' } }),
+      contentControlView: {
+        tags: {
+          labelsOf: () => ({ open: { text: `wide-${'y'.repeat(12)}` }, close: { text: '◂' } }),
+        },
       },
     });
     let chipRight = 0;
@@ -319,7 +315,6 @@ describe('content-control tags in a table cell', () => {
 });
 
 const TAGS_FOR_CELL: ContentControlTagDisplay = {
-  token: 'cell',
   labelsOf: () => ({ open: { text: '[' }, close: { text: ']' } }),
 };
 
