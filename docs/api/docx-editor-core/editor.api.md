@@ -3119,6 +3119,9 @@ export interface SemanticSelection {
 }
 
 // @public
+export type SessionEditOptions = Pick<EditOptions, 'placeholderPrompt'>;
+
+// @public
 export function shiftMonth(year: number, month: number, delta: 1 | -1): {
     readonly month: number;
     readonly year: number;
@@ -3538,6 +3541,7 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
     documentThemeColors(): readonly DocumentThemeColorEntry[];
     documentThemeFonts(): DocumentThemeFonts;
     readonly editable: boolean;
+    editOptions(): SessionEditOptions;
     effectiveRunDefaults(paragraphId: string, runProperties?: readonly RunPropertyLike[]): StyleRunDefaults;
     embeddedFonts(): readonly EmbeddedFont[];
     // (undocumented)

@@ -112,11 +112,12 @@ import { commitSessionTreeOps, commitSessionTreeOpsAtomic } from './tree-session
 // tree-session-contract.ts; re-exported so every existing import through this module stays
 // stable.
 import type {
+  SessionEditOptions,
   TreeApplyOptions,
   TreeApplyResult,
   TreeDocxSessionView,
 } from './tree-session-contract.ts';
-export type { TreeApplyOptions, TreeApplyResult, TreeDocxSessionView };
+export type { SessionEditOptions, TreeApplyOptions, TreeApplyResult, TreeDocxSessionView };
 
 /**
  * Binding-only session methods that exchange ProseMirror projections.
@@ -741,6 +742,9 @@ export function openTreeSession(
       applyTreeOpsAtomic(groups, options = {}) {
         return commitSessionTreeOpsAtomic(packageStore, groups, options);
       },
+
+      editOptions: () =>
+        options.placeholderPrompt ? { placeholderPrompt: options.placeholderPrompt } : {},
 
       projectDoc: () => treeToDoc(bodyStore().part),
 

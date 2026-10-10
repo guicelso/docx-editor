@@ -76,6 +76,9 @@ export function reconcileDoc(previousDoc: Node_2, part: OoxmlPart, change: {
 export function runPropsOf(node: Node_2): readonly OoxmlProperty[];
 
 // @public
+export type SessionEditOptions = Pick<EditOptions, 'placeholderPrompt'>;
+
+// @public
 export type StoryScope = {
     readonly kind: 'body';
 } | {
@@ -153,6 +156,7 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
     documentThemeColors(): readonly DocumentThemeColorEntry[];
     documentThemeFonts(): DocumentThemeFonts;
     readonly editable: boolean;
+    editOptions(): SessionEditOptions;
     effectiveRunDefaults(paragraphId: string, runProperties?: readonly RunPropertyLike[]): StyleRunDefaults;
     embeddedFonts(): readonly EmbeddedFont[];
     // (undocumented)

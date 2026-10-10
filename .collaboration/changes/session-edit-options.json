@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A host that rehearsed ops with applyTreeOp could not know the placeholder prompt the session writes, and had to override the engine's translation to keep both in step.",
+  "after": "The session publishes its edit options, and a rehearsal passes them to applyTreeOp.",
+  "reason": "A read of the session's own options: nothing new is written to the document or replicated.",
+  "tests": ["packages/core/src/editor/__tests__/content-control-prompt-translate.test.ts"],
+  "changeset": "session-edit-options",
+  "migration": null
+}

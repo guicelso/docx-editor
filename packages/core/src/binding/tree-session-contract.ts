@@ -6,6 +6,7 @@
 
 import type {
   BookmarkIndex,
+  EditOptions,
   EmbeddedFont,
   HeaderFooterParts,
   HeaderFooterSectionResolution,
@@ -52,6 +53,9 @@ export interface TreeApplyResult {
   /** Present when the edit was refused, so a host can report WHY rather than a silent no-op. */
   readonly reason?: TreeBindingRejection | StoryTargetRejection | string;
 }
+
+/** The edit options that belong to a session rather than to one transaction. @public */
+export type SessionEditOptions = Pick<EditOptions, 'placeholderPrompt'>;
 
 /** Optional collaboration attribution and history grouping for a direct tree-op transaction. */
 export type TreeApplyOptions = Pick<
@@ -123,6 +127,13 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
     groups: readonly { readonly scope: StoryScope; readonly ops: readonly TreeDocOp[] }[],
     options?: TreeApplyOptions
   ): TreeApplyResult;
+  /**
+   * The options this session applies every op with, beyond what one transaction brings. A host
+   * that rehearses ops on a part with `applyTreeOp` before committing them passes these, so the
+   * rehearsal writes what the commit will: the prompt an emptied control takes, in the reader's
+   * language.
+   */
+  editOptions(): SessionEditOptions;
   /**
    * Every part that holds a story, body first, then headers, footers and note parts.
    *
