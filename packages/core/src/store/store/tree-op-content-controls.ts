@@ -14,6 +14,8 @@ import {
 } from './content-control-checkbox.ts';
 import { valueContent, withParagraphDiff } from './content-control-value-content.ts';
 import { validateCommitTextFormField } from './tree-op-field-results.ts';
+import { formatContentControlDate, parseIsoCalendarDate } from './content-control-date-format.ts';
+import { blockPlaceAnchorOf } from './tree-op-block-place.ts';
 import { enforcesFormsProtection, sectionProtectsForms } from './forms-protection.ts';
 export {
   enforcesFormsProtection,
@@ -366,6 +368,11 @@ const TREE_OP_REACH: {
   // like the range shape, and a caret at a control's EDGE lands outside that control, which is
   // exactly where the applier puts it.
   insertContentControl: (op) => over(op.paragraphId, op.start, op.end),
+  // A block control is written BESIDE the blocks it takes or stands next to: the controls that
+  // enclose them answer, and the ones they hold are moved, never edited. A place inside a prompt
+  // replaces that control's content, as a value write does. A place of no known shape fails wide.
+  wrapBlocksInContentControl: (op) => whole(op.firstBlockId),
+  insertBlockContentControl: (op) => blockPlaceReach(op.at),
   insertInlineContentControl: (op) => splittingControlAt(op.paragraphId, op.offset),
   insertFragment: (op) => siblingAt(op.paragraphId, op.offset),
   // A split at a control's edge moves the whole control to one side of the break and changes
@@ -572,6 +579,14 @@ const TREE_OP_REACH: {
   linkToPrevious: () => ({ kind: 'none' }),
   unlinkFromPrevious: () => ({ kind: 'none' }),
 };
+
+function blockPlaceReach(place: Parameters<typeof blockPlaceAnchorOf>[0]): TreeOpReach {
+  const anchor = blockPlaceAnchorOf(place);
+  if (anchor === null) return { kind: 'part' };
+  return place !== null && typeof place === 'object' && 'inside' in place
+    ? { kind: 'control', controlId: anchor, intent: 'value', replacesContent: true }
+    : whole(anchor);
+}
 
 /** The op kinds the classification declares, for the test that proves it covers the vocabulary. */
 export const TREE_OP_REACH_CLASSIFIED: ReadonlySet<string> = new Set(Object.keys(TREE_OP_REACH));
@@ -1263,78 +1278,6 @@ function namedElementChild(
 // Value semantics
 // ---------------------------------------------------------------------------
 
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T[\d:.]{1,15}Z?)?$/;
-
-/** ISO input, validated as a real calendar date rather than a well-shaped string. */
-function parseIsoDate(raw: string): { year: number; month: number; day: number } | null {
-  const match = ISO_DATE.exec(raw);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1) return null;
-  if (date.getUTCDate() !== day) return null;
-  return { year, month, day };
-}
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-/**
- * Format a date the way the control's own `w:dateFormat` asks.
- *
- * A BOUNDED token substitution over the patterns Word writes, not a locale engine: the format
- * comes out of an untrusted file, so it is walked once, left to right, with no backtracking and
- * no repetition driven by a file-supplied count.
- */
-export function formatContentControlDate(
-  date: { year: number; month: number; day: number },
-  pattern: string | undefined
-): string {
-  const iso = `${String(date.year).padStart(4, '0')}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-  if (!pattern || pattern.length === 0 || pattern.length > 64) return iso;
-  let out = '';
-  let index = 0;
-  while (index < pattern.length) {
-    const char = pattern[index]!;
-    if (char !== 'y' && char !== 'M' && char !== 'd') {
-      out += char;
-      index += 1;
-      continue;
-    }
-    let run = 0;
-    while (index + run < pattern.length && pattern[index + run] === char) run += 1;
-    if (char === 'y')
-      out += run <= 2 ? String(date.year % 100).padStart(2, '0') : String(date.year);
-    else if (char === 'M') {
-      out +=
-        run >= 4
-          ? MONTH_NAMES[date.month - 1]!
-          : run === 3
-            ? MONTH_NAMES[date.month - 1]!.slice(0, 3)
-            : String(date.month).padStart(Math.min(run, 2), '0');
-    } else {
-      out += String(date.day).padStart(Math.min(run, 2), '0');
-    }
-    index += run;
-  }
-  return out;
-}
-
 interface PlannedValue {
   /** What the control's content becomes. */
   readonly text: string;
@@ -1436,7 +1379,7 @@ function planValue(
     }
     case 'date': {
       if (properties.type !== 'date') return 'typeMismatch';
-      const parsed = typeof value.iso === 'string' ? parseIsoDate(value.iso) : null;
+      const parsed = typeof value.iso === 'string' ? parseIsoCalendarDate(value.iso) : null;
       if (!parsed) return 'invalidArgs';
       const iso = `${String(parsed.year).padStart(4, '0')}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}`;
       return {

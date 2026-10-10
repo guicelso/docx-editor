@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A host could author a content control only around a range inside one paragraph (insertContentControl). A control around whole paragraphs was read, painted and saved intact, but nothing could write one.",
+  "after": "wrapBlocksInContentControl { firstBlockId, lastBlockId, tag?, lock? } wraps sibling blocks in a new rich-text block control; insertBlockContentControl { at: { before | after | inside }, tag?, lock?, paragraphs? } writes one at a place between blocks, with the paragraphs given (fresh node and paragraph ids) or a paragraph showing the prompt. Both refuse a revision.",
+  "reason": "Both ops reduce to one children replacement in the container they write into, which the journal already replicates; released participants receive the resulting shared state, never the new op kinds.",
+  "tests": [
+    "packages/core/src/store/__tests__/block-content-control-ops.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+    "packages/core/src/editor/__tests__/suggesting-insert-lanes.test.ts"
+  ],
+  "changeset": "block-content-controls",
+  "migration": null
+}

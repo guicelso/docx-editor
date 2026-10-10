@@ -17,7 +17,9 @@ type RevisionCapableOp = Extract<
       | 'deleteTableRow'
       | 'setRunProperties'
       | 'setParagraphProperties'
-      | 'setParagraphMarkProperties';
+      | 'setParagraphMarkProperties'
+      | 'wrapBlocksInContentControl'
+      | 'insertBlockContentControl';
   }
 >;
 const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapableOp['op']>([
@@ -34,6 +36,10 @@ const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapab
   'setRunProperties',
   'setParagraphProperties',
   'setParagraphMarkProperties',
+  // Stamped so the store can refuse them: a block control has no tracked form, and passed through
+  // unattributed it would land as a permanent change in a document where every edit is a proposal.
+  'wrapBlocksInContentControl',
+  'insertBlockContentControl',
 ]);
 
 export function isRevisionCapable(op: TreeDocOp): op is RevisionCapableOp {

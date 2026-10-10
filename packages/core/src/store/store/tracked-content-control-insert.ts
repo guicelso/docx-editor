@@ -114,7 +114,7 @@ export function applyTrackedContentControl(
   if (!after || after.kind !== 'paragraph') return { ok: false, reason: 'unknown-paragraph' };
   const mint = createNodeIdAllocator(deleted.part);
   const control = controlElement(
-    propertiesFor(deleted.part, op, mint),
+    propertiesFor(deleted.part, { ...op, showingPlaceholder: false }, mint),
     selected.map((node) => copy(mint, node)),
     mint
   );

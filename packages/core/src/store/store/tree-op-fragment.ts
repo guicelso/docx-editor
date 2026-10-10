@@ -55,7 +55,8 @@ export const MAX_FRAGMENT_NODES = 500_000;
 
 const INSERTABLE_BLOCK_KINDS = new Set(['paragraph', 'table', 'contentControl']);
 
-function fragmentShape(
+/** Whether a node a caller hands in is a tree this lane can take, within the budgets. */
+export function fragmentShape(
   node: OoxmlNode,
   depth: number,
   budget: { nodes: number }

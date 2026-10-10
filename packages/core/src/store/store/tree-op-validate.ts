@@ -3,6 +3,7 @@ import { validateSetLegacyDropdown } from './legacy-dropdown-fields.ts';
 import { validateHyperlinkRange } from './tree-op-hyperlink-range.ts';
 import { validateSetFieldCode } from './tree-op-field-code.ts';
 import { isMergeFieldOp, validateMergeFieldOp } from './tree-op-merge-fields.ts';
+import { isBlockStructureOp, validateBlockStructureOp } from './tree-op-block-structure.ts';
 import { validateTableAuthoring } from './tree-op-table-batch.ts';
 import { validateTableProperties } from './tree-op-table-authoring.ts';
 import { validateCommitTextFormField } from './tree-op-field-results.ts';
@@ -346,6 +347,7 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
     return null;
   }
   if (op.op === 'insertContentControl') return validateInsertContentControl(part, op);
+  if (isBlockStructureOp(op)) return validateBlockStructureOp(part, op);
 
   // Package-level furniture ops cannot run against a single part. Shape-check here so
   // applyTreeOp refuses them; TreePackageStore.applyLifecycleOp is the commit path.

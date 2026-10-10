@@ -623,6 +623,18 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
       end: 5,
       type: 'plainText',
     })),
+    story('wrapBlocksInContentControl', plainDoc(), (store) => ({
+      op: 'wrapBlocksInContentControl',
+      firstBlockId: paragraphIds(store)[0]!,
+      lastBlockId: paragraphIds(store)[1]!,
+      tag: 'span:optional:7c1f0a52-3b64-4d8e-9a10-2f5c6d7e8b90',
+      lock: 'sdtLocked',
+    })),
+    story('insertBlockContentControl', plainDoc(), (store) => ({
+      op: 'insertBlockContentControl',
+      at: { after: firstParagraphId(store) },
+      tag: 'span:optional:7c1f0a52-3b64-4d8e-9a10-2f5c6d7e8b90',
+    })),
     {
       kind: 'insertFragment',
       bytes: plainDoc(),

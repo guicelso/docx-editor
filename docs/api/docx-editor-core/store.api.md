@@ -179,6 +179,15 @@ export interface AuthorizationPort {
 export function beginOperation(init: OperationInit): OperationContext;
 
 // @public
+export type BlockPlace = {
+    readonly before: string;
+} | {
+    readonly after: string;
+} | {
+    readonly inside: string;
+};
+
+// @public
 export function bodyStoryRoot(part: OoxmlPart): OoxmlNode | null;
 
 // @public
@@ -1995,6 +2004,21 @@ export interface InlineDestinationFields {
         readonly side: 'before' | 'after';
     };
     readonly inside?: string;
+}
+
+// @public
+export interface InsertBlockContentControlOp {
+    // (undocumented)
+    readonly at: BlockPlace;
+    // (undocumented)
+    readonly lock?: ContentControlLock;
+    // (undocumented)
+    readonly op: 'insertBlockContentControl';
+    // (undocumented)
+    readonly paragraphs?: readonly OoxmlParagraphNode[];
+    readonly revision?: RevisionAttributionInput;
+    // (undocumented)
+    readonly tag?: string;
 }
 
 // @public
@@ -4505,10 +4529,10 @@ export interface TransportPort {
 }
 
 // @public
-export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "setFieldCode", "insertMergeField", "setMergeField", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock"];
+export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "setFieldCode", "insertMergeField", "setMergeField", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "wrapBlocksInContentControl", "insertBlockContentControl", "insertFragment", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock"];
 
 // @public
-export type TreeDocOp = SetFieldCodeOp | InsertMergeFieldOp | SetMergeFieldOp | {
+export type TreeDocOp = SetFieldCodeOp | InsertMergeFieldOp | SetMergeFieldOp | BlockStructureOp | {
     readonly op: 'replaceStoryBlocks';
     readonly paragraphs: readonly string[];
     readonly storyRootId: string;
@@ -5454,6 +5478,21 @@ export function withRelationship(pkg: OoxmlPackage, ownerPart: string, type: str
 
 // @public
 export const WML_NAMESPACE_URI = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+// @public
+export interface WrapBlocksInContentControlOp {
+    // (undocumented)
+    readonly firstBlockId: string;
+    // (undocumented)
+    readonly lastBlockId: string;
+    // (undocumented)
+    readonly lock?: ContentControlLock;
+    // (undocumented)
+    readonly op: 'wrapBlocksInContentControl';
+    readonly revision?: RevisionAttributionInput;
+    // (undocumented)
+    readonly tag?: string;
+}
 
 // @public
 export function wrapTargetToAnchorSpec(target: ImageWrapTarget): {

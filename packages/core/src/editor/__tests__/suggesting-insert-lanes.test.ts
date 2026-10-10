@@ -525,4 +525,20 @@ describe('insert lanes in suggesting mode', () => {
       expect(notesAfter).not.toMatch(/<w:footnote w:id="[1-9]/);
     });
   });
+
+  test('a block control has no proposal, so suggesting refuses it rather than writing it outright', () => {
+    withSurface(plainParagraph('Alpha') + plainParagraph('Beta'), (surface) => {
+      const [first, second] = surface.session.paragraphIds();
+      const before = serializeOoxmlPart(surface.session.part());
+      const wrap = surface.applyAutomationOps(() => [
+        { op: 'wrapBlocksInContentControl', firstBlockId: first!, lastBlockId: second!, tag: 't' },
+      ]);
+      const insert = surface.applyAutomationOps(() => [
+        { op: 'insertBlockContentControl', at: { after: first! }, tag: 't' },
+      ]);
+
+      expect([wrap.committed, insert.committed]).toEqual([false, false]);
+      expect(serializeOoxmlPart(surface.session.part())).toBe(before);
+    });
+  });
 });

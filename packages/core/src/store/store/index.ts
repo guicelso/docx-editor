@@ -29,6 +29,11 @@ export {
 } from './tree-ops.ts';
 export { contentControlEdgesAt, type ContentControlEdge } from './content-control-edges.ts';
 export type { InlineDestinationFields } from './tree-op-inline-destination.ts';
+export type { BlockPlace } from './tree-op-block-place.ts';
+export type {
+  InsertBlockContentControlOp,
+  WrapBlocksInContentControlOp,
+} from './tree-op-block-structure.ts';
 export {
   extractFragmentPackage,
   type FragmentCoverage,

@@ -60,26 +60,37 @@ const TYPE_ELEMENT_FOR: Readonly<Record<InsertableContentControlKind, string>> =
 
 type InsertOp = Extract<TreeDocOp, { op: 'insertContentControl' }>;
 
-/** `w:sdtPr` + the type element, in schema order, with the op's metadata on it. */
-export function propertiesFor(part: OoxmlPart, op: InsertOp, nextId: () => string): OoxmlElement {
+/** What a new control's `w:sdtPr` says, at either level. */
+export interface NewControlProperties extends Pick<InsertOp, 'tag' | 'alias' | 'lock' | 'type'> {
+  /**
+   * A wrapper holds content the caller chose, so it shows no prompt; an empty control holds
+   * nothing but one, and the flag is what makes the first keystroke replace it whole rather
+   * than append to it.
+   */
+  readonly showingPlaceholder: boolean;
+}
+
+/** `w:sdtPr` + the type element, in schema order, with the caller's metadata on it. */
+export function propertiesFor(
+  part: OoxmlPart,
+  control: NewControlProperties,
+  nextId: () => string
+): OoxmlElement {
   // Inside the store transaction, so the collaboration actor is already bound. A second
   // local max+1 here would ignore that bind and collide the moment two peers insert.
   const allocated = allocateContentControlId(part.root);
   const properties = editedProperties(
     undefined,
     {
-      ...(op.tag === undefined ? {} : { tag: op.tag }),
-      ...(op.alias === undefined ? {} : { alias: op.alias }),
+      ...(control.tag === undefined ? {} : { tag: control.tag }),
+      ...(control.alias === undefined ? {} : { alias: control.alias }),
       ...(allocated === null ? {} : { id: allocated }),
-      ...(op.lock === undefined ? {} : { lock: op.lock }),
-      // A wrapper holds content the caller chose, so it shows no prompt; an empty control
-      // holds nothing but one, and the flag is what makes the first keystroke replace it
-      // whole rather than append to it.
-      ...(op.start === op.end ? { showingPlaceholder: true } : {}),
+      ...(control.lock === undefined ? {} : { lock: control.lock }),
+      ...(control.showingPlaceholder ? { showingPlaceholder: true } : {}),
     },
     nextId
   );
-  const typed = wmlElement(nextId, TYPE_ELEMENT_FOR[op.type]);
+  const typed = wmlElement(nextId, TYPE_ELEMENT_FOR[control.type]);
   return {
     ...properties,
     children: orderedContentControlProperties([...properties.children, typed]),
@@ -190,7 +201,11 @@ function wrapRangeInContentControl(
   if (!covered) return { ok: false, reason: 'invalid-range' };
 
   const nextId = createNodeIdAllocator(current);
-  const control = controlElement(propertiesFor(current, op, nextId), wrapped, nextId);
+  const control = controlElement(
+    propertiesFor(current, { ...op, showingPlaceholder: false }, nextId),
+    wrapped,
+    nextId
+  );
 
   const wrappedIds = new Set(wrapped.map((child) => child.id));
   let placed = false;
@@ -266,7 +281,11 @@ function insertEmptyContentControl(
       nextId
     )
   );
-  const control = controlElement(propertiesFor(landing.part, op, nextId), [prompt], nextId);
+  const control = controlElement(
+    propertiesFor(landing.part, { ...op, showingPlaceholder: true }, nextId),
+    [prompt],
+    nextId
+  );
   const children = [
     ...holder.children.slice(0, landing.index),
     control,
