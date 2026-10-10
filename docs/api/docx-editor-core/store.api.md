@@ -179,6 +179,15 @@ export interface AuthorizationPort {
 export function beginOperation(init: OperationInit): OperationContext;
 
 // @public
+export interface BlockControlEdges {
+    readonly closes: readonly OoxmlElement[];
+    readonly opens: readonly OoxmlElement[];
+}
+
+// @public
+export function blockControlEdgesOf(part: OoxmlPart): ReadonlyMap<string, BlockControlEdges>;
+
+// @public
 export type BlockPlace = {
     readonly before: string;
 } | {
@@ -690,10 +699,11 @@ export interface ContentControlEdge {
     readonly controlId: string;
     // (undocumented)
     readonly edge: 'open' | 'close';
+    readonly level: 'inline' | 'block';
 }
 
 // @public
-export function contentControlEdgesAt(paragraph: OoxmlParagraphNode, offset: number): readonly ContentControlEdge[];
+export function contentControlEdgesAt(part: OoxmlPart, paragraph: OoxmlParagraphNode, offset: number): readonly ContentControlEdge[];
 
 // @public
 export function contentControlEndPropertiesNodeOf(control: OoxmlNode): OoxmlContentControlEndPropertiesNode | undefined;

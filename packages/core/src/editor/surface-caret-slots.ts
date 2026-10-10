@@ -202,16 +202,19 @@ function slotsBetween(edges: readonly CaretSlotNeighbour[]): readonly SlotNeighb
 
 /**
  * An opening edge on the right means in front of that control; a closing one on the left,
- * behind it; otherwise the start or the end of the control whose edge is beside the slot.
+ * behind it; otherwise the start or the end of the control whose edge is beside the slot. The
+ * start or end of a BLOCK control names no place: its first or last paragraph is already the
+ * place, and the offset says where in it.
  */
-export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement {
+export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
   if (slot.right?.edge === 'open') {
     return { beside: { controlId: slot.right.controlId, side: 'before' } };
   }
   if (slot.left?.edge === 'close') {
     return { beside: { controlId: slot.left.controlId, side: 'after' } };
   }
-  return { inside: (slot.left ?? slot.right)!.controlId };
+  const owner = (slot.left ?? slot.right)!;
+  return owner.level === 'block' ? null : { inside: owner.controlId };
 }
 
 export function isCollapsedSelection(selection: SemanticSelection): boolean {

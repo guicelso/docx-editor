@@ -505,6 +505,7 @@ export type {
   ContentControlTagDisplay,
   ContentControlTagEdge,
   ContentControlTagLabel,
+  ContentControlTagLevel,
   ContentControlTagMark,
   ContentControlTagSubject,
 } from './content-control-tags.ts';

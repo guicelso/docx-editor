@@ -7,6 +7,7 @@ import { contentControlPropertiesOf } from '../package/content-control-nodes.ts'
 import { canTrackContentControl } from './tracked-content-control-insert.ts';
 import { inlineDestinationRefusal } from './tree-op-inline-destination.ts';
 import { findNode } from '../package/ooxml-edit.ts';
+import { blockControlRemovalRefusal } from './tree-op-blocks.ts';
 import {
   INSERTABLE_CONTENT_CONTROL_TYPES,
   isWritableContentControlMetadata,
@@ -358,13 +359,20 @@ export function validateSetContentControlValue(
 
 export function validateRemoveContentControl(
   part: OoxmlPart,
-  controlId: string
+  op: Extract<TreeDocOp, { op: 'removeContentControl' }>
 ): TreeOpRejection | null {
-  if (typeof controlId !== 'string' || controlId.length === 0) return 'unknown-control';
-  const control = findContentControl(part, controlId);
-  if (!control) return 'unknown-control';
-  if (effectiveLockOf(part, control).wrapper) return 'locked';
-  return null;
+  // The editor-facing op (no `keepContent`) keeps the content and answers its lock here; the
+  // automation op leaves the lock to its applier, which holds the control.
+  if (op.keepContent === undefined) {
+    if (typeof op.controlId !== 'string' || op.controlId.length === 0) return 'unknown-control';
+    const control = findContentControl(part, op.controlId);
+    if (!control) return 'unknown-control';
+    return effectiveLockOf(part, control).wrapper ? 'locked' : null;
+  }
+  const control = findNode(part, op.controlId);
+  if (!control) return 'unknown-content-control';
+  if (control.kind !== 'contentControl') return 'not-a-content-control';
+  return op.keepContent ? null : blockControlRemovalRefusal(part, control);
 }
 
 export const CONTENT_CONTROL_LOCKS: ReadonlySet<string> = new Set([

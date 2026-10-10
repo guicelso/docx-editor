@@ -8,6 +8,7 @@ import type { OoxmlElement } from '@docx-editor.dev/core/store';
 import { contentControlPropertiesOf, propertyVal } from './content-control-properties.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
+import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
 
 /** The text a tag measures and paints: one unbreakable unit, its spaces made non-breaking. */
 export function contentControlTagText(label: ContentControlTagLabel): string {
@@ -76,10 +77,14 @@ export interface ContentControlTagDisplay {
   ) => { readonly open?: ContentControlTagLabel; readonly close?: ContentControlTagLabel } | null;
 }
 
+/** Whether a tag's control sits inside a paragraph or holds whole paragraphs. @public */
+export type ContentControlTagLevel = 'inline' | 'block';
+
 /** What a tag piece, and every span cut from it, carries to paint and to the hit test. @public */
 export interface ContentControlTagMark {
   readonly controlId: string;
   readonly edge: ContentControlTagEdge;
+  readonly level: ContentControlTagLevel;
   /** The host's tone, already checked against {@link contentControlTagToneOf}. */
   readonly tone?: string;
 }
@@ -183,4 +188,21 @@ export function contentControlTagStyle(base: ResolvedRunStyle): ResolvedRunStyle
     horizontalScalePercent: 100,
     hidden: false,
   };
+}
+
+/** What a lane forwards to draw tags: the host's labels and the block edges of the part. */
+export interface ContentControlTagFlow {
+  readonly contentControlTags?: ContentControlTagDisplay;
+  readonly blockControlEdges?: ReadonlyMap<string, BlockControlEdges>;
+}
+
+/**
+ * The tag inputs a lane hands the next one. The two travel together: block edges mean nothing
+ * without labels to draw at them, and labels without them would draw no block tag.
+ */
+export function contentControlTagFlow(inputs: ContentControlTagFlow): ContentControlTagFlow {
+  if (!inputs.contentControlTags) return {};
+  return inputs.blockControlEdges
+    ? { contentControlTags: inputs.contentControlTags, blockControlEdges: inputs.blockControlEdges }
+    : { contentControlTags: inputs.contentControlTags };
 }

@@ -14,6 +14,7 @@ import type { SemanticLayout } from './semantic-records.ts';
 export interface CaretSlotNeighbour {
   readonly controlId: string;
   readonly edge: ContentControlTagMark['edge'];
+  readonly level: ContentControlTagMark['level'];
 }
 
 /** Where a slot stands: its neighbours, and its place on the laid-out line. @public */
@@ -67,10 +68,10 @@ export function caretSlotsAt(
   return slots;
 }
 
-/** Whether two neighbours name the same chip. */
+/** Whether two neighbours name the same chip: one control, one edge. */
 export function sameCaretSlotNeighbour(
-  a: CaretSlotNeighbour | null,
-  b: CaretSlotNeighbour | null
+  a: Pick<CaretSlotNeighbour, 'controlId' | 'edge'> | null,
+  b: Pick<CaretSlotNeighbour, 'controlId' | 'edge'> | null
 ): boolean {
   return a === b || (a !== null && b !== null && a.controlId === b.controlId && a.edge === b.edge);
 }
@@ -83,7 +84,7 @@ function chipsAt(layout: SemanticLayout, position: SemanticPosition): readonly P
       if (!tag || span.range.paragraphId !== position.paragraphId) continue;
       if (span.range.start !== position.offset) continue;
       chips.push({
-        mark: { controlId: tag.controlId, edge: tag.edge },
+        mark: { controlId: tag.controlId, edge: tag.edge, level: tag.level },
         pageIndex,
         lineId: line.id,
         left: span.box.x,

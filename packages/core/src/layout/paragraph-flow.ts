@@ -203,7 +203,8 @@ export function breakParagraph(
     flow?.fieldCodeRanges,
     flow?.tocLinkStyleRanges,
     changeSites,
-    flow?.contentControlTags
+    flow?.contentControlTags,
+    flow?.blockControlEdges
   );
   const paragraphRtl =
     flow?.paragraphRtl ??

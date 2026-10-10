@@ -1,4 +1,5 @@
 import { withDefaultTabInterval } from './paragraph-tabs.ts';
+import { contentControlTagFlow } from './content-control-tags.ts';
 import {
   cellSpacingGapPt,
   cellSpacingScale,
@@ -104,6 +105,11 @@ export interface AutofitFieldContext {
   readonly tocLinkStyleRanges?: TocLinkRanges;
   /** View-only content-control tags: a cell's widest line includes its chips. */
   readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The block controls each paragraph opens and closes. @internal */
+  readonly blockControlEdges?: ReadonlyMap<
+    string,
+    import('../store/store/block-control-edges.ts').BlockControlEdges
+  >;
 }
 
 /** What a table flow carries that autofit reads. */
@@ -153,7 +159,7 @@ export function autofitContextOf(deps: AutofitFlowDeps): TableAutofitContext {
     ...(deps.showFieldCodes ? { showFieldCodes: true } : {}),
     ...(deps.fieldCodeRanges ? { fieldCodeRanges: deps.fieldCodeRanges } : {}),
     ...(deps.tocLinkStyleRanges ? { tocLinkStyleRanges: deps.tocLinkStyleRanges } : {}),
-    ...(deps.contentControlTags ? { contentControlTags: deps.contentControlTags } : {}),
+    ...contentControlTagFlow(deps),
   };
   // Values, not identities: a pass builds these objects afresh and the cache must survive it.
   // Every part is compact: the producer is a digest, the value objects are digested.
@@ -339,7 +345,8 @@ export function paragraphContentWidthsPt(
     fields?.fieldCodeRanges?.get(paragraph.id),
     fields?.tocLinkStyleRanges?.get(paragraph.id),
     undefined,
-    fields?.contentControlTags
+    fields?.contentControlTags,
+    fields?.blockControlEdges
   );
   // The bidi pass gives each piece the shaping and joining context line breaking measures with;
   // an unshaped complex-script word measures far wider than it paints.

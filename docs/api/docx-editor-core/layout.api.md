@@ -76,6 +76,8 @@ export const AUTO_PREFERRED_WIDTH: PreferredWidth;
 
 // @public
 export interface AutofitFieldContext {
+    // @internal
+    readonly blockControlEdges?: ReadonlyMap<string, BlockControlEdges>;
     readonly bodyPageFields?: BodyPageFieldContext | false;
     readonly contentControlTags?: ContentControlTagDisplay;
     readonly documentProperties?: DocumentProperties;
@@ -291,6 +293,8 @@ export interface CaretSlotNeighbour {
     readonly controlId: string;
     // (undocumented)
     readonly edge: ContentControlTagMark['edge'];
+    // (undocumented)
+    readonly level: ContentControlTagMark['level'];
 }
 
 // @public
@@ -582,11 +586,16 @@ export interface ContentControlTagLabel {
 }
 
 // @public
+export type ContentControlTagLevel = 'inline' | 'block';
+
+// @public
 export interface ContentControlTagMark {
     // (undocumented)
     readonly controlId: string;
     // (undocumented)
     readonly edge: ContentControlTagEdge;
+    // (undocumented)
+    readonly level: ContentControlTagLevel;
     readonly tone?: string;
 }
 
@@ -3437,7 +3446,7 @@ export function runBorderStrokesForLine(line: LineRecord): readonly ParagraphBor
 export function runStylesEqual(a: ResolvedRunStyle, b: ResolvedRunStyle): boolean;
 
 // @public
-export function sameCaretSlotNeighbour(a: CaretSlotNeighbour | null, b: CaretSlotNeighbour | null): boolean;
+export function sameCaretSlotNeighbour(a: Pick<CaretSlotNeighbour, 'controlId' | 'edge'> | null, b: Pick<CaretSlotNeighbour, 'controlId' | 'edge'> | null): boolean;
 
 // @public
 export interface ScriptItem {
@@ -3685,6 +3694,8 @@ export interface SemanticLayout {
 
 // @public
 export interface SemanticLayoutOptions {
+    // @internal
+    readonly blockControlEdges?: ReadonlyMap<string, BlockControlEdges>;
     readonly cache?: ParagraphLayoutCache<readonly PendingLine[]>;
     readonly compatibilityMode?: number;
     readonly contentControlTags?: ContentControlTagDisplay;

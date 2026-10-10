@@ -916,8 +916,9 @@ export function mountPaginatedSurface(
   let fieldSelection: ((instruction: string) => boolean) | undefined;
 
   const controlEdgesAt = ({ paragraphId, offset }: SemanticPosition) => {
-    const paragraph = findNode(partOfNodeId(session, paragraphId) ?? session.part(), paragraphId);
-    return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(paragraph, offset) : [];
+    const part = partOfNodeId(session, paragraphId) ?? session.part();
+    const paragraph = findNode(part, paragraphId);
+    return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(part, paragraph, offset) : [];
   };
   const caretSlots = createCaretSlots({
     enabled: () => contentControlTags !== undefined,

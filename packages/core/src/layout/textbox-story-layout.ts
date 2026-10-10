@@ -15,6 +15,7 @@
 // convergence counter never moves because a textbox changed. All bounds are explicit:
 // nesting depth, fragment count, and the extent clip all fail closed with reasons.
 
+import { contentControlTagFlow } from './content-control-tags.ts';
 import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
 import type { DrawingProjection } from '../store/package/drawing-projection.ts';
 import { emuToPoints } from './drawing-layout.ts';
@@ -113,6 +114,10 @@ export interface TextboxStoryLayoutOptions {
   readonly showFieldCodes?: boolean;
   /** View-only content-control tags (Design Mode), drawn in the story as in the body. */
   readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  readonly blockControlEdges?: ReadonlyMap<
+    string,
+    import('../store/store/block-control-edges.ts').BlockControlEdges
+  >;
   /** Story nesting depth; a textbox laid out from inside another textbox passes depth + 1. */
   readonly depth?: number;
   /**
@@ -530,7 +535,7 @@ export function layoutTextboxStory(
     ...(options.projectLink ? { projectLink: options.projectLink } : {}),
     ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
     showFieldCodes: options.showFieldCodes,
-    ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
+    ...contentControlTagFlow(options),
     compatibilityMode: options.compatibilityMode,
     tableNestingOffset: 1,
     ...(options.defaultTabStopPt !== undefined

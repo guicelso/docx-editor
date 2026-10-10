@@ -315,8 +315,7 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
 
   if (
     op.op === 'setContentControlProperties' ||
-    (op.op === 'setContentControlValue' && typeof op.value !== 'string') ||
-    (op.op === 'removeContentControl' && op.keepContent !== undefined)
+    (op.op === 'setContentControlValue' && typeof op.value !== 'string')
   ) {
     const control = findNode(part, op.controlId);
     if (!control) return 'unknown-content-control';
@@ -404,7 +403,7 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
   }
 
   if (op.op === 'removeContentControl') {
-    return validateRemoveContentControl(part, op.controlId);
+    return validateRemoveContentControl(part, op);
   }
 
   if (op.op === 'insertFragment') {

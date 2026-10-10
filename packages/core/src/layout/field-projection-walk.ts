@@ -111,7 +111,9 @@ import {
   type ContentControlTagDisplay,
   type ContentControlTagEdge,
   type ContentControlTagLabel,
+  type ContentControlTagLevel,
 } from './content-control-tags.ts';
+import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
 
 /** Internal view projection; the public field-reader signature stays unchanged. @internal */
 export function unmergedPiecesOfParagraphForDisplay(
@@ -134,7 +136,8 @@ export function unmergedPiecesOfParagraphForDisplay(
   fieldCodeRanges?: readonly import('./field-code-toc.ts').FieldCodeRange[],
   tocLinkStyleRanges?: readonly import('./toc-link-formatting.ts').TocLinkRange[],
   changeSites?: MutableChangeSite[],
-  contentControlTags?: ContentControlTagDisplay
+  contentControlTags?: ContentControlTagDisplay,
+  blockControlEdges?: ReadonlyMap<string, BlockControlEdges>
 ): FieldAwarePiece[] {
   if (paragraph.kind === 'textValue') return [];
   if (paragraph.kind !== 'paragraph') return [];
@@ -932,10 +935,11 @@ export function unmergedPiecesOfParagraphForDisplay(
   const pushContentControlTag = (
     controlId: string,
     edge: ContentControlTagEdge,
-    label: ContentControlTagLabel
+    label: ContentControlTagLabel,
+    level: ContentControlTagLevel
   ): void => {
     const run = resolveRunStyle(inheritedRunProperties, themeFonts);
-    const piece = contentControlTagPiece({ controlId, edge }, label, run, offset);
+    const piece = contentControlTagPiece({ controlId, edge, level }, label, run, offset);
     if (piece) pieces.push(piece);
   };
 
@@ -976,11 +980,11 @@ export function unmergedPiecesOfParagraphForDisplay(
         contentControlTags && !pending
           ? contentControlTags.labelsOf(contentControlTagSubjectOf(child))
           : null;
-      if (labels?.open) pushContentControlTag(child.id, 'open', labels.open);
+      if (labels?.open) pushContentControlTag(child.id, 'open', labels.open, 'inline');
       for (const inner of contentControlContentChildren(child)) {
         processInline(inner, depth + 1, namespaceScope, containerDepth + 1);
       }
-      if (labels?.close) pushContentControlTag(child.id, 'close', labels.close);
+      if (labels?.close) pushContentControlTag(child.id, 'close', labels.close, 'inline');
       return;
     }
     if (depth > MAX_STORY_FIELD_SCAN_DEPTH) return;
@@ -1015,10 +1019,21 @@ export function unmergedPiecesOfParagraphForDisplay(
     for (const inner of (child as OoxmlElement).children)
       processInline(inner, depth + 1, childScope, containerDepth + 1);
   };
+  // A block control's tags stand outside every inline one: it opens before the paragraph's first
+  // character and closes after its last, so they are pushed around the paragraph's own walk.
+  const blockEdges = contentControlTags ? blockControlEdges?.get(paragraph.id) : undefined;
+  const pushBlockTags = (controls: readonly OoxmlElement[], edge: ContentControlTagEdge): void => {
+    for (const control of controls) {
+      const label = contentControlTags!.labelsOf(contentControlTagSubjectOf(control))?.[edge];
+      if (label) pushContentControlTag(control.id, edge, label, 'block');
+    }
+  };
+  if (blockEdges) pushBlockTags(blockEdges.opens, 'open');
   // Paragraph root counts as depth 0; run children sit at depth 1.
   for (const child of paragraph.children) processInline(child, 1, paragraphScope, 0);
   // Malformed field missing end: demote — surface cached/buffered text, no live projection.
   abandonPending();
+  if (blockEdges) pushBlockTags(blockEdges.closes, 'close');
   if (contentControlTags) fitContentControlTagsToText(pieces);
 
   return applyEastAsiaFontSlots(

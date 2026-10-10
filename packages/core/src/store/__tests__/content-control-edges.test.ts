@@ -38,7 +38,7 @@ function edges(body: string, offset: number): readonly string[] {
   walk([part.root]);
   const paragraph = storyBlocks(part)[0]!;
   if (paragraph.kind !== 'paragraph') throw new Error('not a paragraph');
-  return contentControlEdgesAt(paragraph, offset).map(
+  return contentControlEdgesAt(part, paragraph, offset).map(
     ({ controlId, edge }) => `${tags.get(controlId)}${edge === 'open' ? '▸' : '◂'}`
   );
 }

@@ -16,11 +16,18 @@ import type {
   SemanticSelection,
 } from '@docx-editor.dev/core/layout';
 import {
+  contentControlLevelOf,
   contentControlPropertiesOf,
   contentControlsIn,
 } from '../store/package/content-control-nodes.ts';
 import { findNode } from '../store/package/ooxml-edit.ts';
-import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
+import type { OoxmlNode, OoxmlPart } from '../store/package/ooxml-tree.ts';
+import { paragraphIdsUnder } from '../store/store/content-control-value-content.ts';
+import {
+  paragraphIdsInDocumentOrder,
+  survivingCaretAfterBlockRemoval,
+} from '../store/store/tree-op-blocks.ts';
+import { enclosingContentControls } from '../store/store/tree-op-content-controls.ts';
 import { paragraphOffsetIndex } from '../store/store/tree-op-segments.ts';
 import { selectionsEqual } from './dom-selection.ts';
 import { isCollapsedSelection, type SlotKeep, type SlotPlacement } from './surface-caret-slots.ts';
@@ -53,42 +60,63 @@ export interface ControlKeys {
   forgetUnlessAt(next: SemanticSelection): void;
 }
 
-/** One inline control of a paragraph, with the model offsets its content spans. */
+/** One control, with the positions its content spans: inside one paragraph, or across several. */
 interface PlacedControl {
   readonly controlId: string;
-  readonly paragraphId: string;
-  readonly start: number;
-  readonly end: number;
+  readonly from: SemanticPosition;
+  readonly to: SemanticPosition;
   readonly depth: number;
   readonly prompt: boolean;
+  readonly level: 'inline' | 'block';
 }
 
 export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
   let selected: { readonly controlId: string; readonly selection: SemanticSelection } | null = null;
 
-  const controlsOf = (paragraphId: string): readonly PlacedControl[] => {
+  const inlineControlsOf = (paragraphId: string): readonly PlacedControl[] => {
     const paragraph = findNode(deps.part(paragraphId), paragraphId);
     if (paragraph?.kind !== 'paragraph') return [];
     const index = paragraphOffsetIndex(paragraph);
-    return contentControlsIn(paragraph).flatMap((entry) => {
+    return contentControlsIn(paragraph).flatMap((entry): PlacedControl[] => {
       const span = index.spanOf(entry.node);
-      return span
-        ? [
-            {
-              controlId: entry.node.id,
-              paragraphId,
-              start: span.start,
-              end: span.end,
-              depth: entry.depth,
-              prompt: contentControlPropertiesOf(entry.node).showingPlaceholder,
-            },
-          ]
-        : [];
+      if (!span) return [];
+      return [
+        {
+          controlId: entry.node.id,
+          from: { paragraphId, offset: span.start },
+          to: { paragraphId, offset: span.end },
+          depth: entry.depth,
+          prompt: contentControlPropertiesOf(entry.node).showingPlaceholder,
+          level: 'inline',
+        },
+      ];
     });
   };
 
-  const placedById = (paragraphId: string, controlId: string): PlacedControl | undefined =>
-    controlsOf(paragraphId).find((control) => control.controlId === controlId);
+  /** A block control spans its first paragraph's start to its last paragraph's end. */
+  const blockControl = (part: OoxmlPart, control: OoxmlNode): PlacedControl | undefined => {
+    if (control.kind !== 'contentControl' || contentControlLevelOf(control) !== 'block') return;
+    const paragraphs = paragraphIdsUnder(control);
+    const last = paragraphs[paragraphs.length - 1];
+    const lastParagraph = last === undefined ? null : findNode(part, last);
+    if (lastParagraph?.kind !== 'paragraph') return;
+    return {
+      controlId: control.id,
+      from: { paragraphId: paragraphs[0]!, offset: 0 },
+      to: { paragraphId: last!, offset: paragraphOffsetIndex(lastParagraph).length },
+      depth: enclosingContentControls(part, control.id).length,
+      prompt: contentControlPropertiesOf(control).showingPlaceholder,
+      level: 'block',
+    };
+  };
+
+  const placedById = (paragraphId: string, controlId: string): PlacedControl | undefined => {
+    const inline = inlineControlsOf(paragraphId).find((control) => control.controlId === controlId);
+    if (inline) return inline;
+    const part = deps.part(paragraphId);
+    const node = findNode(part, controlId);
+    return node ? blockControl(part, node) : undefined;
+  };
 
   const selectedNow = (): PlacedControl | null => {
     if (!selected || !selectionsEqual(deps.selection(), selected.selection)) return null;
@@ -97,13 +125,41 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
 
   /** The caret stays where the control stood, in the slot touching the edge before its opening. */
   const removeWhole = (control: PlacedControl): void => {
-    const at = { paragraphId: control.paragraphId, offset: control.start };
+    selected = null;
+    if (control.level === 'block') {
+      removeBlock(control);
+      return;
+    }
+    const at = control.from;
     const edges = deps.edgesAt(at);
     const opening = edges.findIndex(
       (edge) => edge.controlId === control.controlId && edge.edge === 'open'
     );
-    selected = null;
     deps.remove(control.controlId, at, { left: opening > 0 ? edges[opening - 1]! : null });
+  };
+
+  /**
+   * A block control goes with its paragraphs, so the caret goes to the paragraph that survives
+   * nearest it — the end of the one before, else the start of the one after — outside every edge
+   * there.
+   */
+  const removeBlock = (control: PlacedControl): void => {
+    const part = deps.part(control.from.paragraphId);
+    const survivor = survivingCaretAfterBlockRemoval(part, control.controlId);
+    const paragraph = survivor === null ? null : findNode(part, survivor);
+    if (paragraph?.kind !== 'paragraph') return;
+    const order = paragraphIdsInDocumentOrder(part);
+    const before = order.indexOf(paragraph.id) < order.indexOf(control.from.paragraphId);
+    const at = {
+      paragraphId: paragraph.id,
+      offset: before ? paragraphOffsetIndex(paragraph).length : 0,
+    };
+    const edges = deps.edgesAt(at);
+    deps.remove(
+      control.controlId,
+      at,
+      before ? { left: edges[edges.length - 1] ?? null } : { right: edges[0] ?? null }
+    );
   };
 
   /** The prompt the key is in: the control whose prompt holds the selection, innermost first. */
@@ -114,17 +170,27 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
     const to = Math.max(anchor.offset, head.offset);
     const placement = isCollapsedSelection(deps.selection()) ? deps.placement() : null;
     if (placement && 'beside' in placement) return undefined;
-    const owner = controlsOf(head.paragraphId)
+    const owner = inlineControlsOf(head.paragraphId)
       .filter((control) =>
         placement
           ? control.controlId === placement.inside
-          : control.start <= from && control.end >= to
+          : control.from.offset <= from && control.to.offset >= to
       )
       .reduce<PlacedControl | undefined>(
         (deepest, control) => (deepest && deepest.depth >= control.depth ? deepest : control),
         undefined
       );
-    return owner?.prompt ? owner : undefined;
+    if (owner) return owner.prompt ? owner : undefined;
+    return blockPromptAround(head.paragraphId);
+  };
+
+  /** The innermost block control holding the paragraph, when it shows its prompt. */
+  const blockPromptAround = (paragraphId: string): PlacedControl | undefined => {
+    const part = deps.part(paragraphId);
+    const holders = enclosingContentControls(part, paragraphId);
+    const innermost = holders[holders.length - 1];
+    const control = innermost ? blockControl(part, innermost) : undefined;
+    return control?.prompt ? control : undefined;
   };
 
   const removeSelected = (): boolean => {
@@ -152,10 +218,7 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
       // Held BEFORE the selection moves, so the paint the move triggers draws it selected.
       selected = {
         controlId: control.controlId,
-        selection: {
-          anchor: { paragraphId: control.paragraphId, offset: control.start },
-          head: { paragraphId: control.paragraphId, offset: control.end },
-        },
+        selection: { anchor: control.from, head: control.to },
       };
       deps.select(selected.selection);
       return true;

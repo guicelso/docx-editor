@@ -156,6 +156,11 @@ export interface SemanticLayoutOptions {
   readonly showFieldCodes?: boolean;
   /** View-only content-control tags (Design Mode). Absent draws none. */
   readonly contentControlTags?: import('./content-control-tags.ts').ContentControlTagDisplay;
+  /** The block controls each paragraph opens and closes, read off the part the tags are drawn on. @internal */
+  readonly blockControlEdges?: ReadonlyMap<
+    string,
+    import('../store/store/block-control-edges.ts').BlockControlEdges
+  >;
   /** @internal */
   readonly fieldCodeRanges?: import('./field-code-toc.ts').FieldCodeRanges;
   /** @internal Word TOC character-style suppression. */

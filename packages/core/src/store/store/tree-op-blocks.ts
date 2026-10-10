@@ -32,7 +32,7 @@ export function paragraphIdsWithin(node: OoxmlNode): string[] {
 }
 
 /** Story-order paragraph ids for caret recovery after a block removal. */
-function paragraphIdsInDocumentOrder(part: OoxmlPart): string[] {
+export function paragraphIdsInDocumentOrder(part: OoxmlPart): string[] {
   const ids: string[] = [];
   const walkBlocks = (children: readonly OoxmlNode[]): void => {
     // A block content control is not a block of its own — the paragraphs it wraps are the
@@ -169,4 +169,31 @@ export function validateDeleteBlock(part: OoxmlPart, blockId: string): TreeOpRej
   if (!paragraphSurvivesRemoval(part, blockId)) return 'block-required';
 
   return null;
+}
+
+/**
+ * Whether removing a block-level control WITH its content would break what `deleteBlock` keeps:
+ * the story's last paragraph, the paragraph a cell ends with, or a section mark the content holds.
+ * The control's own lock is the applier's question; this is the document's.
+ */
+export function blockControlRemovalRefusal(
+  part: OoxmlPart,
+  control: OoxmlNode
+): TreeOpRejection | null {
+  if (control.kind === 'textValue') return null;
+  const carriesSectionMark = paragraphIdsWithin(control).some((id) => {
+    const paragraph = findNode(part, id);
+    return paragraph !== null && !!namedChild(paragraphPropertiesNodeOf(paragraph), 'sectPr');
+  });
+  if (carriesSectionMark) return 'carries-section-mark';
+  const parent = parentNodeOf(part, control.id);
+  if (parent?.kind === 'tableCell') {
+    const blocks = parent.children.filter(
+      (child) =>
+        child.id !== control.id &&
+        (child.kind === 'paragraph' || child.kind === 'table' || child.kind === 'contentControl')
+    );
+    if (blocks[blocks.length - 1]?.kind !== 'paragraph') return 'block-required';
+  }
+  return paragraphSurvivesRemoval(part, control.id) ? null : 'block-required';
 }

@@ -55,6 +55,7 @@ export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
   projectFieldLink: 'document-coordinator',
   showFieldCodes: 'document-coordinator',
   contentControlTags: 'document-coordinator',
+  blockControlEdges: 'layout-internal',
   documentProperties: 'document-coordinator',
   notes: 'document-coordinator',
   pageBottomReserves: 'layout-internal',

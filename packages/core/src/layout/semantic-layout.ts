@@ -1,4 +1,5 @@
 import { createDrawingExclusionPasses } from './drawing-exclusion-passes.ts';
+import { contentControlTagFlow } from './content-control-tags.ts';
 import { resolveBodyRefFields } from './style-separator-ref.ts';
 import { styleSeparatorRanges, styleSeparatorToken } from './style-separator-group.ts';
 import { layoutWithCharacterHeaders } from './character-header-layout.ts';
@@ -42,6 +43,7 @@ import { ParagraphFrameFlow, paragraphFrameFlowKeys } from './paragraph-frame-fl
 
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '@docx-editor.dev/core/store';
 import { WML_MAIN_DOCUMENT_PART } from '../store/package/opc-names.ts';
+import { blockControlEdgesOf } from '../store/store/block-control-edges.ts';
 import {
   finalizePageFieldProjection,
   summarizeFlushedPage,
@@ -301,6 +303,7 @@ export function layoutSemanticDocument(
     ...options,
     fieldCodeRanges: options.showFieldCodes ? tocCodeRanges(part) : undefined,
     tocLinkStyleRanges: linkStyleRanges,
+    ...(options.contentControlTags ? { blockControlEdges: blockControlEdgesOf(part) } : {}),
     displayMode,
     producer: documentProjectionProducer(options, controlToken, tocLinkStyleToken(linkStyleRanges)),
     tocFieldChromeParagraphIds:
@@ -880,7 +883,7 @@ function layoutBlocksPass(
       ...(options.projectLink ? { projectLink: options.projectLink } : {}),
       ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
       showFieldCodes: options.showFieldCodes,
-      ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
+      ...contentControlTagFlow(options),
 
       ...(options.numberingIndex ? { numberingIndex: options.numberingIndex } : {}),
       inlineDrawingLayout: options.inlineDrawingLayout,
@@ -1588,7 +1591,7 @@ function layoutBlocksPass(
     ...(options.projectLink ? { projectLink: options.projectLink } : {}),
     ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
     showFieldCodes: options.showFieldCodes,
-    ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
+    ...contentControlTagFlow(options),
     fieldCodeRanges: options.fieldCodeRanges,
     tocLinkStyleRanges: options.tocLinkStyleRanges,
     ...(options.documentProperties ? { documentProperties: options.documentProperties } : {}),
@@ -1761,7 +1764,7 @@ function layoutBlocksPass(
         ...(options.projectLink ? { projectLink: options.projectLink } : {}),
         ...(options.projectFieldLink ? { projectFieldLink: options.projectFieldLink } : {}),
         showFieldCodes: options.showFieldCodes,
-        ...(options.contentControlTags ? { contentControlTags: options.contentControlTags } : {}),
+        ...contentControlTagFlow(options),
         fieldCodeRanges: styleSeparatorRanges(entry.paragraph, options.fieldCodeRanges),
         tocLinkStyleRanges: styleSeparatorRanges(entry.paragraph, options.tocLinkStyleRanges),
         ...(options.documentProperties ? { documentProperties: options.documentProperties } : {}),

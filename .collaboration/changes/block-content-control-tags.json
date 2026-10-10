@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tags and caret slots existed only for inline controls, and removeContentControl { keepContent: false } on a block control could leave a story with no paragraph, a cell that did not end with one, or a section mark dropped with its paragraph.",
+  "after": "Block-level controls get tags at the start of their first paragraph and the end of their last, and a key beside one selects or removes the control. A removal that takes a block control's content is refused with block-required or carries-section-mark where deleteBlock would refuse.",
+  "reason": "Tags and slots are view state and travel to no peer. The removal refusal only rejects ops that would publish a document Word rejects; every op a released participant can send that was valid before stays valid.",
+  "tests": [
+    "packages/core/src/store/__tests__/block-control-edges.test.ts",
+    "packages/core/src/store/__tests__/block-control-removal.test.ts",
+    "packages/core/src/layout/__tests__/block-control-chips.test.ts",
+    "packages/core/src/editor/__tests__/block-control-keys.test.ts",
+    "packages/core/src/editor/__tests__/block-control-slots.test.ts"
+  ],
+  "changeset": "block-content-control-tags",
+  "migration": null
+}

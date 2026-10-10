@@ -28,6 +28,7 @@ export {
   type TreeOpResult,
 } from './tree-ops.ts';
 export { contentControlEdgesAt, type ContentControlEdge } from './content-control-edges.ts';
+export { blockControlEdgesOf, type BlockControlEdges } from './block-control-edges.ts';
 export type { InlineDestinationFields } from './tree-op-inline-destination.ts';
 export type { BlockPlace } from './tree-op-block-place.ts';
 export type {
