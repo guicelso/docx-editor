@@ -158,6 +158,7 @@ export interface ContentControlTagDisplay {
 export interface ContentControlTagLabel {
     readonly text: string;
     readonly tone?: string;
+    readonly variant?: 'chip' | 'text';
 }
 
 // @public

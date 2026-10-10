@@ -1000,6 +1000,14 @@ a.docx-hyperlink:focus-visible {
   user-select: none;
 }
 
+/* A text tag reads as the line's own text: no fill, and the line's weight, which layout measured. */
+.docx-cc-tag[data-cc-tag-variant='text'] {
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: inherit;
+}
+
 @media print {
   .docx-cc-tag {
     display: none;

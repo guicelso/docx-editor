@@ -2430,8 +2430,8 @@ import { tabLeaderPattern } from '../layout/tab-leader-pattern.ts';
  * the fill: a transparent border there clipped the fill's corners square. Its height is the
  * run's band, like any span's, so a selection or a boundary drawn over the line covers it
  * exactly. Colour, fill and outline belong to the stylesheet: `.docx-cc-tag` draws a neutral chip
- * from the `--doc-*` tokens, and a host restyles it by the `data-cc-tag-tone` it chose. The data
- * attributes are also the host's click target.
+ * from the `--doc-*` tokens, `data-cc-tag-variant="text"` draws no fill, and a host restyles it by
+ * the `data-cc-tag-tone` it chose. The data attributes are also the host's click target.
  */
 function paintContentControlTagChip(
   element: HTMLElement,
@@ -2441,7 +2441,7 @@ function paintContentControlTagChip(
   const tag = span.contentControlTag!;
   const css = element.style;
   element.classList.add('docx-cc-tag');
-  const { gapPt, padPt } = contentControlTagInsetsPt(span.style);
+  const { gapPt, padPt } = contentControlTagInsetsPt(span.style, tag);
   css.width = `${(span.box.width - 2 * gapPt) * scale}px`;
   css.marginLeft = `${gapPt * scale}px`;
   css.marginRight = `${gapPt * scale}px`;
@@ -2455,9 +2455,12 @@ function paintContentControlTagChip(
   element.dataset.ccTagControl = tag.controlId;
   element.dataset.ccTagEdge = tag.edge;
   if (tag.tone !== undefined) element.dataset.ccTagTone = tag.tone;
+  if (tag.variant !== undefined) element.dataset.ccTagVariant = tag.variant;
 }
 
 /** The margin a chip keeps on its left, inside its advance; none for any other span. */
 function chipGapPt(span: StyleSpanRecord): number {
-  return span.contentControlTag ? contentControlTagInsetsPt(span.style).gapPt : 0;
+  return span.contentControlTag
+    ? contentControlTagInsetsPt(span.style, span.contentControlTag).gapPt
+    : 0;
 }

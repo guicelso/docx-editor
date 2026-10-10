@@ -579,6 +579,7 @@ export interface ContentControlTagMark {
     // (undocumented)
     readonly level: ContentControlTagLevel;
     readonly tone?: string;
+    readonly variant?: 'text';
 }
 
 // @public

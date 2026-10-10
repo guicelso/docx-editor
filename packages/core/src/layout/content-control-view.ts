@@ -155,7 +155,7 @@ function controlToken(control: OoxmlElement, view: ContentControlView): string {
 }
 
 function labelToken(label: ContentControlTagLabel | undefined): string {
-  return label ? framedTokenJoin([label.text, label.tone ?? '']) : '';
+  return label ? framedTokenJoin([label.text, label.tone ?? '', label.variant ?? 'chip']) : '';
 }
 
 /** Which paragraphs every block control opens and closes at, once per edges index. */

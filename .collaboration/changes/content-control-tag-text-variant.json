@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Every tag label was a chip: layout reserved room on each side of the label and the stylesheet drew a neutral fill, so punctuation drawn as a tag stood apart from the text.",
+  "after": "A label may ask for the text variant, which layout measures without the room and paint draws without the fill.",
+  "reason": "Tags are view state: they never change the document, are never saved, and are not shared with collaborators, so no peer reads them.",
+  "tests": ["packages/core/src/output/__tests__/chip-label-variants.test.ts"],
+  "changeset": "content-control-tag-text-variant",
+  "migration": null
+}

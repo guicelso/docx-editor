@@ -19,21 +19,28 @@ const CHIP_GAP_PT = 1.2;
 const CHIP_PAD_EM = 0.35;
 
 /**
- * The room a chip keeps on EACH side of its label, in points: the gap between neighbours and the
- * padding inside the fill. Geometry, not characters — layout adds it to the measured label and
- * paint draws exactly it, so the label is centred in the space reserved for it whatever font
- * paints it.
+ * The room a tag keeps on EACH side of its label, in points: the gap between neighbours and the
+ * padding inside the fill, none for a `text` tag. Geometry, not characters — layout adds it to
+ * the measured label and paint draws exactly it, so the label is centred in the space reserved
+ * for it whatever font paints it.
  */
-export function contentControlTagInsetsPt(style: Pick<ResolvedRunStyle, 'fontSizePt'>): {
+export function contentControlTagInsetsPt(
+  style: Pick<ResolvedRunStyle, 'fontSizePt'>,
+  mark: Pick<ContentControlTagMark, 'variant'>
+): {
   readonly gapPt: number;
   readonly padPt: number;
 } {
+  if (mark.variant === 'text') return { gapPt: 0, padPt: 0 };
   return { gapPt: CHIP_GAP_PT, padPt: style.fontSizePt * CHIP_PAD_EM };
 }
 
-/** What a chip adds to its label's measured width: the room on both sides. */
-export function contentControlTagChromePt(style: Pick<ResolvedRunStyle, 'fontSizePt'>): number {
-  const { gapPt, padPt } = contentControlTagInsetsPt(style);
+/** What a tag adds to its label's measured width: the room on both sides. */
+export function contentControlTagChromePt(
+  style: Pick<ResolvedRunStyle, 'fontSizePt'>,
+  mark: Pick<ContentControlTagMark, 'variant'>
+): number {
+  const { gapPt, padPt } = contentControlTagInsetsPt(style, mark);
   return 2 * (gapPt + padPt);
 }
 
@@ -50,6 +57,8 @@ export interface ContentControlTagMark {
   readonly level: ContentControlTagLevel;
   /** The host's tone, already checked against {@link contentControlTagToneOf}. */
   readonly tone?: string;
+  /** Present for a tag drawn as text in the line; absent for a chip. */
+  readonly variant?: 'text';
 }
 
 const TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
@@ -64,7 +73,7 @@ export function contentControlTagToneOf(label: ContentControlTagLabel): string |
  * measures and paints like a word and never moves an offset. None for an empty label.
  */
 export function contentControlTagPiece(
-  mark: Omit<ContentControlTagMark, 'tone'>,
+  mark: Omit<ContentControlTagMark, 'tone' | 'variant'>,
   label: ContentControlTagLabel,
   run: ResolvedRunStyle,
   offset: number
@@ -79,7 +88,11 @@ export function contentControlTagPiece(
     start: offset,
     end: offset,
     projected: true,
-    contentControlTag: tone === undefined ? mark : { ...mark, tone },
+    contentControlTag: {
+      ...mark,
+      ...(tone === undefined ? {} : { tone }),
+      ...(label.variant === 'text' ? { variant: 'text' as const } : {}),
+    },
   };
 }
 

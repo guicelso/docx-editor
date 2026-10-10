@@ -129,7 +129,8 @@ describe('content-control tags', () => {
     for (const chip of chips) {
       expect(chip.text).not.toMatch(/\u2009/);
       expect(chip.box.width).toBeCloseTo(
-        measurer.measure(chip.text, chip.style) + contentControlTagChromePt(chip.style),
+        measurer.measure(chip.text, chip.style) +
+          contentControlTagChromePt(chip.style, chip.contentControlTag!),
         6
       );
     }

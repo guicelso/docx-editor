@@ -13,6 +13,12 @@ export interface ContentControlTagLabel {
    * draws the neutral chip.
    */
   readonly tone?: string;
+  /**
+   * `chip` (the default) draws the label in a neutral pill with room on each side. `text` draws
+   * it as text in the line, with no room around it and no fill: punctuation that reads as the
+   * document's own, styled by the tone.
+   */
+  readonly variant?: 'chip' | 'text';
 }
 
 /** A content control as the file states it. `tag` is untrusted file data. @public */

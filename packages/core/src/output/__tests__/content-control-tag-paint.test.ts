@@ -87,7 +87,7 @@ describe('painting a content-control tag', () => {
 
   test('draws the room layout measured: the same gap and padding on both sides of the label', () => {
     const { chip, record } = paintedChip({ close: { text: '◂' } });
-    const { gapPt, padPt } = contentControlTagInsetsPt(record.style);
+    const { gapPt, padPt } = contentControlTagInsetsPt(record.style, record.contentControlTag!);
     expect(chip.style.marginLeft).toBe(chip.style.marginRight);
     expect(chip.style.paddingLeft).toBe(chip.style.paddingRight);
     expect(parseFloat(chip.style.marginLeft)).toBeCloseTo(gapPt * 2, 4);
@@ -134,7 +134,7 @@ describe('painting a content-control tag', () => {
     const [previous, record] = [line.spans[index - 1]!, line.spans[index]!];
     const justifyGap = record.box.x - (previous.box.x + previous.box.width);
     expect(justifyGap).toBeGreaterThan(0.001);
-    const { gapPt } = contentControlTagInsetsPt(record.style);
+    const { gapPt } = contentControlTagInsetsPt(record.style, record.contentControlTag!);
     expect(parseFloat(chip.style.marginLeft)).toBeCloseTo(justifyGap + gapPt, 4);
   });
 });

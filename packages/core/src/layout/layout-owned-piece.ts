@@ -53,10 +53,10 @@ export function pieceBoundaries(piece: FieldAwarePiece, ideographic: boolean): n
 }
 
 /**
- * The advance a piece takes beyond its measured text: a content-control tag's chip room. Every
+ * The advance a piece takes beyond its measured text: a content-control tag's room. Every
  * place that measures a piece adds it, so a line, an anchor probe and an autofit column agree on
  * the chip's width with paint.
  */
 export function pieceChromePt(piece: FieldAwarePiece, style: ResolvedRunStyle): number {
-  return piece.contentControlTag ? contentControlTagChromePt(style) : 0;
+  return piece.contentControlTag ? contentControlTagChromePt(style, piece.contentControlTag) : 0;
 }
