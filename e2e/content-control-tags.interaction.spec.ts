@@ -7,7 +7,7 @@ import {
   contentControlContentChildren,
   isContentControl,
 } from '../packages/core/src/store/package/content-control-walk';
-import { contentControlTagSubjectOf } from '../packages/core/src/layout/content-control-tags';
+import { contentControlSubjectOf } from '../packages/core/src/layout/content-control-properties';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
@@ -50,7 +50,7 @@ async function savedText(page: Page): Promise<string> {
       .map((node) => {
         if (node.kind === 'textValue') return node.value;
         if (isContentControl(node)) {
-          return `${contentControlTagSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
+          return `${contentControlSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
         }
         return walk(node.children);
       })

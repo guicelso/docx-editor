@@ -12,7 +12,7 @@ import {
   contentControlContentChildren,
   isContentControl,
 } from '../package/content-control-walk.ts';
-import { contentControlTagSubjectOf } from '../../layout/content-control-tags.ts';
+import { contentControlSubjectOf } from '../../layout/content-control-properties.ts';
 import { storyBlocks } from '../../layout/story-roots.ts';
 import type { OoxmlParagraphNode } from '../package/ooxml-tree.ts';
 
@@ -48,7 +48,7 @@ function reading(part: OoxmlPart): string {
         if (node.kind === 'textValue') return node.value;
         if (node.kind === 'instrText') return '';
         if (isContentControl(node)) {
-          return `${contentControlTagSubjectOf(node).tag ?? 'P'}{${walk(contentControlContentChildren(node))}}`;
+          return `${contentControlSubjectOf(node).tag ?? 'P'}{${walk(contentControlContentChildren(node))}}`;
         }
         if (node.kind === 'fldChar') {
           const type = node.attributes.find((attribute) => attribute.localName === 'fldCharType');
@@ -65,7 +65,7 @@ function controlNamed(part: OoxmlPart, tag: string): OoxmlNode {
   const walk = (nodes: readonly OoxmlNode[]): void => {
     for (const node of nodes) {
       if (node.kind === 'textValue') continue;
-      if (isContentControl(node) && contentControlTagSubjectOf(node).tag === tag) found = node;
+      if (isContentControl(node) && contentControlSubjectOf(node).tag === tag) found = node;
       walk(node.children);
     }
   };

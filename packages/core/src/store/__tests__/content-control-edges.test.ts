@@ -8,7 +8,7 @@ import { readOoxmlPart, type OoxmlNode, type OoxmlPart } from '../package/ooxml-
 import { isContentControl } from '../package/content-control-walk.ts';
 import { contentControlEdgesAt } from '../store/content-control-edges.ts';
 import { storyBlocks } from '../../layout/story-roots.ts';
-import { contentControlTagSubjectOf } from '../../layout/content-control-tags.ts';
+import { contentControlSubjectOf } from '../../layout/content-control-properties.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const run = (text: string) => `<w:r><w:t xml:space="preserve">${text}</w:t></w:r>`;
@@ -31,7 +31,7 @@ function edges(body: string, offset: number): readonly string[] {
   const walk = (nodes: readonly OoxmlNode[]): void => {
     for (const node of nodes) {
       if (node.kind === 'textValue') continue;
-      if (isContentControl(node)) tags.set(node.id, contentControlTagSubjectOf(node).tag ?? '?');
+      if (isContentControl(node)) tags.set(node.id, contentControlSubjectOf(node).tag ?? '?');
       walk(node.children);
     }
   };

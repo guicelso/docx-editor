@@ -286,6 +286,11 @@ export interface StyleSpanRecord {
   readonly noteSeparator?: 'separator' | 'continuationSeparator';
   /** A view-only content-control tag: which control, and which edge. Its range is zero-width. */
   readonly contentControlTag?: import('./content-control-tags.ts').ContentControlTagMark;
+  /**
+   * The model text of the range a projected span paints other text over, when the model spells
+   * that range: a content control's stored placeholder under the host's prompt.
+   */
+  readonly modelText?: string;
   /** Paint-ready geometry for one atomic Office Math equation. */
   readonly equation?: EquationSpanRecord;
   /**

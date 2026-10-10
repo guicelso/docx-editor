@@ -10,7 +10,7 @@ import {
   contentControlContentChildren,
   isContentControl,
 } from '../../store/package/content-control-walk.ts';
-import { contentControlTagSubjectOf } from '../../layout/content-control-tags.ts';
+import { contentControlSubjectOf } from '../../layout/content-control-properties.ts';
 import type { PaginatedSurface } from '../paginated-surface.ts';
 import { createPublishSignal } from '../surface-publish-signal.ts';
 import { mount, putCaret } from './paginated-surface-fixtures.ts';
@@ -54,7 +54,7 @@ function bracketed(surface: PaginatedSurface): string {
       .map((node) => {
         if (node.kind === 'textValue') return node.value;
         if (isContentControl(node)) {
-          return `${contentControlTagSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
+          return `${contentControlSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
         }
         return node.localName === 'sdtPr' || node.localName === 'rPr' ? '' : walk(node.children);
       })
@@ -66,7 +66,7 @@ function controlIdOf(surface: PaginatedSurface, tag: string): string {
   const find = (nodes: readonly OoxmlNode[]): string | null => {
     for (const node of nodes) {
       if (node.kind === 'textValue') continue;
-      if (isContentControl(node) && contentControlTagSubjectOf(node).tag === tag) return node.id;
+      if (isContentControl(node) && contentControlSubjectOf(node).tag === tag) return node.id;
       const inner = find(node.children);
       if (inner) return inner;
     }

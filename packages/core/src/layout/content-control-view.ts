@@ -8,12 +8,14 @@
 
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '@docx-editor.dev/core/store';
 import type {
+  ContentControlPromptDisplay,
   ContentControlTagDisplay,
   ContentControlTagLabel,
 } from '../contracts/editor-content-control-view.ts';
 import { isContentControl } from '../store/package/content-control-walk.ts';
 import { blockControlEdgesOf, type BlockControlEdges } from '../store/store/block-control-edges.ts';
-import { contentControlTagSubjectOf } from './content-control-tags.ts';
+import { contentControlSubjectOf } from './content-control-properties.ts';
+import { contentControlPromptOf } from './content-control-prompts.ts';
 import { aggregateParagraphTokensForTableBlock, framedTokenJoin } from './layout-cache.ts';
 import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
 
@@ -26,6 +28,8 @@ import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
 export interface ContentControlView {
   /** The start and end tags at each control. */
   readonly tags?: ContentControlTagDisplay;
+  /** The text each control shows while it holds its placeholder. */
+  readonly prompts?: ContentControlPromptDisplay;
 }
 
 /** What a lane forwards to project the view: the view, and the block edges of its part. */
@@ -141,8 +145,13 @@ function blockToken(edges: BlockControlEdges | undefined, view: ContentControlVi
 }
 
 function controlToken(control: OoxmlElement, view: ContentControlView): string {
-  const labels = view.tags?.labelsOf(contentControlTagSubjectOf(control)) ?? null;
-  return framedTokenJoin([control.id, labelToken(labels?.open), labelToken(labels?.close)]);
+  const labels = view.tags?.labelsOf(contentControlSubjectOf(control)) ?? null;
+  return framedTokenJoin([
+    control.id,
+    labelToken(labels?.open),
+    labelToken(labels?.close),
+    contentControlPromptOf(control, view.prompts) ?? '',
+  ]);
 }
 
 function labelToken(label: ContentControlTagLabel | undefined): string {

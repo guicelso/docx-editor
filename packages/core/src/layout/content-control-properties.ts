@@ -6,6 +6,7 @@
 // over nothing in `semantic-layout.ts`; they operate only on their arguments.
 
 import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
+import type { ContentControlSubject } from '../contracts/editor-content-control-view.ts';
 import {
   MAX_CONTENT_CONTROL_NESTING as MAX_SDT_NESTING,
   contentControlContentChildren,
@@ -55,6 +56,11 @@ export function propertyVal(
 ): string | undefined {
   const child = propertyChild(properties, localName);
   return child ? wmlValOf(child) : undefined;
+}
+
+/** The control as a host sees it: its node id and its `w:tag`. */
+export function contentControlSubjectOf(control: OoxmlElement): ContentControlSubject {
+  return { controlId: control.id, tag: propertyVal(contentControlPropertiesOf(control), 'tag') };
 }
 
 export function parseContentControlLock(value: string | undefined): ContentControlLock {

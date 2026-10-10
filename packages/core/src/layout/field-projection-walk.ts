@@ -106,11 +106,16 @@ import {
 } from '../store/package/content-control-walk.ts';
 import {
   contentControlTagPiece,
-  contentControlTagSubjectOf,
   fitContentControlTagsToText,
   type ContentControlTagEdge,
   type ContentControlTagLevel,
 } from './content-control-tags.ts';
+import { contentControlSubjectOf } from './content-control-properties.ts';
+import {
+  blockContentControlPromptOf,
+  contentControlPromptOf,
+  projectContentControlPrompt,
+} from './content-control-prompts.ts';
 import type { ContentControlTagLabel } from '../contracts/editor-content-control-view.ts';
 import type { ContentControlView } from './content-control-view.ts';
 import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
@@ -979,12 +984,15 @@ export function unmergedPiecesOfParagraphForDisplay(
       // Inside a field the walk is collecting INPUT to that field, not prose: no tags there.
       const labels =
         contentControlTags && !pending
-          ? contentControlTags.labelsOf(contentControlTagSubjectOf(child))
+          ? contentControlTags.labelsOf(contentControlSubjectOf(child))
           : null;
       if (labels?.open) pushContentControlTag(child.id, 'open', labels.open, 'inline');
+      const prompt = pending ? null : contentControlPromptOf(child, contentControlView?.prompts);
+      const from = pieces.length;
       for (const inner of contentControlContentChildren(child)) {
         processInline(inner, depth + 1, namespaceScope, containerDepth + 1);
       }
+      if (prompt !== null) projectContentControlPrompt(pieces, from, prompt);
       if (labels?.close) pushContentControlTag(child.id, 'close', labels.close, 'inline');
       return;
     }
@@ -1022,18 +1030,23 @@ export function unmergedPiecesOfParagraphForDisplay(
   };
   // A block control's tags stand outside every inline one: it opens before the paragraph's first
   // character and closes after its last, so they are pushed around the paragraph's own walk.
-  const blockEdges = contentControlTags ? blockControlEdges?.get(paragraph.id) : undefined;
+  const blockEdges = contentControlView ? blockControlEdges?.get(paragraph.id) : undefined;
   const pushBlockTags = (controls: readonly OoxmlElement[], edge: ContentControlTagEdge): void => {
     for (const control of controls) {
-      const label = contentControlTags?.labelsOf(contentControlTagSubjectOf(control))?.[edge];
+      const label = contentControlTags?.labelsOf(contentControlSubjectOf(control))?.[edge];
       if (label) pushContentControlTag(control.id, edge, label, 'block');
     }
   };
   if (blockEdges) pushBlockTags(blockEdges.opens, 'open');
+  const blockPrompt = blockEdges
+    ? blockContentControlPromptOf(blockEdges, contentControlView?.prompts)
+    : null;
+  const paragraphFrom = pieces.length;
   // Paragraph root counts as depth 0; run children sit at depth 1.
   for (const child of paragraph.children) processInline(child, 1, paragraphScope, 0);
   // Malformed field missing end: demote — surface cached/buffered text, no live projection.
   abandonPending();
+  if (blockPrompt !== null) projectContentControlPrompt(pieces, paragraphFrom, blockPrompt);
   if (blockEdges) pushBlockTags(blockEdges.closes, 'close');
   if (contentControlTags) fitContentControlTagsToText(pieces);
 

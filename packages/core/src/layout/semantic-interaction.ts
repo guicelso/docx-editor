@@ -585,9 +585,11 @@ export function paragraphTextFromLayout(layout: SemanticLayout, paragraphId: str
       // field spells "Sample Title" over one model unit. The raw text would make this longer than
       // the model paragraph, and since this IS the surface's `paragraphTextOf` the overshoot lands
       // in Select All, the deletion range and the word walk. Clamp each span to its model width.
+      // A span that names the text it stands over reads back as that text.
       const width = span.range.end - span.range.start;
       const text =
-        span.text.length === width ? span.text : span.text.slice(0, width).padEnd(width, ' ');
+        span.modelText ??
+        (span.text.length === width ? span.text : span.text.slice(0, width).padEnd(width, ' '));
       pieces.push({ start: span.range.start, text });
     }
     // Inline drawings occupy one UTF-16 unit each; they live on `line.drawings`, not in span

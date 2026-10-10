@@ -252,6 +252,7 @@ export function breakParagraph(
       {
         ...piece,
         text: piece.projected ? piece.text : piece.text.slice(trim),
+        ...(piece.modelText === undefined ? {} : { modelText: piece.modelText.slice(trim) }),
         start: startOffset,
       },
     ];

@@ -1,10 +1,11 @@
 // The host's view lives on the editor: every surface the editor mounts takes it, so a load, a
-// detach and an attach keep the tags, the field tones and the field selection a host installed.
+// detach and an attach keep the tags, the prompts, the field tones and the field selection.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import { strFromU8, unzipSync } from 'fflate';
 import type { DocxEditorInstance } from '../docx-editor-types.ts';
 import { docx } from './paginated-surface-fixtures.ts';
 import { mountAnchorEditor } from './scroll-to-anchor-fixture.ts';
@@ -18,10 +19,14 @@ const field = (instruction: string, result: string) =>
   `<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>${result}</w:t></w:r>` +
   '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
 
+const placeholder = (tag: string, text: string) =>
+  `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/><w:showingPlcHdr/></w:sdtPr><w:sdtContent>${run(text)}</w:sdtContent></w:sdt>`;
+
 const FIRST = docx(`<w:p>${run('um ')}${control('a', run('A'))}${field('field:x', '«x»')}</w:p>`);
 const SECOND = docx(
   `<w:p>${run('dois ')}${control('b', run('B'))}${field('field:y', '«y»')}</w:p>`
 );
+const PROMPTED = docx(`<w:p>${run('tres ')}${placeholder('p', 'Clique aqui')}</w:p>`);
 
 const cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -38,6 +43,9 @@ const chipsIn = (host: HTMLElement) =>
   [...host.querySelectorAll<HTMLElement>('[data-cc-tag-control]')].map(
     (chip) => chip.textContent?.replace(/[\u00A0\u202F]/g, ' ').trim() ?? ''
   );
+
+const paintedText = (host: HTMLElement) =>
+  host.querySelector('.docx-pages')?.textContent?.replace(/[\u00A0\u202F]/g, ' ') ?? '';
 
 const tonesIn = (host: HTMLElement) =>
   [...host.querySelectorAll<HTMLElement>('[data-field-atom]')].map(
@@ -127,5 +135,18 @@ describe('the host view on the editor', () => {
     editor.load(SECOND);
     expect(chipsIn(host)).toEqual([]);
     expect(tonesIn(host).every((tone) => tone === undefined)).toBe(true);
+  });
+
+  test('the prompts reach the next document and never the saved bytes', async () => {
+    const { editor, host } = mounted();
+    editor.setContentControlPrompts({ promptOf: ({ tag }) => (tag === 'p' ? 'digite' : null) });
+    editor.load(PROMPTED);
+    expect(paintedText(host)).toContain('tres digite');
+    expect(paintedText(host)).not.toContain('Clique aqui');
+    const saved = unzipSync(new Uint8Array(await editor.save()))['word/document.xml']!;
+    expect(strFromU8(saved)).toContain('Clique aqui');
+    expect(strFromU8(saved)).not.toContain('digite');
+    editor.setContentControlPrompts(null);
+    expect(paintedText(host)).toContain('tres Clique aqui');
   });
 });

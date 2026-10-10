@@ -583,6 +583,7 @@ export interface ContentControlTagMark {
 
 // @public
 export interface ContentControlView {
+    readonly prompts?: ContentControlPromptDisplay;
     readonly tags?: ContentControlTagDisplay;
 }
 
@@ -4366,6 +4367,7 @@ export interface StyleSpanRecord {
     readonly glyphOffsetPt?: number;
     readonly lineEndWhitespace?: true;
     readonly link?: SpanLinkRecord;
+    readonly modelText?: string;
     readonly noteNav?: {
         readonly direction: 'to-note' | 'to-body';
         readonly scopeId: string;

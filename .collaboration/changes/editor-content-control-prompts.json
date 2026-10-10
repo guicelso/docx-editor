@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A control showing its placeholder painted the placeholder text the file stores, so a host that wanted other text there had to write it into the document.",
+  "after": "The editor holds a prompt policy beside the tags. Layout paints the host's text over the stored placeholder's range as one projected piece that reads back as the stored text, and each paragraph's cache key carries the prompt answers for the controls it draws.",
+  "reason": "Prompts are view state: they never change the document, are never saved, and are not shared with collaborators, so no peer reads them.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-prompts.test.ts",
+    "packages/core/src/editor/__tests__/content-control-view-facade.test.ts"
+  ],
+  "changeset": "editor-content-control-prompts",
+  "migration": null
+}

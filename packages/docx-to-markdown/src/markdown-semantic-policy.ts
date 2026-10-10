@@ -75,6 +75,8 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     borderBaselinePt: 'layout-only',
     // A view-only content-control tag is never laid out for an export.
     contentControlTag: 'layout-only',
+    // A host prompt over a placeholder is never laid out for an export either.
+    modelText: 'layout-only',
   } satisfies Record<keyof StyleSpanRecord, MarkdownFieldPolicy>,
   sourceRange: {
     paragraphId: 'represented',

@@ -198,6 +198,11 @@ export interface FieldAwarePiece {
    * control's edge, as a `w:ptab`'s is: it advances the line without moving a model offset.
    */
   readonly contentControlTag?: import('./content-control-tags.ts').ContentControlTagMark;
+  /**
+   * The model text of a projected piece that paints other text over a range the model spells:
+   * a content control's stored placeholder under the host's prompt. Read back in its place.
+   */
+  readonly modelText?: string;
 }
 
 /** A half-open model-offset range, in the paragraph's own UTF-16 offset space. */

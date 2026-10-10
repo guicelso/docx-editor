@@ -4,12 +4,7 @@
 // ZERO-WIDTH model range at the control's edge, exactly as a `w:ptab` does. Nothing is written
 // to the document, so every offset after a tag still agrees with the store.
 
-import type { OoxmlElement } from '@docx-editor.dev/core/store';
-import type {
-  ContentControlTagLabel,
-  ContentControlTagSubject,
-} from '../contracts/editor-content-control-view.ts';
-import { contentControlPropertiesOf, propertyVal } from './content-control-properties.ts';
+import type { ContentControlTagLabel } from '../contracts/editor-content-control-view.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
@@ -86,10 +81,6 @@ export function contentControlTagPiece(
     projected: true,
     contentControlTag: tone === undefined ? mark : { ...mark, tone },
   };
-}
-
-export function contentControlTagSubjectOf(control: OoxmlElement): ContentControlTagSubject {
-  return { controlId: control.id, tag: propertyVal(contentControlPropertiesOf(control), 'tag') };
 }
 
 /**

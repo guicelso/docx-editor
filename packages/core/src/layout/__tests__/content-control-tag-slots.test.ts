@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlNode, type OoxmlPart } from '../../store/package/ooxml-tree.ts';
 import { applyTreeOp } from '../../store/store/tree-op-apply.ts';
 import { storyBlocks } from '../story-roots.ts';
-import { contentControlTagSubjectOf } from '../content-control-tags.ts';
+import { contentControlSubjectOf } from '../content-control-properties.ts';
 import {
   isContentControl,
   contentControlContentChildren,
@@ -40,7 +40,7 @@ function bracketed(part: OoxmlPart): string {
       .map((node) => {
         if (node.kind === 'textValue') return node.value;
         if (isContentControl(node)) {
-          return `${contentControlTagSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
+          return `${contentControlSubjectOf(node).tag}{${walk(contentControlContentChildren(node))}}`;
         }
         return walk(node.children);
       })
@@ -57,7 +57,7 @@ function controlId(part: OoxmlPart, tag: string): string {
   const walk = (nodes: readonly OoxmlNode[]): void => {
     for (const node of nodes) {
       if (node.kind === 'textValue') continue;
-      if (isContentControl(node) && contentControlTagSubjectOf(node).tag === tag) found = node.id;
+      if (isContentControl(node) && contentControlSubjectOf(node).tag === tag) found = node.id;
       walk(node.children);
     }
   };

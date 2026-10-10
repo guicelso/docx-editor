@@ -910,6 +910,17 @@ export interface ContentControlFilter {
 }
 
 // @public
+export interface ContentControlPromptDisplay {
+    readonly promptOf: (control: ContentControlSubject) => string | null;
+}
+
+// @public
+export interface ContentControlSubject {
+    readonly controlId: string;
+    readonly tag: string | undefined;
+}
+
+// @public
 export interface ContentControlSummary {
     // (undocumented)
     readonly alias?: string;
@@ -925,7 +936,7 @@ export interface ContentControlSummary {
 
 // @public
 export interface ContentControlTagDisplay {
-    readonly labelsOf: (control: ContentControlTagSubject) => {
+    readonly labelsOf: (control: ContentControlSubject) => {
         readonly close?: ContentControlTagLabel;
         readonly open?: ContentControlTagLabel;
     } | null;
@@ -935,12 +946,6 @@ export interface ContentControlTagDisplay {
 export interface ContentControlTagLabel {
     readonly text: string;
     readonly tone?: string;
-}
-
-// @public
-export interface ContentControlTagSubject {
-    readonly controlId: string;
-    readonly tag: string | undefined;
 }
 
 // @public
@@ -1831,6 +1836,7 @@ export type EditorCommandShape<T> = {
 
 // @public
 export interface EditorContentControlView {
+    setContentControlPrompts(display: ContentControlPromptDisplay | null): void;
     setContentControlTags(display: ContentControlTagDisplay | null): void;
     setFieldSelection(select: ((instruction: string) => boolean) | null): void;
     setFieldTones(tone: FieldTone | null): void;

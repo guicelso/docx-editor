@@ -15,7 +15,7 @@ import {
   contentControlContentChildren,
 } from '../package/content-control-walk.ts';
 import { storyBlocks } from '../../layout/story-roots.ts';
-import { contentControlTagSubjectOf } from '../../layout/content-control-tags.ts';
+import { contentControlSubjectOf } from '../../layout/content-control-properties.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const run = (text: string) => `<w:r><w:t xml:space="preserve">${text}</w:t></w:r>`;
@@ -42,7 +42,7 @@ function bracketed(part: OoxmlPart): string {
       .map((node) => {
         if (node.kind === 'textValue') return node.value;
         if (isContentControl(node)) {
-          return `${contentControlTagSubjectOf(node).tag ?? 'P'}{${walk(contentControlContentChildren(node))}}`;
+          return `${contentControlSubjectOf(node).tag ?? 'P'}{${walk(contentControlContentChildren(node))}}`;
         }
         return walk(node.children);
       })
@@ -55,7 +55,7 @@ function controlNamed(part: OoxmlPart, tag: string): OoxmlNode {
   const walk = (nodes: readonly OoxmlNode[]): void => {
     for (const node of nodes) {
       if (node.kind === 'textValue') continue;
-      if (isContentControl(node) && contentControlTagSubjectOf(node).tag === tag) found = node;
+      if (isContentControl(node) && contentControlSubjectOf(node).tag === tag) found = node;
       walk(node.children);
     }
   };

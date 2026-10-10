@@ -199,6 +199,7 @@ const SPAN_DECORATIONS: Record<Exclude<keyof StyleSpanRecord, 'range' | 'text' |
   borderBaselinePt: true,
   caretEdges: true,
   contentControlTag: true,
+  modelText: true,
   tabLeader: true,
   tabLeaderAdvancePt: true,
   link: true,

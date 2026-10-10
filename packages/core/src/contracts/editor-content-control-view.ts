@@ -1,5 +1,5 @@
 /**
- * What a host draws over content controls and fields: an answer per control or per field, never
+ * What a host shows over content controls and fields: an answer per control or per field, never
  * written to the document, exported or printed.
  */
 
@@ -15,8 +15,8 @@ export interface ContentControlTagLabel {
   readonly tone?: string;
 }
 
-/** The control a host labels, as the file states it. `tag` is untrusted file data. @public */
-export interface ContentControlTagSubject {
+/** A content control as the file states it. `tag` is untrusted file data. @public */
+export interface ContentControlSubject {
   /** The control's node id, as `ContentControlBoundaryRecord.id` names it. */
   readonly controlId: string;
   /** The control's `w:tag`, or undefined when the file states none. */
@@ -34,8 +34,25 @@ export interface ContentControlTagSubject {
 export interface ContentControlTagDisplay {
   /** The start and end tags of one control; a side left out, or null, draws no tag there. */
   readonly labelsOf: (
-    control: ContentControlTagSubject
+    control: ContentControlSubject
   ) => { readonly open?: ContentControlTagLabel; readonly close?: ContentControlTagLabel } | null;
+}
+
+/**
+ * The text a content control shows while it holds its placeholder (`w:showingPlcHdr`), in place
+ * of the placeholder text the file stores. @public
+ *
+ * `promptOf` must be pure and cheap, like {@link ContentControlTagDisplay.labelsOf}. The shown
+ * text takes the style of the stored placeholder and is one unit: the caret stops before and
+ * after it, and the document, the saved bytes and the clipboard keep the stored text.
+ */
+export interface ContentControlPromptDisplay {
+  /**
+   * The text one control shows, or null (or empty) to show the stored placeholder. Asked only
+   * of a control showing its placeholder, whose placeholder is plain text: inline, or a block
+   * control holding one paragraph.
+   */
+  readonly promptOf: (control: ContentControlSubject) => string | null;
 }
 
 /**
@@ -56,6 +73,8 @@ export type FieldTone = (instruction: string) => string | undefined;
 export interface EditorContentControlView {
   /** Draw a start and an end tag at each content control, as the host labels it. */
   setContentControlTags(display: ContentControlTagDisplay | null): void;
+  /** Show the host's text in each content control that holds its placeholder. */
+  setContentControlPrompts(display: ContentControlPromptDisplay | null): void;
   /**
    * Name each field for the host's stylesheet: the name lands on the field's painted result as
    * `data-field-tone`. Changing it repaints without laying anything out.
