@@ -116,11 +116,16 @@ describe('the slots beside a block tag', () => {
     });
   });
 
-  test('a slot inside a block tag names no destination: the offset is already inside it', () => {
+  test('a block edge on the outside names the place between blocks, and on the inside no place', () => {
     const block = { controlId: 'B', edge: 'open', level: 'block' } as const;
     const inline = { controlId: 'I', edge: 'open', level: 'inline' } as const;
 
     expect(slotPlacementOf({ left: block, right: null })).toBeNull();
+    expect(slotPlacementOf({ left: null, right: null })).toBeNull();
+    expect(slotPlacementOf({ left: null, right: block })).toEqual({ block: { before: 'B' } });
+    expect(slotPlacementOf({ left: { ...block, edge: 'close' }, right: null })).toEqual({
+      block: { after: 'B' },
+    });
     expect(slotPlacementOf({ left: block, right: inline })).toEqual({
       beside: { controlId: 'I', side: 'before' },
     });

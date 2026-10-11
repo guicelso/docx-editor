@@ -21,14 +21,14 @@ import type { ContentControlSurfaceState } from './surface-content-control-contr
 
 /**
  * Where text typed in a slot goes: beside an inline control, at the start or end of one, or — in
- * the slot outside a block control's tag — at the place between blocks before or after it.
+ * the slot outside a block control's tag — at the place between blocks before or after it. @public
  */
 export type SlotPlacement =
   | { readonly beside: { readonly controlId: string; readonly side: 'before' | 'after' } }
   | { readonly inside: string }
   | { readonly block: BlockPlace };
 
-/** The edge on each side of a slot; `null` is text. */
+/** The edge on each side of a slot; `null` is text. @public */
 export interface SlotNeighbours {
   readonly left: CaretSlotNeighbour | null;
   readonly right: CaretSlotNeighbour | null;
@@ -209,7 +209,8 @@ function slotsBetween(edges: readonly CaretSlotNeighbour[]): readonly SlotNeighb
  * An opening edge on the right means in front of that control; a closing one on the left,
  * behind it; otherwise the start or the end of the control whose edge is beside the slot. The
  * start or end of a BLOCK control names no place: its first or last paragraph is already the
- * place, and the offset says where in it.
+ * place, and the offset says where in it, as it does with text on both sides. A host that writes at the caret reads the place here,
+ * from the neighbours `ContentControlSurfaceState.caretSlot` publishes. @public
  */
 export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
   if (slot.right?.edge === 'open') {
@@ -224,8 +225,8 @@ export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
       ? { block: { after: controlId } }
       : { beside: { controlId, side: 'after' } };
   }
-  const owner = (slot.left ?? slot.right)!;
-  return owner.level === 'block' ? null : { inside: owner.controlId };
+  const owner = slot.left ?? slot.right;
+  return owner === null || owner.level === 'block' ? null : { inside: owner.controlId };
 }
 
 export function isCollapsedSelection(selection: SemanticSelection): boolean {
