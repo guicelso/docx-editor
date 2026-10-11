@@ -310,7 +310,7 @@ export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOption
   if (op.op === 'rewriteTocPageNumbers') return applyRewriteTocPageNumbers(part, op, options);
   if (isFieldResultOp(op)) return applyFieldResultOp(part, op, options);
   if (op.op === 'setFieldCode') return applySetFieldCode(part, op, options);
-  if (isMergeFieldOp(op)) return applyMergeFieldOp(part, op, options);
+  if (isMergeFieldOp(op)) return applyMergeFieldOp(part, op, applyTreeOp, options);
   if (isBlockStructureOp(op)) return applyBlockStructureOp(part, op, options);
   if (isInlineControlOp(op)) return applyInlineControlOp(part, op, options);
   if (op.op === 'joinParagraphs') return applyJoin(part, op.firstId, op.secondId, options);

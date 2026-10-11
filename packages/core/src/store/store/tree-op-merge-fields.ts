@@ -45,7 +45,7 @@ import {
   promptTypedOver,
   type InlineDestination,
 } from './tree-op-inline-destination.ts';
-import { fromEdit, TEXT_DEPS } from './tree-op-nodes.ts';
+import { fromEdit, runPropertiesNodeOf, TEXT_DEPS } from './tree-op-nodes.ts';
 import {
   indivisibleAt,
   isParagraph,
@@ -53,6 +53,7 @@ import {
   paragraphOffsetIndex,
   splitsSurrogate,
 } from './tree-op-segments.ts';
+import type { DeleteTextOp } from './text-edit-op-types.ts';
 import type { TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
 import { rejectContentEdit } from './tree-op-validate-controls.ts';
 
@@ -69,6 +70,12 @@ export interface InsertMergeFieldOp {
   readonly inside?: string;
   /** Land as this inline control's sibling at its edge, which must be the offset. */
   readonly beside?: { readonly controlId: string; readonly side: 'before' | 'after' };
+  /**
+   * The field REPLACES the text from `offset` to here, and wears the formatting of the first
+   * character it replaces — the rule typing over a selection follows. Without it, the field lands
+   * at the caret and wears the formatting of the text before it.
+   */
+  readonly end?: number;
 }
 
 /** Rewrite a merge field's name and cached result in place: its runs and their formatting stay. */
@@ -150,7 +157,35 @@ export function isMergeFieldOp(op: { readonly op: string }): op is MergeFieldOp 
   return op.op === 'insertMergeField' || op.op === 'setMergeField';
 }
 
-export function validateMergeFieldOp(part: OoxmlPart, op: MergeFieldOp): TreeOpRejection | null {
+/**
+ * The engine's own `deleteText`, refusing and applying the text a field replaces, handed in by the
+ * dispatchers so the field and a deletion answer to one rule.
+ */
+export type ReplacedTextRefusal = (part: OoxmlPart, op: DeleteTextOp) => TreeOpRejection | null;
+export type ReplacedTextDeletion = (
+  part: OoxmlPart,
+  op: DeleteTextOp,
+  options?: EditOptions
+) => TreeOpResult;
+
+/** The deletion of the text a field replaces; `null` for a field written at a caret. */
+function replacedTextOf(op: InsertMergeFieldOp): DeleteTextOp | null {
+  return op.end === undefined
+    ? null
+    : { op: 'deleteText', paragraphId: op.paragraphId, start: op.offset, end: op.end };
+}
+
+export function validateMergeFieldOp(
+  part: OoxmlPart,
+  op: MergeFieldOp,
+  replacedTextRefusal: ReplacedTextRefusal
+): TreeOpRejection | null {
+  const replaced = op.op === 'insertMergeField' ? replacedTextOf(op) : null;
+  return (replaced === null ? null : replacedTextRefusal(part, replaced)) ?? fieldRefusal(part, op);
+}
+
+/** What refuses the field itself; the text it replaces is refused by the deletion. */
+function fieldRefusal(part: OoxmlPart, op: MergeFieldOp): TreeOpRejection | null {
   if (!isMergeFieldName(op.name) || !validResult(op.result)) return 'invalidArgs';
   const paragraph = findNode(part, op.paragraphId);
   if (!paragraph) return 'unknown-paragraph';
@@ -169,12 +204,12 @@ function insertRefusal(
     return 'offset-out-of-range';
   }
   if (splitsSurrogate(paragraph, op.offset)) return 'splits-surrogate-pair';
-  const caret = { start: op.offset, end: op.offset };
+  const range = { start: op.offset, end: op.end ?? op.offset };
   if (op.inside !== undefined || op.beside !== undefined) {
-    return inlineDestinationRefusal(part, op.paragraphId, caret, op);
+    return inlineDestinationRefusal(part, op.paragraphId, range, op);
   }
   if (indivisibleAt(paragraph, op.offset)) return 'indivisible-content';
-  return rejectContentEdit(part, paragraph, op.offset, op.offset);
+  return rejectContentEdit(part, paragraph, range.start, range.end);
 }
 
 function rewriteRefusal(
@@ -196,12 +231,13 @@ function rewriteRefusal(
 export function applyMergeFieldOp(
   part: OoxmlPart,
   op: MergeFieldOp,
+  replacedTextDeletion: ReplacedTextDeletion,
   options?: EditOptions
 ): TreeOpResult {
-  const refused = validateMergeFieldOp(part, op);
+  const refused = fieldRefusal(part, op);
   if (refused) return { ok: false, reason: refused };
   return op.op === 'insertMergeField'
-    ? applyInsertMergeField(part, op, options)
+    ? applyInsertMergeField(part, op, replacedTextDeletion, options)
     : applySetMergeField(part, op, options);
 }
 
@@ -219,18 +255,33 @@ function destinationOf(part: OoxmlPart, op: InsertMergeFieldOp): InlineDestinati
 function applyInsertMergeField(
   part: OoxmlPart,
   op: InsertMergeFieldOp,
+  replacedTextDeletion: ReplacedTextDeletion,
   options?: EditOptions
 ): TreeOpResult {
-  const landed = inlineLandingAt(part, op.paragraphId, op.offset, destinationOf(part, op), options);
+  const replaced = replacedTextOf(op);
+  const replacedFormatting = replaced === null ? null : formattingOfFirstCharacter(part, op);
+  const cleared = replaced === null ? null : replacedTextDeletion(part, replaced, options);
+  if (cleared !== null && !cleared.ok) return cleared;
+  const written = cleared === null ? part : cleared.part;
+  const landed = inlineLandingAt(
+    written,
+    op.paragraphId,
+    op.offset,
+    destinationOf(written, op),
+    options
+  );
   if (!landed.ok) return landed;
   const { landing } = landed;
   const nextId = createNodeIdAllocator(landing.part);
-  const formatting = inheritedRunProperties(
-    landing.part,
-    paragraphOffsetIndex(landing.paragraph),
-    landing.offset,
-    nextId
-  );
+  const formatting =
+    replacedFormatting === null
+      ? inheritedRunProperties(
+          landing.part,
+          paragraphOffsetIndex(landing.paragraph),
+          landing.offset,
+          nextId
+        )
+      : replacedFormatting && cloneWithFreshIds(replacedFormatting, nextId);
   const runOf = (child: OoxmlNode): OoxmlNode => fieldRun(nextId, child, formatting);
   const runs: readonly OoxmlNode[] = [
     runOf(fldChar(nextId, 'begin')),
@@ -246,6 +297,18 @@ function applyInsertMergeField(
     dependencyKeys: TEXT_DEPS,
     impact: 'text-local',
   });
+}
+
+/** The `w:rPr` of the run holding the first character the field replaces; `undefined` when it has none. */
+function formattingOfFirstCharacter(
+  part: OoxmlPart,
+  op: InsertMergeFieldOp
+): OoxmlNode | undefined {
+  const paragraph = findNode(part, op.paragraphId);
+  if (!paragraph || !isParagraph(paragraph)) return undefined;
+  const first = paragraphOffsetIndex(paragraph).segments.find((segment) => segment.end > op.offset);
+  const run = first === undefined ? null : findNode(part, first.runId);
+  return run && run.kind === 'run' ? runPropertiesNodeOf(run) : undefined;
 }
 
 /** One run holding one field piece, with its own copy of the caret's formatting. */

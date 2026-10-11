@@ -2081,6 +2081,7 @@ export interface InsertMergeFieldOp {
         readonly controlId: string;
         readonly side: 'before' | 'after';
     };
+    readonly end?: number;
     readonly inside?: string;
     readonly name: string;
     // (undocumented)

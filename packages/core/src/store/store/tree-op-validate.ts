@@ -425,7 +425,7 @@ export function validateTreeOp(part: OoxmlPart, op: TreeDocOp): TreeOpRejection 
   }
   if (op.op === 'commitTextFormField') return validateCommitTextFormField(part, op);
   if (op.op === 'setFieldCode') return validateSetFieldCode(part, op);
-  if (isMergeFieldOp(op)) return validateMergeFieldOp(part, op);
+  if (isMergeFieldOp(op)) return validateMergeFieldOp(part, op, validateTreeOp);
   if (op.op === 'setTextFormFieldDefault') return validateTextFormFieldDefault(part, op);
   if (op.op === 'setLegacyDropdown') return validateSetLegacyDropdown(part, op);
   if (op.op === 'setLegacyCheckbox') return validateSetLegacyCheckbox(part, op);

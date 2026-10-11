@@ -172,6 +172,42 @@ describe('insertMergeField', () => {
     expect(refusalOf(base, insert(base, 2, { inside: controlNamed(base, 'L').id }))).toBe('locked');
   });
 
+  test('over a range, the field replaces the text and takes the formatting of its first character', () => {
+    const base = documentOf(
+      run('Nome ') + run('Carlos Mendes', '<w:rPr><w:b/></w:rPr>') + run(' fim')
+    );
+    const part = applied(base, insert(base, 5, { end: 18 }));
+    const xml = serializeOoxmlPart(part);
+
+    expect(reading(part)).toBe('Nome «X» fim');
+    expect(xml).not.toContain('Carlos');
+    expect(xml.match(/<w:rPr><w:b\/><\/w:rPr>/g)?.length).toBe(5);
+  });
+
+  test('over a range inside a control, the field stays in the control', () => {
+    const base = documentOf(run('a') + sdt('O', run('bcd')) + run('e'));
+
+    expect(
+      reading(applied(base, insert(base, 2, { end: 3, inside: controlNamed(base, 'O').id })))
+    ).toBe('aO{b«X»d}e');
+  });
+
+  test.each([
+    [3, 3, 'invalid-range'],
+    [3, 2, 'invalid-range'],
+    [1, 9, 'offset-out-of-range'],
+  ])('refuses the range %i–%i', (offset, end, reason) => {
+    const base = documentOf(run('abcd'));
+
+    expect(refusalOf(base, insert(base, offset, { end }))).toBe(reason);
+  });
+
+  test('a range over a locked control is refused', () => {
+    const base = documentOf(run('a ') + sdt('L', run('fixo'), '<w:lock w:val="contentLocked"/>'));
+
+    expect(refusalOf(base, insert(base, 0, { end: 4 }))).toBe('locked');
+  });
+
   test.each(['', 'with "quote"', 'back\\slash', 'line\nbreak'])('refuses the name %j', (name) => {
     const base = documentOf(run('ab'));
 
