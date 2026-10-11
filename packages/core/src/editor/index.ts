@@ -399,7 +399,7 @@ export {
   observeContentControlPopup,
   contentControlPopupKeyDown,
 } from './content-control-popup-behavior.ts';
-export { slotPlacementOf, type SlotNeighbours, type SlotPlacement } from './surface-caret-slots.ts';
+export type { SlotPlacement } from './surface-caret-slots.ts';
 export { createContentControlListNavigation } from './content-control-list-navigation.ts';
 export type { ContentControlListNavigation } from './content-control-list-navigation.ts';
 

@@ -3145,14 +3145,6 @@ export function shiftMonth(year: number, month: number, delta: 1 | -1): {
 export const signedFirstLineOf: (kind: SpecialIndent, magnitudeTwips: number) => number;
 
 // @public
-export interface SlotNeighbours {
-    // (undocumented)
-    readonly left: CaretSlotNeighbour | null;
-    // (undocumented)
-    readonly right: CaretSlotNeighbour | null;
-}
-
-// @public
 export type SlotPlacement = {
     readonly beside: {
         readonly controlId: string;
@@ -3163,9 +3155,6 @@ export type SlotPlacement = {
 } | {
     readonly block: BlockPlace;
 };
-
-// @public
-export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null;
 
 // @public
 export const SNAP_TWIPS_CM: number;

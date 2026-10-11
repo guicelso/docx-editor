@@ -2,6 +2,7 @@ import type {
   CaretSlotNeighbour,
   ContentControlBoundaryRecord,
 } from '@docx-editor.dev/core/layout';
+import type { SlotPlacement } from './surface-caret-slots.ts';
 
 /**
  * Content-control interaction lane on the paginated surface.
@@ -63,18 +64,21 @@ export interface ContentControlSurfaceState {
   readonly showAll: boolean;
   /** Tab / Shift+Tab navigate between editable controls. */
   readonly formFill: boolean;
-  /** Innermost control containing the caret, or null. */
+  /** Innermost control containing the caret — where tags meet, the one its slot is in — or null. */
   readonly activeControlId: string | null;
   /** Innermost control under a resting pointer, from layout (Word's hover), or null. */
   readonly hoveredControlId: string | null;
   /**
-   * The slot the caret stands in where inline content-control edges meet, named by the edge on
-   * each side of it (`null` for text). One offset is several places there, and the slot is what
-   * says where typing lands. With view-only tags drawn there is always one; with them hidden,
-   * only where an edit or a host placed the caret. Null anywhere else.
+   * The slot the caret stands in where content-control edges meet, named by the edge on each side
+   * of it (`null` for text), and where a write at the caret lands there — `null` where the offset
+   * alone says it, inside a block control's tag. One offset is several places there, and the slot
+   * is what says which: typing lands at `placement`, and `activeControlId` is the control the slot
+   * is in. With view-only tags drawn there is always one; with them hidden, only where an edit or
+   * a host placed the caret. Null anywhere else.
    */
   readonly caretSlot: {
     readonly left: CaretSlotNeighbour | null;
     readonly right: CaretSlotNeighbour | null;
+    readonly placement: SlotPlacement | null;
   } | null;
 }

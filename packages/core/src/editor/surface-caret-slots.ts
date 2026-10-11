@@ -28,7 +28,7 @@ export type SlotPlacement =
   | { readonly inside: string }
   | { readonly block: BlockPlace };
 
-/** The edge on each side of a slot; `null` is text. @public */
+/** The edge on each side of a slot; `null` is text. */
 export interface SlotNeighbours {
   readonly left: CaretSlotNeighbour | null;
   readonly right: CaretSlotNeighbour | null;
@@ -69,7 +69,7 @@ export interface CaretSlots {
   hold(at: SemanticPosition, keep: SlotKeep): void;
   /** The caret where it stands takes the slot keeping that side, as a host asked. */
   stand(keep: SlotKeep): void;
-  /** What a host reads of the slot the caret stands in: its two neighbours, where one is known. */
+  /** What a host reads of the slot the caret stands in: its two neighbours and where a write lands, where one is known. */
   neighbours(): ContentControlSurfaceState['caretSlot'];
 }
 
@@ -191,7 +191,9 @@ export function createCaretSlots(deps: {
     },
     neighbours() {
       const slot = place();
-      return slot && (slot.left || slot.right) ? { left: slot.left, right: slot.right } : null;
+      return slot && (slot.left || slot.right)
+        ? { left: slot.left, right: slot.right, placement: slotPlacementOf(slot) }
+        : null;
     },
   };
 }
@@ -209,8 +211,7 @@ function slotsBetween(edges: readonly CaretSlotNeighbour[]): readonly SlotNeighb
  * An opening edge on the right means in front of that control; a closing one on the left,
  * behind it; otherwise the start or the end of the control whose edge is beside the slot. The
  * start or end of a BLOCK control names no place: its first or last paragraph is already the
- * place, and the offset says where in it, as it does with text on both sides. A host that writes at the caret reads the place here,
- * from the neighbours `ContentControlSurfaceState.caretSlot` publishes. @public
+ * place, and the offset says where in it, as it does with text on both sides.
  */
 export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
   if (slot.right?.edge === 'open') {
@@ -227,6 +228,21 @@ export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
   }
   const owner = slot.left ?? slot.right;
   return owner === null || owner.level === 'block' ? null : { inside: owner.controlId };
+}
+
+/**
+ * The control a slot stands in. In front of an opening edge or behind a closing one, the caret is
+ * outside that control, in the control around it; past an opening edge or before a closing one,
+ * it is inside. The same reading `slotPlacementOf` gives a write, so the active control is where
+ * typing lands.
+ */
+export function slotOwnerOf(
+  slot: SlotNeighbours,
+  parentOf: (controlId: string) => string | null
+): string | null {
+  if (slot.right?.edge === 'open') return parentOf(slot.right.controlId);
+  if (slot.left?.edge === 'close') return parentOf(slot.left.controlId);
+  return (slot.left ?? slot.right)?.controlId ?? null;
 }
 
 export function isCollapsedSelection(selection: SemanticSelection): boolean {

@@ -64,7 +64,7 @@ import {
   typedInsertText,
 } from './content-control-prompt-landing.ts';
 import { createContentControlHover } from './content-control-hover.ts';
-import { contentControlAtSelection } from './content-control-at-selection.ts';
+import { createControlAtCaret } from './surface-control-at-caret.ts';
 import { collapseHorizontalSelection as collapseSelection } from './surface-selection-collapse.ts';
 import { createParagraphMarkVisibility } from './surface-paragraph-mark-visibility.ts';
 import { saveSurfaceDocument } from './docx-editor-save.ts';
@@ -136,7 +136,6 @@ import {
   selectionRects,
   caretAt,
   cellSelectionText,
-  contentControlHoldingParagraph,
   contentControlRecordsInPart,
   contentControlsInLayout,
   createDocumentLinkProjectors,
@@ -920,6 +919,7 @@ export function mountPaginatedSurface(
     const paragraph = findNode(part, paragraphId);
     return paragraph?.kind === 'paragraph' ? contentControlEdgesAt(part, paragraph, offset) : [];
   };
+  let paintedActiveControlId: string | null = null;
   const caretSlots = createCaretSlots({
     enabled: () => contentControlView?.tags !== undefined,
     selection: () => selection,
@@ -927,8 +927,19 @@ export function mountPaginatedSurface(
     edgesAt: controlEdgesAt,
     changed: () => {
       caret.update();
+      // The slot alone can move the caret into another control, whose chrome is painted active.
+      if (paintedActiveControlId !== (contentControlAtCaret()?.id ?? null)) render(false);
       options.onChange?.(currentState());
     },
+  });
+  const controlAtCaret = createControlAtCaret({
+    storyScope: () => storyScope(),
+    bodyPart: () => session.part(),
+    storyPart: (scope) => session.partFor(scope),
+    layout: () => currentLayout,
+    selection: () => selection,
+    measurer: () => measurer,
+    slot: () => caretSlots.neighbours(),
   });
   const controlKeys = createControlKeys({
     part: (paragraphId) => partOfNodeId(session, paragraphId) ?? session.part(),
@@ -1908,6 +1919,7 @@ export function mountPaginatedSurface(
       }
     | undefined {
     const active = contentControlAtCaret();
+    paintedActiveControlId = active?.id ?? null;
     const emptyTocBeginIds = emptyTocPlaceholderParagraphIds(session.part());
     const tocs = detectBodyTocs(session.part());
     const tocBoundaries = tocs
@@ -1969,75 +1981,9 @@ export function mountPaginatedSurface(
     };
   }
 
-  /** Innermost layout boundary under the caret, or null outside every control. */
-  /**
-   * The content control the caret is inside, or null.
-   *
-   * Two resolutions, because the boundary records the fast one needs exist for the body
-   * alone. In the body, geometry: a paragraph can hold several inline controls and only the
-   * caret's x/y says which. Anywhere else, the caret's own PARAGRAPH, walked in that story's
-   * part — which is the honest answer where no records exist, and is what a block control
-   * needs in any case.
-   *
-   * The story check is not an optimisation. Page-content coordinates mean nothing without
-   * knowing whose box they are in: a header caret's y lands in the top band of the BODY
-   * content box, so the geometry path answered with whichever body control sat there, and
-   * `setValue` and `remove` then rewrote and deleted body content while the reader was
-   * editing a header.
-   */
-  /**
-   * Single-slot memo for the body branch of {@link contentControlAtCaret}.
-   *
-   * `state()` resolves the active control on every read, and hosts read state repeatedly
-   * between changes, so the geometry hit-test ran again and again against an unchanged layout
-   * and selection. Both inputs are replaced, never mutated, so identity is a sound key: a
-   * commit republishes the layout, a caret move reassigns the selection, and a zoom relayouts.
-   * The story branch stays unmemoized — it reads the live part, which neither key covers.
-   */
-  let contentControlAtCaretMemo: {
-    readonly layout: SemanticLayout;
-    readonly selection: SemanticSelection;
-    readonly result: ContentControlBoundaryRecord | null;
-  } | null = null;
+  /** The content control the caret is in, or null: the slot where tags meet, else the offset. */
   function contentControlAtCaret(): ContentControlBoundaryRecord | null {
-    const scope = storyScope();
-    if (scope.kind !== 'body') return contentControlInStoryAtCaret(scope);
-    if (
-      contentControlAtCaretMemo &&
-      contentControlAtCaretMemo.layout === currentLayout &&
-      contentControlAtCaretMemo.selection === selection
-    ) {
-      return contentControlAtCaretMemo.result;
-    }
-    const result = resolveBodyContentControlAtCaret();
-    contentControlAtCaretMemo = { layout: currentLayout, selection, result };
-    return result;
-  }
-
-  function resolveBodyContentControlAtCaret(): ContentControlBoundaryRecord | null {
-    const found = contentControlAtSelection(currentLayout, selection, measurer);
-    // Belt and braces: the records are the body's, so a match from another part is a bug in
-    // the index rather than an answer, and must not become a write.
-    if (!found) return null;
-    return partNameOfNodeId(found.id) === session.part().name ? found : null;
-  }
-
-  /** The part name a node id names, or '' when it names none. */
-  function partNameOfNodeId(id: string): string {
-    const hash = id.indexOf('#');
-    return hash === -1 ? '' : id.slice(0, hash);
-  }
-
-  /**
-   * The innermost control holding the caret's paragraph, in the open story's own part.
-   *
-   * Deepest wins, matching the geometry path's innermost-by-nesting rule: a control inside a
-   * control is the one the caret is actually in.
-   */
-  function contentControlInStoryAtCaret(scope: StoryScope): ContentControlBoundaryRecord | null {
-    const part = session.partFor(scope);
-    if (!part) return null;
-    return contentControlHoldingParagraph(part, selection.head.paragraphId);
+    return controlAtCaret();
   }
 
   function contentLockedOrBound(control: ContentControlBoundaryRecord): string | null {

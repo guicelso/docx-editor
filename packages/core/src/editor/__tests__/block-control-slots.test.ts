@@ -9,7 +9,7 @@ import type { OoxmlNode } from '../../store/package/ooxml-tree.ts';
 import { contentControlPropertiesOf } from '../../store/package/content-control-nodes.ts';
 import type { PaginatedSurface } from '../paginated-surface.ts';
 import { mount } from './paginated-surface-fixtures.ts';
-import { slotPlacementOf } from '../surface-caret-slots.ts';
+import { slotOwnerOf, slotPlacementOf } from '../surface-caret-slots.ts';
 
 const run = (text: string) => `<w:r><w:t xml:space="preserve">${text}</w:t></w:r>`;
 const paragraph = (inner: string) => `<w:p>${inner}</w:p>`;
@@ -25,12 +25,16 @@ afterEach(() => {
 });
 
 function tagged(): PaginatedSurface {
-  const { surface } = mount(BODY);
-  mounted.push(surface);
-  surface.setContentControlView({
+  return taggedIn().surface;
+}
+
+function taggedIn(): { surface: PaginatedSurface; container: HTMLElement } {
+  const mounted_ = mount(BODY);
+  mounted.push(mounted_.surface);
+  mounted_.surface.setContentControlView({
     tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
   });
-  return surface;
+  return mounted_;
 }
 
 function idOf(surface: PaginatedSurface, match: (node: OoxmlNode) => boolean): string {
@@ -113,6 +117,7 @@ describe('the slots beside a block tag', () => {
     expect(surface.state().contentControls.caretSlot).toEqual({
       left: { controlId: tagged_(surface, 'B'), edge: 'open', level: 'block' },
       right: { controlId: tagged_(surface, 'I'), edge: 'open', level: 'inline' },
+      placement: { beside: { controlId: tagged_(surface, 'I'), side: 'before' } },
     });
   });
 
@@ -134,5 +139,89 @@ describe('the slots beside a block tag', () => {
     ).toEqual({
       beside: { controlId: 'I', side: 'after' },
     });
+  });
+});
+
+describe('the control the caret is in, where tags meet', () => {
+  /** The control the surface publishes as active, and the one whose chrome it paints active. */
+  function activeOf(surface: PaginatedSurface, container: HTMLElement) {
+    const painted = container.querySelector<HTMLElement>('[data-active]');
+    const tagOf = (id: string | null) =>
+      id === null ? null : contentControlPropertiesOf(nodeOf(surface, id)).tag;
+    return {
+      published: tagOf(surface.state().contentControls.activeControlId),
+      painted: painted?.dataset.tag ?? null,
+    };
+  }
+
+  test('outside the block tag the caret is in no control, and a write lands between blocks', () => {
+    const { surface, container } = taggedIn();
+    caretBeside(surface, 'B', 'before');
+
+    expect(activeOf(surface, container)).toEqual({ published: null, painted: null });
+    expect(surface.state().contentControls.caretSlot?.placement).toEqual({
+      block: { before: tagged_(surface, 'B') },
+    });
+  });
+
+  test('between the block tag and the inline one the caret is in the block, in front of the inline', () => {
+    const { surface, container } = taggedIn();
+    caretBeside(surface, 'B', 'after');
+
+    expect(activeOf(surface, container)).toEqual({ published: 'B', painted: 'B' });
+  });
+
+  test('past the inline tag the caret is in the inline control, and a write lands inside it', () => {
+    const { surface, container } = taggedIn();
+    caretBeside(surface, 'I', 'after');
+
+    expect(activeOf(surface, container)).toEqual({ published: 'I', painted: 'I' });
+    expect(surface.state().contentControls.caretSlot?.placement).toEqual({
+      inside: tagged_(surface, 'I'),
+    });
+  });
+
+  test('an arrow that steps between the slots of one offset moves the active control', () => {
+    const { surface, container } = taggedIn();
+    caretBeside(surface, 'I', 'after');
+    surface.navigate('left');
+
+    expect(activeOf(surface, container)).toEqual({ published: 'B', painted: 'B' });
+  });
+
+  test('inside a block tag with text after it, the block holds the caret and the offset is the place', () => {
+    const { surface } = mount(paragraph(run('a')) + control('C', paragraph(run('w'))));
+    mounted.push(surface);
+    surface.setContentControlView({
+      tags: { labelsOf: ({ tag }) => ({ open: { text: `${tag}▸` }, close: { text: `◂${tag}` } }) },
+    });
+    const paragraphId = idOf(surface, (node) => node.kind === 'paragraph' && textOf(node) === 'w');
+    const caret = { paragraphId, offset: 0 };
+    surface.setSelection(
+      { anchor: caret, head: caret },
+      { controlId: tagged_(surface, 'C'), edge: 'open', side: 'after' }
+    );
+
+    expect(surface.state().contentControls.activeControlId).toBe(tagged_(surface, 'C'));
+    expect(surface.state().contentControls.caretSlot?.placement).toBeNull();
+  });
+
+  test('a slot names its owner: in front of an opening or behind a closing edge, the control around it', () => {
+    const parents: Record<string, string | null> = { I: 'B', B: null };
+    const parentOf = (controlId: string) => parents[controlId] ?? null;
+    const open = (controlId: string, level: 'block' | 'inline') =>
+      ({ controlId, edge: 'open', level }) as const;
+    const close = (controlId: string, level: 'block' | 'inline') =>
+      ({ controlId, edge: 'close', level }) as const;
+
+    expect(slotOwnerOf({ left: null, right: open('B', 'block') }, parentOf)).toBeNull();
+    expect(slotOwnerOf({ left: open('B', 'block'), right: open('I', 'inline') }, parentOf)).toBe(
+      'B'
+    );
+    expect(slotOwnerOf({ left: open('I', 'inline'), right: null }, parentOf)).toBe('I');
+    expect(slotOwnerOf({ left: close('I', 'inline'), right: null }, parentOf)).toBe('B');
+    expect(slotOwnerOf({ left: null, right: close('I', 'inline') }, parentOf)).toBe('I');
+    expect(slotOwnerOf({ left: close('B', 'block'), right: null }, parentOf)).toBeNull();
+    expect(slotOwnerOf({ left: null, right: null }, parentOf)).toBeNull();
   });
 });
