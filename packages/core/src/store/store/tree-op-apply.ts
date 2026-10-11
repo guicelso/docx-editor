@@ -3147,7 +3147,7 @@ function applyDeleteBlock(part: OoxmlPart, blockId: string, options?: EditOption
   return fromEdit(inserted, { ...effect, created: [...created, paragraph.id] });
 }
 
-function applyJoin(
+export function applyJoin(
   part: OoxmlPart,
   firstId: string,
   secondId: string,

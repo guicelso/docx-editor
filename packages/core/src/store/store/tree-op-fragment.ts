@@ -41,7 +41,7 @@ import {
   inlineDestinationRefusal,
   inlineLandingAt,
 } from './tree-op-inline-destination.ts';
-import { applyTreeOp } from './tree-op-apply.ts';
+import { applyJoin, applyTreeOp } from './tree-op-apply.ts';
 import { equationsOfAtom, isOmmlDisplay } from '../package/omml-display.ts';
 import type { TreeDocOp, TreeOpEffect, TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
 import { recordSetNamespaceBinding } from '../package/canonical-primitive-capture.ts';
@@ -321,11 +321,10 @@ export function applyInsertFragment(
       { ...options, deferValidation: true }
     );
     if (!appended.ok) return { ok: false, reason: 'tree-invariant' };
-    const joined = applyTreeOp(
-      appended.part,
-      { op: 'joinParagraphs', firstId: head.id, secondId: tailId },
-      options
-    );
+    // This join closes the split above and edits nothing the document held. The landing already
+    // answered the lock question in `validateInsertFragment`, as typing at the offset does; asked
+    // again, any locked control in either half, or one the fragment carries, refused the paste.
+    const joined = applyJoin(appended.part, head.id, tailId, options);
     if (!joined.ok) return joined;
     const effect: TreeOpEffect = {
       dirty: [host.id],
