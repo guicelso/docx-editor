@@ -30,8 +30,25 @@ export interface HighlightControl {
   readonly controlId: string;
 }
 
-/** What one highlight marks: a text range, or a content control whole. @public */
-export type HighlightTarget = HighlightRange | HighlightControl;
+/**
+ * A place between two characters to mark, such as where a pending insertion lands. It paints
+ * as an insertion bar with an optional label above it, the way a collaborator's caret paints,
+ * and it never takes room in the line. @public
+ */
+export interface HighlightPosition {
+  /** Paragraph that holds the position: `TextMatch.blockId`. IDs belong to the open document. */
+  readonly blockId: string;
+  /**
+   * UTF-16 offset in the paragraph's model text, from 0 to the paragraph's length. It counts in
+   * the document as it is when the set is installed.
+   */
+  readonly offset: number;
+  /** Plain text drawn in a flag above the bar. It reaches the page as text, never as markup. */
+  readonly label?: string;
+}
+
+/** What one highlight marks: a text range, a content control whole, or a position. @public */
+export type HighlightTarget = HighlightRange | HighlightControl | HighlightPosition;
 
 /** Presentation for one named highlight set. Every field is optional. @public */
 export interface HighlightOptions {
@@ -75,7 +92,7 @@ export interface HighlightResult {
   /**
    * Targets that do not resolve or cannot paint: an unknown paragraph, offsets past the
    * paragraph end, a zero length, text that differs from `expectedText`, a control the
-   * document does not hold, or a story without a layout position.
+   * document does not hold, a position an edit replaced, or a story without a layout position.
    */
   readonly unavailable: number;
 }
@@ -124,15 +141,25 @@ export interface HighlightControlHit<
   readonly controlId: string;
 }
 
+/** A mark of a position under a point: the bar, without its label. @public */
+export interface HighlightPositionHit<
+  R extends HighlightPosition = HighlightPosition,
+> extends HighlightMarkHit<R> {
+  /** Current offset of the position in its paragraph, after edits moved it. */
+  readonly offset: number;
+}
+
 /**
  * One painted mark under a point. `R` is your target type: pass targets with extra fields,
  * such as a glossary definition, and read them back from `range`. @public
  */
 export type HighlightHit<R extends HighlightTarget = HighlightRange> = R extends HighlightControl
   ? HighlightControlHit<R>
-  : R extends HighlightRange
-    ? HighlightRangeHit<R>
-    : never;
+  : R extends HighlightPosition
+    ? HighlightPositionHit<R>
+    : R extends HighlightRange
+      ? HighlightRangeHit<R>
+      : never;
 
 /**
  * Paint-only text highlights: search results, glossary terms, review findings.
@@ -142,9 +169,10 @@ export type HighlightHit<R extends HighlightTarget = HighlightRange> = R extends
  */
 export interface EditorHighlights {
   /**
-   * Mark text ranges and content controls as one named set, replacing the set's previous
-   * targets and options. A control target marks the control whole, tags included; it stops
-   * painting when the document no longer holds the control.
+   * Mark text ranges, content controls and positions as one named set, replacing the set's
+   * previous targets and options. A control target marks the control whole, tags included; it
+   * stops painting when the document no longer holds the control. A position target paints as
+   * is, above every tint and cover set, whatever `blend` says: it covers no text to tint.
    *
    * Names are 1 to 64 letters, digits, `-`, or `_`, and start with a letter. Each set paints
    * in its own layer, so sets never replace each other. An empty `ranges` array clears the
@@ -154,7 +182,9 @@ export interface EditorHighlights {
    * Ranges cover the body, tables, headers, footers, footnotes, endnotes, and anchored text
    * boxes in the body. A range moves with its text when an edit before it shifts the
    * paragraph. When an edit changes the text inside a range, the range stops painting, so a
-   * mark never covers the wrong text. Search again after edits to mark new occurrences.
+   * mark never covers the wrong text. Search again after edits to mark new occurrences. A
+   * position moves the same way; an edit that replaces text around it removes it until the
+   * host sets it again, because no offset then names the place it marked.
    *
    * Loading, refreshing, or recovering the document removes every set. Invalid names,
    * ranges, or options throw

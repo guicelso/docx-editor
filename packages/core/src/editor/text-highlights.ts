@@ -37,6 +37,13 @@ import type { SurfaceOverlayFrame } from './surface-overlay-sheet.ts';
 import { partOfNodeId } from './surface-scope.ts';
 import { textboxPresenceLayout } from './textbox-presence-layout.ts';
 import { withoutUnplacedFrameMatches } from './search-frame-matches.ts';
+import {
+  POSITION_BAR_PX,
+  positionRects,
+  positionTargetOf,
+  writePositionMark,
+  type LivePosition,
+} from './highlight-positions.ts';
 
 const NAME = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const CLASS_TOKEN = /^-?[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -50,8 +57,14 @@ interface HighlightSet {
   readonly name: string;
   /** The caller's array, copied, so a later mutation of theirs cannot move a mark. */
   readonly ranges: readonly HighlightTarget[];
-  /** The control a target marks whole, or null for a text range. */
+  /** The control a target marks whole, or null for a text range or a position. */
   readonly controlIds: readonly (string | null)[];
+  /** 1 for a position target: `starts` and `ends` both hold its offset. */
+  readonly positions: Uint8Array;
+  /** The flag each position draws; null for no flag, and for every other target. */
+  readonly labels: readonly (string | null)[];
+  /** Positions an edit replaced the text around: no offset names their place any more. */
+  readonly lost: Uint8Array;
   /** Ranges past {@link HIGHLIGHT_RANGE_LIMIT}, dropped and counted as unavailable. */
   readonly overflow: number;
   readonly blockIds: readonly string[];
@@ -134,13 +147,24 @@ function buildSet(
   const overflow = ranges.length - copy.length;
   const blockIds: string[] = [];
   const controlIds: (string | null)[] = [];
+  const positions = new Uint8Array(copy.length);
+  const labels: (string | null)[] = [];
   const starts = new Int32Array(copy.length);
   const ends = new Int32Array(copy.length);
   for (const [index, target] of copy.entries()) {
     const control = controlTargetOf(target, index);
     controlIds.push(control);
+    const position = control === null ? positionTargetOf(target, index) : null;
+    labels.push(position?.label ?? null);
     if (control !== null) {
       blockIds.push('');
+      continue;
+    }
+    if (position !== null) {
+      positions[index] = 1;
+      blockIds.push(position.blockId);
+      starts[index] = position.offset;
+      ends[index] = position.offset;
       continue;
     }
     const range = target as HighlightRange;
@@ -193,6 +217,9 @@ function buildSet(
     name,
     ranges: copy,
     controlIds,
+    positions,
+    labels,
+    lost: new Uint8Array(copy.length),
     overflow,
     blockIds,
     starts,
@@ -219,7 +246,12 @@ function buildSet(
 function controlTargetOf(target: HighlightTarget, index: number): string | null {
   if (typeof target !== 'object' || target === null || !('controlId' in target)) return null;
   const { controlId } = target as HighlightControl;
-  if (typeof controlId !== 'string' || controlId.length === 0 || 'blockId' in target) {
+  if (
+    typeof controlId !== 'string' ||
+    controlId.length === 0 ||
+    'blockId' in target ||
+    'offset' in target
+  ) {
     throw new TypeError(`ranges[${index}] names a control by a controlId string and nothing else.`);
   }
   return controlId;
@@ -262,6 +294,29 @@ function mapThrough(start: number, end: number, edit: EditWindow): number {
   if (end <= edit.from) return 0;
   if (start >= edit.oldTo) return edit.delta;
   return 0;
+}
+
+/**
+ * Map a position through an edit window. A position at or before the window keeps its offset,
+ * so text typed at it lands after it; one at or after the window's end shifts by the length
+ * change. One the window replaced text around is null: no offset names that place any more.
+ */
+function positionThrough(offset: number, edit: EditWindow): number | null {
+  if (offset <= edit.from) return offset;
+  if (offset >= edit.oldTo) return offset + edit.delta;
+  return null;
+}
+
+/** What a hit adds to the shared fields: the control, the position's offset, or the range. */
+function hitOf<B extends object>(
+  mark: PaintedMark,
+  base: B
+): B & ({ controlId: string } | { offset: number } | { start: number; length: number }) {
+  const { set, index } = mark;
+  const controlId = set.controlIds[index];
+  if (controlId !== null && controlId !== undefined) return { ...base, controlId };
+  if (set.positions[index]) return { ...base, offset: set.starts[index]! };
+  return { ...base, start: set.starts[index]!, length: set.ends[index]! - set.starts[index]! };
 }
 
 /** Model text each `findMatches()` result covered when it was found. */
@@ -338,6 +393,26 @@ function check(set: HighlightSet, surface: PaginatedSurface, layout: SemanticLay
       set.live[index] = record && record.fragments.length > 0 ? 1 : 0;
       continue;
     }
+    if (set.positions[index]) {
+      const text = read(set.blockIds[index]!);
+      const seen = set.seen[index] ?? null;
+      if (!set.lost[index] && text !== null && seen !== null && seen !== text) {
+        const moved = positionThrough(
+          set.starts[index]!,
+          editOf(windows, set.blockIds[index]!, seen, text)
+        );
+        if (moved === null) set.lost[index] = 1;
+        else {
+          set.starts[index] = moved;
+          set.ends[index] = moved;
+        }
+      }
+      set.seen[index] = text;
+      const stands = !set.lost[index] && text !== null && set.starts[index]! <= text.length;
+      set.resolved[index] = stands ? 1 : 0;
+      set.live[index] = stands && placed.has(set.blockIds[index]!) ? 1 : 0;
+      continue;
+    }
     const range = set.ranges[index] as HighlightRange;
     const text = set.ends[index]! > set.starts[index]! ? read(set.blockIds[index]!) : null;
     // Fast path: the paragraph is the same string as at the last check (the tree reuses an
@@ -352,13 +427,8 @@ function check(set: HighlightSet, surface: PaginatedSurface, layout: SemanticLay
       ? (foundParagraph.get(range) ?? capturedParagraph.get(range) ?? text)
       : set.seen[index]!;
     if (text !== null && seen !== null && seen !== text) {
-      const key = set.blockIds[index]!;
-      let cached = windows.get(key);
-      if (cached?.seen !== seen) {
-        cached = { seen, edit: editWindow(seen, text) };
-        windows.set(key, cached);
-      }
-      const delta = mapThrough(set.starts[index]!, set.ends[index]!, cached.edit);
+      const edit = editOf(windows, set.blockIds[index]!, seen, text);
+      const delta = mapThrough(set.starts[index]!, set.ends[index]!, edit);
       set.starts[index] = set.starts[index]! + delta;
       set.ends[index] = set.ends[index]! + delta;
     }
@@ -389,6 +459,21 @@ function check(set: HighlightSet, surface: PaginatedSurface, layout: SemanticLay
   set.checkedAt = { session, revision, layout };
 }
 
+/** One edit window per paragraph and prior text, shared by every target measured from it. */
+function editOf(
+  windows: Map<string, { readonly seen: string; readonly edit: EditWindow }>,
+  blockId: string,
+  seen: string,
+  text: string
+): EditWindow {
+  let cached = windows.get(blockId);
+  if (cached?.seen !== seen) {
+    cached = { seen, edit: editWindow(seen, text) };
+    windows.set(blockId, cached);
+  }
+  return cached.edit;
+}
+
 /** The controls a layout published, by node id: what a control target resolves against. */
 const controlRecordCache = new WeakMap<
   SemanticLayout,
@@ -406,28 +491,39 @@ function controlRecords(layout: SemanticLayout): ReadonlyMap<string, ContentCont
 /** Rectangles per set and page record; see `setRects`. */
 const rectCache = new WeakMap<HighlightSet, WeakMap<PageRecord, KeyedParagraphRect[]>>();
 const sheetCache = new WeakMap<HighlightSet, HTMLElement>();
-const groupCache = new WeakMap<HTMLElement, Readonly<Record<HighlightBlend, HTMLElement>>>();
+const positionSheetCache = new WeakMap<HighlightSet, HTMLElement>();
+
+type MarkGroup = HighlightBlend | 'position';
+const MARK_GROUPS: readonly MarkGroup[] = ['tint', 'cover', 'position'];
+const groupCache = new WeakMap<HTMLElement, Readonly<Record<MarkGroup, HTMLElement>>>();
 
 /**
- * The two compositing groups of a highlight layer. Tint sets blend as ONE group, so a set of
- * higher priority covers a lower one before the group multiplies over the page; cover sets paint
- * as is, above every tint set.
+ * The three groups of a highlight layer, bottom to top. Tint sets blend as ONE group, so a set
+ * of higher priority covers a lower one before the group multiplies over the page; cover sets
+ * paint as is, above every tint set. Positions paint as is above both: a bar and its label
+ * cover no text, and a label multiplied over the paper would lose its own colours.
  */
-function blendGroupsOf(layer: HTMLElement): Readonly<Record<HighlightBlend, HTMLElement>> {
+function markGroupsOf(layer: HTMLElement): Readonly<Record<MarkGroup, HTMLElement>> {
   let groups = groupCache.get(layer);
   if (!groups) {
-    const groupOf = (blend: HighlightBlend) => {
+    const groupOf = (kind: MarkGroup) => {
       const group = layer.ownerDocument.createElement('div');
       group.className = 'docx-text-highlight-group';
-      group.setAttribute('data-highlight-blend', blend);
+      group.setAttribute(
+        kind === 'position' ? 'data-highlight-positions' : 'data-highlight-blend',
+        kind === 'position' ? '' : kind
+      );
       return group;
     };
-    groups = { tint: groupOf('tint'), cover: groupOf('cover') };
+    groups = { tint: groupOf('tint'), cover: groupOf('cover'), position: groupOf('position') };
     groupCache.set(layer, groups);
   }
   const children = layer.children;
-  if (children.length !== 2 || children[0] !== groups.tint || children[1] !== groups.cover) {
-    layer.replaceChildren(groups.tint, groups.cover);
+  if (
+    children.length !== MARK_GROUPS.length ||
+    MARK_GROUPS.some((kind, at) => children[at] !== groups[kind])
+  ) {
+    layer.replaceChildren(...MARK_GROUPS.map((kind) => groups[kind]));
   }
   return groups;
 }
@@ -437,7 +533,7 @@ const markState = new WeakMap<HTMLElement, { key: string }>();
 function liveRangesByParagraph(set: HighlightSet): Map<string, ParagraphRange[]> {
   const byParagraph = new Map<string, ParagraphRange[]>();
   for (let index = 0; index < set.ranges.length; index += 1) {
-    if (!set.live[index] || set.controlIds[index] !== null) continue;
+    if (!set.live[index] || set.controlIds[index] !== null || set.positions[index]) continue;
     const blockId = set.blockIds[index]!;
     const bucket = byParagraph.get(blockId) ?? [];
     bucket.push({ key: index, start: set.starts[index]!, end: set.ends[index]! });
@@ -535,7 +631,7 @@ export function createTextHighlights(deps: {
     lastPaint = key;
     lastLayout = layout;
     const document = frame.layer.ownerDocument;
-    const sheets: Record<HighlightBlend, HTMLElement[]> = { tint: [], cover: [] };
+    const sheets: Record<MarkGroup, HTMLElement[]> = { tint: [], cover: [], position: [] };
     const marks: PaintedMark[] = [];
     for (const set of list) {
       const rects = setRects(set, layout, frame);
@@ -561,16 +657,67 @@ export function createTextHighlights(deps: {
       while (sheet.childElementCount > used) sheet.lastElementChild!.remove();
       sheets[set.blend].push(sheet);
     }
+    // Positions paint after every range, so they stack above them and hit first.
+    for (const set of list) {
+      const sheet = paintPositions(set, layout, frame, marks);
+      if (sheet) sheets.position.push(sheet);
+    }
     // Keep sheets in stacking order; reattach only when the order or the set list changed.
-    const groups = blendGroupsOf(frame.layer);
-    for (const blend of ['tint', 'cover'] as const) {
-      const current = groups[blend].children;
-      const wanted = sheets[blend];
+    const groups = markGroupsOf(frame.layer);
+    for (const kind of MARK_GROUPS) {
+      const current = groups[kind].children;
+      const wanted = sheets[kind];
       if (current.length !== wanted.length || wanted.some((sheet, at) => current[at] !== sheet)) {
-        groups[blend].replaceChildren(...wanted);
+        groups[kind].replaceChildren(...wanted);
       }
     }
     painted = marks;
+  }
+
+  /**
+   * Paint a set's live positions into its position sheet, and record their bars for the hit
+   * test. Null for a set that holds no position.
+   */
+  function paintPositions(
+    set: HighlightSet,
+    layout: SemanticLayout,
+    frame: SurfaceOverlayFrame,
+    marks: PaintedMark[]
+  ): HTMLElement | null {
+    if (!set.positions.includes(1)) return null;
+    const live: LivePosition[] = [];
+    set.positions.forEach((isPosition, key) => {
+      if (isPosition && set.live[key]) {
+        live.push({ key, blockId: set.blockIds[key]!, offset: set.starts[key]! });
+      }
+    });
+    const sheet = positionSheetFor(frame.layer.ownerDocument, set);
+    let used = 0;
+    for (const rect of positionRects(layout, live, frame.pages, frame.measurer)) {
+      const page = layout.pages[rect.pageIndex];
+      if (!page) continue;
+      const offsetX = frame.pageOffsetX?.get(rect.pageIndex) ?? 0;
+      const mark: PaintedMark = {
+        set,
+        index: rect.key,
+        left: (page.contentBox.x + rect.x + offsetX) * frame.scale - POSITION_BAR_PX / 2,
+        top: (page.contentBox.y + rect.y) * frame.scale,
+        width: POSITION_BAR_PX,
+        height: rect.height * frame.scale,
+      };
+      const active = rect.key === set.activeIndex;
+      writePositionMark(
+        sheet,
+        used,
+        { ...mark, active },
+        set.labels[rect.key] ?? null,
+        set.classes
+      );
+      used += 1;
+      marks.push(mark);
+    }
+    while (sheet.childElementCount > used) sheet.lastElementChild!.remove();
+    return sheet;
   }
 
   /**
@@ -639,7 +786,20 @@ export function createTextHighlights(deps: {
 
   /** One persistent sheet per set object, so a repaint updates marks in place. */
   function sheetFor(document: Document, set: HighlightSet): HTMLElement {
-    const existing = sheetCache.get(set);
+    return cachedSheet(sheetCache, document, set);
+  }
+
+  /** The set's second sheet, in the position group: same name and colours, its own marks. */
+  function positionSheetFor(document: Document, set: HighlightSet): HTMLElement {
+    return cachedSheet(positionSheetCache, document, set);
+  }
+
+  function cachedSheet(
+    cache: WeakMap<HighlightSet, HTMLElement>,
+    document: Document,
+    set: HighlightSet
+  ): HTMLElement {
+    const existing = cache.get(set);
     if (existing) return existing;
     const sheet = document.createElement('div');
     sheet.className = 'docx-text-highlight-set';
@@ -648,7 +808,7 @@ export function createTextHighlights(deps: {
     if (set.activeColor) {
       sheet.style.setProperty('--doc-text-highlight-set-active-color', set.activeColor);
     }
-    sheetCache.set(set, sheet);
+    cache.set(set, sheet);
     return sheet;
   }
 
@@ -745,16 +905,7 @@ export function createTextHighlights(deps: {
             bottom: top + mark.height,
           },
         };
-        const controlId = mark.set.controlIds[mark.index];
-        hits.push(
-          (controlId !== null && controlId !== undefined
-            ? { ...base, controlId }
-            : {
-                ...base,
-                start: mark.set.starts[mark.index]!,
-                length: mark.set.ends[mark.index]! - mark.set.starts[mark.index]!,
-              }) as HighlightHit<R>
-        );
+        hits.push(hitOf(mark, base) as HighlightHit<R>);
       }
       return hits;
     },

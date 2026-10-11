@@ -18,7 +18,7 @@ These methods belong to the browser `Editor` API, separate from the Office.js-sh
 | `clearAnchorHighlight(options)` | Dismiss the paragraph highlight. | No |
 | `findMatches(query, options)` | Find text in every document region. | No |
 | `selectMatch(match)` | Select a match and show it. | Yes |
-| `setHighlights(name, ranges, options)` | Mark text ranges, such as search results or glossary terms, and content controls. | No |
+| `setHighlights(name, ranges, options)` | Mark text ranges, such as search results or glossary terms, content controls, and positions. | No |
 | `clearHighlights(name)` | Remove one set of text highlights, or all of them. | No |
 | `getHighlightsAt(clientX, clientY)` | Read the text highlights under a pointer position. | No |
 | `exec({ type: 'setSelection', anchor })` | Move the caret to a paragraph reference. | Yes |
@@ -531,6 +531,22 @@ editor.setHighlights('veil', [{ controlId }], {
 
 A control mark stops painting when the document no longer holds the control. `getHighlightsAt()` reports a control mark with `controlId` in place of `start` and `length`.
 
+### Mark a position
+
+To mark a place between two characters, such as where a pending insertion will land, pass `{ blockId, offset }` in place of a range. Add `label` to show a flag above the mark:
+
+```ts
+editor.setHighlights('insert-slot', [{ blockId, offset, label: 'The clause goes here' }], {
+  color: 'var(--slot-color)',
+});
+```
+
+A position paints as an insertion bar, the way a collaborator's caret paints. It takes no room in the line, so the text does not move. Position marks paint above every tint and cover set, whatever `blend` says, because they cover no text. The label is plain text. A set can hold ranges, controls, and positions together.
+
+`getHighlightsAt()` reports a position mark with `offset` in place of `start` and `length`. The `rect` is the bar, without the label.
+
+Each set renders its positions in a second `[data-highlight-set]` element, in the position group. A position has the `docx-text-highlight-position` class, and its label has the `docx-text-highlight-position-label` class.
+
 ### Style highlights
 
 Set colors as tokens, with a value for dark mode:
@@ -638,6 +654,7 @@ Without React or Vue, call `editor.getHighlightsAt(clientX, clientY)` from a `po
 ### Edits, saving, and limits
 
 - A highlight moves with its text when you edit before it. An edit inside a range hides it; undo shows it again.
+- A position moves when you edit before it. Text typed at a position goes after the mark. An edit that replaces the text around a position removes it, and undo does not show it again: set it again.
 - Highlights don't change the document, selection, or undo history, and they aren't saved or shared with collaborators.
 - Loading, refreshing, or recovering the document removes all highlights.
 - Function sources recompute ranges after replacement. Fixed arrays apply again after refresh or recovery, but require replacement after ordinary loads.

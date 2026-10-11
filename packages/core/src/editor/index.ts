@@ -468,6 +468,8 @@ export type {
   HighlightHit,
   HighlightMarkHit,
   HighlightOptions,
+  HighlightPosition,
+  HighlightPositionHit,
   HighlightRange,
   HighlightRangeHit,
   HighlightRect,

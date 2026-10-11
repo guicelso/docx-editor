@@ -6357,6 +6357,38 @@ a.docx-hyperlink:focus-visible {
   );
 }
 
+/* A position target: an insertion bar with an optional flag above it, the way a collaborator's
+ * caret paints. It sits in its own group above the tint and cover groups and never blends: a
+ * label multiplied over the paper would lose its own colours. A set's `color` paints both. */
+.docx-text-highlight-position {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 1px;
+  background-color: var(--doc-text-highlight-set-color, var(--doc-accent));
+  box-shadow: 0 0 0 1px var(--doc-surface);
+}
+
+.docx-text-highlight-position--active {
+  background-color: var(--doc-text-highlight-set-active-color, var(--doc-accent));
+}
+
+.docx-text-highlight-position-label {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 0;
+  max-width: 220px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-radius: 5px 5px 5px 1px;
+  background: inherit;
+  color: var(--doc-on-primary);
+  font:
+    600 11px/1.4 system-ui,
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The editing-mode control: a pill that shows the current mode and a menu that changes it.
  * The one toolbar control whose state is a VALUE, so it renders what it shows rather than a
  * pressed flag. */

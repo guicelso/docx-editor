@@ -1610,7 +1610,7 @@ export interface HighlightControlHit<R extends HighlightControl = HighlightContr
 }
 
 // @public
-export type HighlightHit<R extends HighlightTarget = HighlightRange> = R extends HighlightControl ? HighlightControlHit<R> : R extends HighlightRange ? HighlightRangeHit<R> : never;
+export type HighlightHit<R extends HighlightTarget = HighlightRange> = R extends HighlightControl ? HighlightControlHit<R> : R extends HighlightPosition ? HighlightPositionHit<R> : R extends HighlightRange ? HighlightRangeHit<R> : never;
 
 // @public
 export interface HighlightMarkHit<R extends HighlightTarget> {
@@ -1629,6 +1629,18 @@ export interface HighlightOptions {
     readonly className?: string;
     readonly color?: string;
     readonly priority?: number;
+}
+
+// @public
+export interface HighlightPosition {
+    readonly blockId: string;
+    readonly label?: string;
+    readonly offset: number;
+}
+
+// @public
+export interface HighlightPositionHit<R extends HighlightPosition = HighlightPosition> extends HighlightMarkHit<R> {
+    readonly offset: number;
 }
 
 // @public
@@ -1676,7 +1688,7 @@ export interface HighlightResult {
 export type HighlightSource = readonly HighlightRange[] | ((editor: Editor) => readonly HighlightRange[]);
 
 // @public
-export type HighlightTarget = HighlightRange | HighlightControl;
+export type HighlightTarget = HighlightRange | HighlightControl | HighlightPosition;
 
 // @public
 export interface HighlightWatch {
