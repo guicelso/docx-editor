@@ -378,6 +378,10 @@ const TREE_OP_REACH: {
   // A split or a join moves content between wrappers and changes no character. The controls named
   // answer for their own wrappers in the applier; what they hold, and what holds them, answer here.
   splitContentControl: (op) => restructuring(op.controlId),
+  // A lift cuts the paragraph at the control's edges, and a lowering puts the control in its one
+  // paragraph; neither changes a character: what holds the control and what it holds answer.
+  liftContentControl: (op) => restructuring(op.controlId),
+  lowerContentControl: (op) => restructuring(op.controlId),
   joinContentControls: (op) => ({
     kind: 'nodes',
     targets: [

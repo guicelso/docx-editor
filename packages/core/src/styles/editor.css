@@ -1014,6 +1014,14 @@ a.docx-hyperlink:focus-visible {
   box-shadow: none;
 }
 
+/* A sequence draws nothing of its own: each of its parts is a tag that draws itself. */
+.docx-cc-tag[data-cc-tag-variant='sequence'] {
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: inherit;
+}
+
 @media print {
   .docx-cc-tag {
     display: none;

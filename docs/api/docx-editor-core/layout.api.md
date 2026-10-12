@@ -578,8 +578,18 @@ export interface ContentControlTagMark {
     readonly edge: ContentControlTagEdge;
     // (undocumented)
     readonly level: ContentControlTagLevel;
+    readonly parts?: readonly ContentControlTagPart[];
     readonly tone?: string;
-    readonly variant?: 'text' | 'edge';
+    readonly variant?: 'text' | 'edge' | 'sequence';
+}
+
+// @public
+export interface ContentControlTagPart {
+    // (undocumented)
+    readonly length: number;
+    // (undocumented)
+    readonly tone?: string;
+    readonly variant?: 'text';
 }
 
 // @public

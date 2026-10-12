@@ -75,6 +75,8 @@ export const TREE_DOC_OP_KINDS = [
   'insertContentControl',
   'splitContentControl',
   'joinContentControls',
+  'liftContentControl',
+  'lowerContentControl',
   'wrapBlocksInContentControl',
   'insertBlockContentControl',
   'insertParagraph',

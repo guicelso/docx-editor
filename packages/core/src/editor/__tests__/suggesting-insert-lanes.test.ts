@@ -565,4 +565,44 @@ describe('insert lanes in suggesting mode', () => {
       expect(serializeOoxmlPart(surface.session.part())).toBe(before);
     });
   });
+
+  test('lifting an inline control to the block level has no proposal, so suggesting refuses it', () => {
+    const sdt = `<w:sdt><w:sdtPr><w:tag w:val="a"/><w:richText/></w:sdtPr><w:sdtContent><w:r><w:t>Alpha</w:t></w:r></w:sdtContent></w:sdt>`;
+    withSurface(`<w:p><w:r><w:t>x </w:t></w:r>${sdt}</w:p>`, (surface) => {
+      const ids: string[] = [];
+      const walk = (node: OoxmlNode): void => {
+        if (node.kind === 'textValue') return;
+        if (node.kind === 'contentControl') ids.push(node.id);
+        node.children.forEach(walk);
+      };
+      walk(surface.session.part().root);
+      const before = serializeOoxmlPart(surface.session.part());
+      const lift = surface.applyAutomationOps(() => [
+        { op: 'liftContentControl', controlId: ids[0]! },
+      ]);
+
+      expect(lift.committed).toBe(false);
+      expect(serializeOoxmlPart(surface.session.part())).toBe(before);
+    });
+  });
+
+  test('lowering a block control into the line has no proposal, so suggesting refuses it', () => {
+    const sdt = `<w:sdt><w:sdtPr><w:tag w:val="a"/><w:richText/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Alpha</w:t></w:r></w:p></w:sdtContent></w:sdt>`;
+    withSurface(sdt, (surface) => {
+      const ids: string[] = [];
+      const walk = (node: OoxmlNode): void => {
+        if (node.kind === 'textValue') return;
+        if (node.kind === 'contentControl') ids.push(node.id);
+        node.children.forEach(walk);
+      };
+      walk(surface.session.part().root);
+      const before = serializeOoxmlPart(surface.session.part());
+      const lower = surface.applyAutomationOps(() => [
+        { op: 'lowerContentControl', controlId: ids[0]! },
+      ]);
+
+      expect(lower.committed).toBe(false);
+      expect(serializeOoxmlPart(surface.session.part())).toBe(before);
+    });
+  });
 });

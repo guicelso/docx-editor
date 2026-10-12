@@ -84,6 +84,10 @@ const TWO_SDT =
   '<w:sdt><w:sdtPr><w:tag w:val="b"/><w:richText/></w:sdtPr>' +
   '<w:sdtContent><w:r><w:t>World</w:t></w:r></w:sdtContent></w:sdt></w:p><w:sectPr/>';
 
+const BLOCK_SDT =
+  '<w:sdt><w:sdtPr><w:tag w:val="a"/><w:richText/></w:sdtPr>' +
+  '<w:sdtContent><w:p><w:r><w:t>Hello</w:t></w:r></w:p></w:sdtContent></w:sdt><w:sectPr/>';
+
 const TOC_BODY =
   '<w:p><w:r><w:fldChar w:fldCharType="begin"/>' +
   '<w:instrText xml:space="preserve"> TOC \\o "1-2" \\h </w:instrText>' +
@@ -639,6 +643,14 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
       const [first, second] = contentControlsIn(store.bodyStore().part.root);
       return { op: 'joinContentControls', firstId: first!.node.id, secondId: second!.node.id };
     }),
+    story('liftContentControl', zipDoc({ body: TWO_SDT }), (store) => ({
+      op: 'liftContentControl',
+      controlId: controlId(store),
+    })),
+    story('lowerContentControl', zipDoc({ body: BLOCK_SDT }), (store) => ({
+      op: 'lowerContentControl',
+      controlId: controlId(store),
+    })),
     story('wrapBlocksInContentControl', plainDoc(), (store) => ({
       op: 'wrapBlocksInContentControl',
       firstBlockId: paragraphIds(store)[0]!,

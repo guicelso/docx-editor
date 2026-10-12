@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "No op changed the level of a content control. An inline control could only become a block control by being rebuilt under fresh ids, and the paragraphs a split minted could not be addressed by an op later in the same batch.",
+  "after": "liftContentControl { controlId } cuts the paragraph holding an inline control at the control's edges and puts the control, with the same identity and the nodes it held, in place of the paragraph left holding it, as a block control with one paragraph. It refuses a revision.",
+  "reason": "The op reduces to paragraph splits and one children replacement in the element holding the paragraph, which the journal already replicates; released participants receive the resulting shared state, never the new op kind.",
+  "tests": [
+    "packages/core/src/store/__tests__/content-control-lift.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+    "packages/core/src/editor/__tests__/suggesting-insert-lanes.test.ts"
+  ],
+  "changeset": "content-control-lift",
+  "migration": null
+}

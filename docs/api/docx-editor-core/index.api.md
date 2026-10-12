@@ -956,7 +956,15 @@ export interface ContentControlTagInk {
 }
 
 // @public
-export type ContentControlTagLabel = ContentControlTagInk | ContentControlTagEdgeOnly;
+export type ContentControlTagLabel = ContentControlTagInk | ContentControlTagEdgeOnly | ContentControlTagSequence;
+
+// @public
+export interface ContentControlTagSequence {
+    // (undocumented)
+    readonly labels: readonly ContentControlTagInk[];
+    // (undocumented)
+    readonly variant: 'sequence';
+}
 
 // @public
 export type ContentControlType = 'richText' | 'plainText' | 'checkbox' | 'dropdown' | 'comboBox' | 'date' | 'picture' | 'buildingBlockGallery' | 'repeatingSection';

@@ -22,7 +22,9 @@ type RevisionCapableOp = Extract<
       | 'insertBlockContentControl'
       | 'insertParagraph'
       | 'splitContentControl'
-      | 'joinContentControls';
+      | 'joinContentControls'
+      | 'liftContentControl'
+      | 'lowerContentControl';
   }
 >;
 const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapableOp['op']>([
@@ -46,6 +48,8 @@ const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapab
   'insertParagraph',
   'splitContentControl',
   'joinContentControls',
+  'liftContentControl',
+  'lowerContentControl',
 ]);
 
 export function isRevisionCapable(op: TreeDocOp): op is RevisionCapableOp {

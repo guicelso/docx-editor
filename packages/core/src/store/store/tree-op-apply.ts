@@ -2612,7 +2612,7 @@ function withChildren(
   return { ...node, ...(nextId ? { id: nextId() } : {}), children } as OoxmlNode;
 }
 
-function applySplit(
+export function applySplit(
   part: OoxmlPart,
   paragraph: OoxmlParagraphNode,
   offset: number,

@@ -157,6 +157,9 @@ function controlToken(control: OoxmlElement, view: ContentControlView): string {
 function labelToken(label: ContentControlTagLabel | undefined): string {
   if (!label) return '';
   if (label.variant === 'edge') return framedTokenJoin(['', '', 'edge']);
+  if (label.variant === 'sequence') {
+    return framedTokenJoin(['sequence', ...label.labels.map((each) => labelToken(each))]);
+  }
   return framedTokenJoin([label.text, label.tone ?? '', label.variant ?? 'chip']);
 }
 

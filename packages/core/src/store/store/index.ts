@@ -40,6 +40,8 @@ export type {
   JoinContentControlsOp,
   SplitContentControlOp,
 } from './tree-op-inline-control-structure.ts';
+export type { LiftContentControlOp } from './tree-op-control-lift.ts';
+export type { LowerContentControlOp } from './tree-op-control-lower.ts';
 export {
   extractFragmentPackage,
   type FragmentCoverage,

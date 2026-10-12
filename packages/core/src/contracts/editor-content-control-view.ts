@@ -4,10 +4,13 @@
  */
 
 /**
- * What a host draws at one edge of a content control: a label, or an edge that draws nothing.
- * Both are a tag, with a caret slot on each side of it. @public
+ * What a host draws at one edge of a content control: a label, an edge that draws nothing, or
+ * labels one after the other. Each is a tag, with a caret slot on each side of it. @public
  */
-export type ContentControlTagLabel = ContentControlTagInk | ContentControlTagEdgeOnly;
+export type ContentControlTagLabel =
+  | ContentControlTagInk
+  | ContentControlTagEdgeOnly
+  | ContentControlTagSequence;
 
 /** A label drawn at a control's edge. @public */
 export interface ContentControlTagInk {
@@ -34,6 +37,17 @@ export interface ContentControlTagInk {
  */
 export interface ContentControlTagEdgeOnly {
   readonly variant: 'edge';
+}
+
+/**
+ * Labels drawn one after the other at one edge, as ONE tag: they lay out as a single unbreakable
+ * unit, each keeping the room its own variant keeps, and the edge still has exactly its two slots.
+ * For an edge that says two things, such as a condition and the text the document prints there. A
+ * label with no text is left out; a sequence left with none draws no tag. @public
+ */
+export interface ContentControlTagSequence {
+  readonly variant: 'sequence';
+  readonly labels: readonly ContentControlTagInk[];
 }
 
 /** A content control as the file states it. `tag` is untrusted file data. @public */

@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A block control could come back into a line only by being rebuilt under fresh ids: the controls a plan creates cannot be addressed by an op later in the same batch, so an empty one beside another could not be placed.",
+  "after": "lowerContentControl { controlId } replaces a block control holding exactly one paragraph by that paragraph, which holds the control with the same identity and the nodes the paragraph held. Joining the paragraph with its neighbours stays with joinParagraphs. It refuses a revision.",
+  "reason": "The op reduces to one children replacement in the element holding the control, which the journal already replicates; released participants receive the resulting shared state, never the new op kind.",
+  "tests": [
+    "packages/core/src/store/__tests__/content-control-lower.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+    "packages/core/src/editor/__tests__/suggesting-insert-lanes.test.ts"
+  ],
+  "changeset": "content-control-lower",
+  "migration": null
+}

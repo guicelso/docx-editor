@@ -1,5 +1,6 @@
 // Dividing and joining INLINE content controls (store lane): the inline twins of `splitParagraph`
-// and `joinParagraphs`.
+// and `joinParagraphs`. Lifting one to the block level, and lowering a block control into the line,
+// are the other two ops of the family, in `tree-op-control-lift.ts` and `tree-op-control-lower.ts`.
 //
 // A split cuts one control in two siblings at an offset strictly inside its content, the way a
 // paragraph mark cuts a paragraph: the head keeps the control's identity, and the tail is a new
@@ -25,6 +26,16 @@ import {
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { isInlineControl } from './content-control-checkbox.ts';
 import { distributeInline } from './tree-op-apply.ts';
+import {
+  applyLiftContentControl,
+  validateLiftContentControl,
+  type LiftContentControlOp,
+} from './tree-op-control-lift.ts';
+import {
+  applyLowerContentControl,
+  validateLowerContentControl,
+  type LowerContentControlOp,
+} from './tree-op-control-lower.ts';
 import {
   contentControlLockAt,
   editedProperties,
@@ -74,17 +85,28 @@ export interface JoinContentControlsOp {
   readonly revision?: RevisionAttributionInput;
 }
 
-/** The ops that divide or join inline controls. */
-export type InlineControlOp = SplitContentControlOp | JoinContentControlsOp;
+/** The ops that divide, join, lift or lower controls between the line and the blocks. */
+export type InlineControlOp =
+  | SplitContentControlOp
+  | JoinContentControlsOp
+  | LiftContentControlOp
+  | LowerContentControlOp;
 
 export function isInlineControlOp(op: TreeDocOp): op is InlineControlOp {
-  return op.op === 'splitContentControl' || op.op === 'joinContentControls';
+  return (
+    op.op === 'splitContentControl' ||
+    op.op === 'joinContentControls' ||
+    op.op === 'liftContentControl' ||
+    op.op === 'lowerContentControl'
+  );
 }
 
 export function validateInlineControlOp(
   part: OoxmlPart,
   op: InlineControlOp
 ): TreeOpRejection | null {
+  if (op.op === 'liftContentControl') return validateLiftContentControl(part, op);
+  if (op.op === 'lowerContentControl') return validateLowerContentControl(part, op);
   const planned = op.op === 'splitContentControl' ? splitOf(part, op) : joinOf(part, op);
   return typeof planned === 'string' ? planned : null;
 }
@@ -94,9 +116,16 @@ export function applyInlineControlOp(
   op: InlineControlOp,
   options?: EditOptions
 ): TreeOpResult {
-  return op.op === 'splitContentControl'
-    ? applySplit(part, op, options)
-    : applyJoin(part, op, options);
+  switch (op.op) {
+    case 'splitContentControl':
+      return applySplit(part, op, options);
+    case 'joinContentControls':
+      return applyJoin(part, op, options);
+    case 'liftContentControl':
+      return applyLiftContentControl(part, op, options);
+    case 'lowerContentControl':
+      return applyLowerContentControl(part, op, options);
+  }
 }
 
 interface PlacedControl {
