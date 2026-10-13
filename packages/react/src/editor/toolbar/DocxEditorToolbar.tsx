@@ -19,8 +19,10 @@ import type { ReactNode } from 'react';
 // never displayName, which minifies away) — REPLACES its slot in the default
 // arrangement in place, so `<Toolbar><Bold className="fat"/></Toolbar>` is still the
 // whole toolbar with one customized button. A part child with `hidden` removes its
-// slot (the part renders null where it stands). Non-part children append after the
-// default set. `preset={false}` opts out entirely: children render verbatim.
+// slot (the part renders null where it stands). A part child for a registry slot the
+// default set does not draw joins its registry group (`composed-arrangement.ts`), and
+// collapses with it. Non-part children append after the default set. `preset={false}`
+// opts out entirely: children render verbatim.
 //
 // ONE ROW, MEASURED. The bar used to wrap to a second and third row when it ran out of
 // width, which on a laptop beside an open navigation pane cost more vertical space than the
@@ -52,6 +54,7 @@ import {
   type ToolbarOverflowSection,
 } from './ToolbarOverflow';
 import { collapseOrder, TOOLBAR_PINNED_GROUPS } from './toolbar-overflow';
+import { arrangeComposedSlots, isRegistrySlot } from './composed-arrangement';
 import { FIXED_ATTRIBUTE, GROUP_ATTRIBUTE, useToolbarOverflow } from './useToolbarOverflow';
 import {
   type ImageAltTextPartComponent,
@@ -314,14 +317,15 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
     () => new Set(defaultGroups.flatMap((group) => group.entries.map((entry) => entry.slot))),
     [defaultGroups]
   );
-  const collapsible = useMemo(
-    () => [
-      ...defaultGroups.map((group) => group.id).filter((id) => !TOOLBAR_PINNED_GROUPS.has(id)),
-      ...(tableChromeVisible ? [TABLE_CONTEXTUAL_GROUP_ID] : []),
-    ],
-    [defaultGroups, tableChromeVisible]
-  );
-  const collapseOrderIds = useMemo(() => collapseOrder(collapsible), [collapsible]);
+  const composition = preset ? composeChildren(children, defaultSlots) : null;
+  const groups = composition
+    ? arrangeComposedSlots(defaultGroups, [...composition.composed.keys()], composedEntry)
+    : defaultGroups;
+  const collapsible = [
+    ...groups.map((group) => group.id).filter((id) => !TOOLBAR_PINNED_GROUPS.has(id)),
+    ...(tableChromeVisible ? [TABLE_CONTEXTUAL_GROUP_ID] : []),
+  ];
+  const collapseOrderIds = collapseOrder(collapsible);
 
   // Only the preset arrangement has groups to collapse; `preset={false}` is the host's own
   // markup, and moving pieces of it into a menu would be the library rearranging a bar it
@@ -330,24 +334,11 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
   const { attach, overflow } = useToolbarOverflow(measuring, collapsible, collapseOrderIds);
 
   let content: ReactNode;
-  if (!preset) {
+  if (!composition) {
     content = children;
   } else {
-    const kids = Children.toArray(children);
-    const overrides = new Map<ArrangementKey, ReactElement>();
-    const tableOverrides = new Map<ArrangementKey, ReactElement>();
-    const appended: ReactNode[] = [];
-    for (const child of kids) {
-      const slot = slotOfChild(child);
-      if (slot && defaultSlots.has(slot)) {
-        // Last override for a slot wins, matching how later props win in a spread.
-        overrides.set(slot, child as ReactElement);
-      } else if (slot && (TABLE_CHROME_SLOTS as readonly string[]).includes(slot)) {
-        tableOverrides.set(slot, child as ReactElement);
-      } else {
-        appended.push(child);
-      }
-    }
+    const { tableOverrides, appended } = composition;
+    const overrides = new Map([...composition.overrides, ...composition.composed]);
 
     const render = (entry: DefaultEntry): ReactNode => {
       // A `hidden` override renders null where it stands, removing the slot.
@@ -367,7 +358,7 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
     const bar: ReactNode[] = [];
     const sections: ToolbarOverflowSection[] = [];
     let drawn = 0;
-    for (const group of defaultGroups) {
+    for (const group of groups) {
       if (overflow.has(group.id)) {
         const rows = group.entries.flatMap((entry) => {
           const row = overflowRow(entry, overrides, label, group.labelKey, render);
@@ -486,6 +477,59 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
   );
 }
 
+/** The children of a preset toolbar, sorted by where each one goes. */
+interface Composition {
+  /** Part children for slots the default arrangement draws: they replace the slot in place. */
+  readonly overrides: Map<ArrangementKey, ReactElement>;
+  /** Part children for the contextual table chrome. */
+  readonly tableOverrides: Map<ArrangementKey, ReactElement>;
+  /** Part children for registry slots the default arrangement does not draw: they join their group. */
+  readonly composed: Map<ChromeSlotId, ReactElement>;
+  /** Children that drive no slot: host content, fixed after the arrangement. */
+  readonly appended: ReactNode[];
+}
+
+function composeChildren(
+  children: DocxEditorChildren,
+  defaultSlots: ReadonlySet<ArrangementKey>
+): Composition {
+  const composition: Composition = {
+    overrides: new Map(),
+    tableOverrides: new Map(),
+    composed: new Map(),
+    appended: [],
+  };
+  for (const child of Children.toArray(children)) {
+    const slot = slotOfChild(child);
+    if (slot && defaultSlots.has(slot)) {
+      // Last override for a slot wins, matching how later props win in a spread.
+      composition.overrides.set(slot, child as ReactElement);
+    } else if (slot && (TABLE_CHROME_SLOTS as readonly string[]).includes(slot)) {
+      composition.tableOverrides.set(slot, child as ReactElement);
+    } else if (slot && isRegistrySlot(slot)) {
+      // A hidden part for a slot the arrangement does not draw has nothing to remove.
+      if (!isHiddenOverride(child as ReactElement))
+        composition.composed.set(slot, child as ReactElement);
+    } else {
+      composition.appended.push(child);
+    }
+  }
+  return composition;
+}
+
+/** A composed slot's entry: the child that composed it always overrides, so the part is never drawn. */
+function composedEntry(slot: ChromeSlotId): DefaultEntry {
+  return { slot, Part: SHAPED_PARTS[slot] ?? iconPart(slot) };
+}
+
+/** A bare `<Toolbar.Button slot>`: in the panel it is the command row, like the default button. */
+function isBareSlotButton(override: ReactElement): boolean {
+  return (
+    override.type === ToolbarButton &&
+    Object.keys(override.props as object).every((prop) => prop === 'slot')
+  );
+}
+
 /** True when an override child removes its slot from the arrangement. */
 function isHiddenOverride(override: ReactElement | undefined): boolean {
   if (!override) return false;
@@ -508,7 +552,7 @@ function overflowRow(
 ): ReactNode {
   const override = overrides.get(entry.slot);
   if (isHiddenOverride(override)) return null;
-  if (override || isValueSlot(entry.slot)) {
+  if ((override && !isBareSlotButton(override)) || isValueSlot(entry.slot)) {
     return (
       <ToolbarOverflowControl label={labelOf(label, entry, groupLabelKey)}>
         {render(entry)}

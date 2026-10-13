@@ -672,7 +672,7 @@
     },
     "packages/react": {
       "name": "@docx-editor.dev/react",
-      "version": "2.27.0",
+      "version": "2.27.0-lumia.1",
       "dependencies": {
         "@docx-editor.dev/i18n": "^2.27.0-lumia.1",
         "@radix-ui/react-select": "^2.3.3",

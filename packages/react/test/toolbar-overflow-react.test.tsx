@@ -596,3 +596,58 @@ describe('toolbar overflow integration', () => {
     expect(mobileToolbarRule).not.toContain('overflow');
   });
 });
+
+describe('registry parts composed outside the default arrangement', () => {
+  /** The host's own composition when it mounts no menu: entry points the default bar does not draw. */
+  const composed = (
+    <DocxEditorToolbar t={(key) => (key === 'formattingBar.more' ? 'More' : key)}>
+      <DocxEditorToolbar.TableInsert />
+      <DocxEditorToolbar.Button slot="insert.pageBreak" />
+      <DocxEditorToolbar.Button slot="review.paragraphMarks" />
+      <DocxEditorToolbar.Button slot="contentControl.inspector" hidden />
+      <DocxEditorToolbar.Action label="Host action" onSelect={() => {}} />
+    </DocxEditorToolbar>
+  );
+
+  test('each joins its registry group; only the child that drives no slot stays fixed', () => {
+    const { view } = mountToolbar(composed);
+    const toolbar = view.getByTestId('docx-toolbar');
+    const groupOf = (slot: string) =>
+      toolbar.querySelector(`[data-slot="${slot}"]`)?.closest('.docx-toolbar__group');
+
+    expect(groupOf('table.insert')?.getAttribute('data-toolbar-group')).toBe('table');
+    expect(groupOf('insert.pageBreak')?.getAttribute('data-toolbar-group')).toBe('insert');
+    expect(groupOf('review.paragraphMarks')).toBe(groupOf('review.comments'));
+
+    const host = view.getByLabelText('Host action').closest('.docx-toolbar__group');
+    expect(host?.hasAttribute('data-toolbar-fixed')).toBe(true);
+    expect(host?.querySelector('[data-slot]')).toBeNull();
+  });
+
+  test('a hidden part for a slot the arrangement does not draw adds no group', () => {
+    const { view } = mountToolbar(composed);
+    const toolbar = view.getByTestId('docx-toolbar');
+
+    expect(toolbar.querySelector('[data-slot="contentControl.inspector"]')).toBeNull();
+    expect(toolbar.querySelector('[data-toolbar-group="contentControl"]')).toBeNull();
+  });
+
+  test('their groups collapse into More first, under the registry label, as command rows', async () => {
+    installResizeObserverMock();
+    const { view } = mountToolbar(composed);
+    const toolbar = await collapseToolbar(view, { barWidth: 900, groupWidth: 90, fixedWidth: 140 });
+
+    expect(toolbar.querySelector('[data-slot="table.insert"]')).toBeNull();
+    expect(toolbar.querySelector('[data-slot="insert.pageBreak"]')).toBeNull();
+    expect(toolbar.querySelector('[data-slot="text.bold"]')).not.toBeNull();
+
+    await act(async () => {
+      view.getByLabelText('More').click();
+    });
+    const panel = view.getByTestId('toolbar-overflow-panel');
+    const pageBreak = panel.querySelector('[data-slot="insert.pageBreak"]');
+    expect(pageBreak?.classList.contains('docx-toolbar__more-command')).toBe(true);
+    expect(pageBreak?.closest('[role="group"]')).not.toBeNull();
+    expect(panel.querySelector('[data-slot="table.insert"]')).not.toBeNull();
+  });
+});

@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A part child for a registry slot outside the default toolbar appended after the arrangement in a fixed group that never collapsed into More.",
+  "after": "It joins its registry group, in registry order, and collapses into More with that group; children that drive no slot stay fixed.",
+  "reason": "Toolbar arrangement is chrome only: nothing is written to the document, the journal or the shared state.",
+  "tests": [
+    "packages/react/test/toolbar-overflow-react.test.tsx",
+    "packages/vue/test/toolbar-composed-arrangement.test.ts"
+  ],
+  "changeset": "toolbar-composed-registry-parts",
+  "migration": null
+}

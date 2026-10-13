@@ -46,6 +46,7 @@ const PAIRS = [
       'editor/menu/menu-keyboard.ts',
       'editor/paragraph-dialog-fields.ts',
       'editor/scroller-geometry.ts',
+      'editor/toolbar/composed-arrangement.ts',
       'editor/toolbar/toolbar-measure.ts',
       'editor/toolbar/toolbar-overflow.ts',
       'editor/zoom-levels.ts',

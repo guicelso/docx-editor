@@ -4,6 +4,7 @@ import {
   Fragment,
   h,
   provide,
+  shallowRef,
   type Component,
   type PropType,
   type VNode,
@@ -28,6 +29,7 @@ import {
   type ToolbarOverflowSection,
 } from './ToolbarOverflow';
 import { collapseOrder, TOOLBAR_PINNED_GROUPS } from './toolbar-overflow';
+import { arrangeComposedSlots, isRegistrySlot } from './composed-arrangement';
 import { FIXED_ATTRIBUTE, GROUP_ATTRIBUTE, useToolbarOverflow } from './useToolbarOverflow';
 import {
   ToolbarImageInsert,
@@ -209,6 +211,18 @@ function slotOfChild(child: VNode): ArrangementKey | null {
   return null;
 }
 
+/** A composed slot's entry: the child that composed it always overrides, so the part is never drawn. */
+function composedEntry(slot: ChromeSlotId): DefaultEntry {
+  return { slot, Part: SHAPED_PARTS[slot] ?? iconPart(slot) };
+}
+
+/** A bare `<Toolbar.Button slot>`: in the panel it is the command row, like the default button. */
+function isBareSlotButton(vnode: VNode): boolean {
+  return (
+    vnode.type === ToolbarButton && Object.keys(vnode.props ?? {}).every((prop) => prop === 'slot')
+  );
+}
+
 function isHiddenOverride(vnode: VNode | undefined): boolean {
   if (!vnode) return false;
   return Boolean(vnode.props?.hidden);
@@ -314,10 +328,13 @@ const DocxEditorToolbarRoot = defineComponent({
       () =>
         new Set(defaultGroups.value.flatMap((group) => group.entries.map((entry) => entry.slot)))
     );
+    // The groups the children composed, written by the render that reads the children: the
+    // measurement reads it, the render never does, so writing it there schedules no render.
+    const composedGroupIds = shallowRef<readonly string[]>([]);
     const collapsible = computed(() => [
-      ...defaultGroups.value
-        .map((group) => group.id)
-        .filter((id) => !TOOLBAR_PINNED_GROUPS.has(id)),
+      ...[...defaultGroups.value.map((group) => group.id), ...composedGroupIds.value].filter(
+        (id) => !TOOLBAR_PINNED_GROUPS.has(id)
+      ),
       ...(tableChromeVisible.value ? [TABLE_CONTEXTUAL_GROUP_ID] : []),
     ]);
     const collapseOrderIds = computed(() => collapseOrder(collapsible.value));
@@ -337,14 +354,28 @@ const DocxEditorToolbarRoot = defineComponent({
       } else {
         const overrides = new Map<ArrangementKey, VNode>();
         const tableOverrides = new Map<ArrangementKey, VNode>();
+        const composed = new Map<ChromeSlotId, VNode>();
         const appended: VNode[] = [];
         for (const child of kids) {
           const slot = slotOfChild(child);
           if (slot && defaultSlots.value.has(slot)) overrides.set(slot, child);
           else if (slot && (TABLE_CHROME_SLOTS as readonly string[]).includes(slot))
             tableOverrides.set(slot, child);
-          else appended.push(child);
+          // A hidden part for a slot the arrangement does not draw has nothing to remove.
+          else if (slot && isRegistrySlot(slot)) {
+            if (!isHiddenOverride(child)) composed.set(slot, child);
+          } else appended.push(child);
         }
+        composed.forEach((child, slot) => overrides.set(slot, child));
+        const groups = arrangeComposedSlots(
+          defaultGroups.value,
+          [...composed.keys()],
+          composedEntry
+        );
+        const defaultIds = new Set(defaultGroups.value.map((group) => group.id));
+        const composedIds = groups.map((group) => group.id).filter((id) => !defaultIds.has(id));
+        if (composedIds.join(',') !== composedGroupIds.value.join(','))
+          composedGroupIds.value = composedIds;
 
         const render = (entry: DefaultEntry) => {
           const override = overrides.get(entry.slot);
@@ -361,13 +392,13 @@ const DocxEditorToolbarRoot = defineComponent({
         const bar: VNode[] = [];
         const sections: ToolbarOverflowSection[] = [];
         let drawn = 0;
-        for (const group of defaultGroups.value) {
+        for (const group of groups) {
           if (overflow.value.has(group.id)) {
             const rows = group.entries.flatMap((entry) => {
               const override = overrides.get(entry.slot);
               if (isHiddenOverride(override)) return [];
               const row =
-                override || isValueSlot(entry.slot) ? (
+                (override && !isBareSlotButton(override)) || isValueSlot(entry.slot) ? (
                   <ToolbarOverflowControl label={labelOf(label, entry, group.labelKey)}>
                     {render(entry)}
                   </ToolbarOverflowControl>
