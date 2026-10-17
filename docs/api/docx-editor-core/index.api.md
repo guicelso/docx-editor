@@ -1349,6 +1349,7 @@ export interface DocxEditorConfig {
     revisionStyles?: RevisionStyles;
     tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
+    view?: EditorLayoutView;
     zoom?: number;
     zoomMode?: ZoomMode | 'auto';
 }
@@ -1431,7 +1432,7 @@ export type EditIntent = {
 };
 
 // @public
-export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView, EditorEditPolicy {
+export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorHostPolicies, EditorViewControl {
     acceptReviewItem(key: string): ExecResult;
     addComment(text: string, author?: string): ExecResult;
     beginHistoryGroup(): HistoryGroup;
@@ -1956,6 +1957,13 @@ export interface EditorHighlights {
 }
 
 // @public
+export interface EditorHostPolicies extends EditorContentControlView, EditorEditPolicy, EditorWriteAdmission {
+}
+
+// @public
+export type EditorLayoutView = 'print' | 'web';
+
+// @public
 export interface EditorModule {
     readonly collaboration?: CollaborationModuleContribution;
     readonly customNodePayloadNamespaces?: readonly string[];
@@ -2149,9 +2157,21 @@ export interface EditorSnapshot {
     readonly tocContext: {
         readonly id: string;
     } | null;
+    readonly view?: EditorLayoutView;
     // (undocumented)
     readonly zoom: number;
     readonly zoomMode?: ZoomMode;
+}
+
+// @public
+export interface EditorViewControl {
+    getView(): EditorLayoutView;
+    setView(view: EditorLayoutView): ExecResult;
+}
+
+// @public
+export interface EditorWriteAdmission {
+    setWriteAdmission(admission: WriteAdmission | null): void;
 }
 
 // @public
@@ -3523,6 +3543,11 @@ export interface Watermark {
 
 // @public @deprecated (undocumented)
 export const WORD_DEFAULT_FONT: FontConfiguration['defaultFont'];
+
+// @public
+export type WriteAdmission = (request: {
+    readonly part: OoxmlPart;
+}) => string | null;
 
 // @public
 export type ZoomFitTarget = 'pageWidth';

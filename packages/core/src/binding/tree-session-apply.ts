@@ -9,6 +9,14 @@ import type { TreeApplyOptions, TreeApplyResult } from './tree-session.ts';
 
 const EMPTY_APPLY: TreeApplyResult = { committed: false, rejected: false, opCount: 0 };
 
+/** The host's own words for a refused admission; the store's code for every other refusal. */
+export function rejectionReasonOf(result: {
+  readonly reason: string;
+  readonly detail?: string;
+}): string {
+  return result.reason === 'write-refused' && result.detail ? result.detail : result.reason;
+}
+
 function refused(opCount: number, reason?: string): TreeApplyResult {
   return reason === undefined
     ? { committed: false, rejected: true, opCount }
@@ -69,7 +77,7 @@ export function commitSessionTreeOpsAtomic(
     },
     options
   );
-  if (!result.ok) return refused(opCount, result.reason);
+  if (!result.ok) return refused(opCount, rejectionReasonOf(result));
   return { committed: true, rejected: false, opCount };
 }
 
@@ -128,6 +136,6 @@ export function commitSessionTreeOps(
     },
     options
   );
-  if (!result.ok) return refused(opCount, result.reason);
+  if (!result.ok) return refused(opCount, rejectionReasonOf(result));
   return { committed: true, rejected: false, opCount };
 }

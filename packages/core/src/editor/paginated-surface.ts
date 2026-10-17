@@ -311,6 +311,7 @@ import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { overlaySheet, sizeOverlaySheets } from './surface-overlay-sheet.ts';
 import type { SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
 import { placeholderPromptOf } from './surface-placeholder-prompts.ts';
+import { createSurfaceLayoutView } from './surface-layout-view.ts';
 
 export type {
   CaretAfterText,
@@ -381,6 +382,8 @@ export function mountPaginatedSurface(
     ...(options.reviewModel ? { reviewModel: options.reviewModel } : {}),
     // Read live: the prompts follow `setTranslate`, as every other label of the surface does.
     placeholderPrompt: (type) => placeholderPromptOf(translate, type),
+    // Read at local commits only, which start once the surface is built below.
+    writeAdmission: () => layoutViews.admission,
   });
   if (!opened.ok) {
     return {
@@ -861,6 +864,15 @@ export function mountPaginatedSurface(
   // Style and numbering indexes are identity-memoized and shared by every story.
   const { styleCascade, numberingIndex, defaultTabStopPt, compatibilityMode } =
     createSurfaceStyleDeps(session);
+  const layoutViews = createSurfaceLayoutView({
+    container,
+    bodyPart: () => session.part(),
+    styles: styleCascade,
+    scale: () => scale,
+    hostAdmission: options.writeAdmission,
+  });
+  // A document the web view does not lay out opens on sheets, and says why.
+  if (options.layoutView) lastRejection = layoutViews.apply(options.layoutView);
   // Word's "style for following paragraph". Its own lane, because it is a question about
   // `styles.xml` rather than about the selection an Enter is standing in.
   const nextStyle = createNextStyleWrites({
@@ -1404,6 +1416,8 @@ export function mountPaginatedSurface(
       showFieldCodes: context ? false : showFieldCodes,
       contentControlView: context ? undefined : contentControlView,
       revisionAuthorFilter: activeAuthorFilter,
+      // Save-time PAGEREF numbers are page numbers: that layout is always on sheets.
+      layoutView: context ? undefined : layoutViews.layoutView(),
     } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
   }
 
@@ -2513,6 +2527,7 @@ export function mountPaginatedSurface(
       },
       contextTocId,
       formatPainter: formatPainter.state(),
+      layoutView: layoutViews.kind(),
       perf: {
         layoutMs: lastLayoutMs,
         paintMs: lastPaintMs,
@@ -5465,6 +5480,17 @@ export function mountPaginatedSurface(
     },
     setEditPolicy(policy) {
       editPolicy = policy ?? undefined;
+    },
+    setWriteAdmission: layoutViews.setHostAdmission,
+    setLayoutView(next) {
+      if (destroyed) return false;
+      if (layoutViews.isCurrent(next)) return true;
+      flushPendingInputAndLayout();
+      const refusal = layoutViews.apply(next);
+      if (refusal !== null) return publishRefusal(refusal);
+      scheduler.invalidateAll(session.packageRevision(), 'layout-view');
+      scheduler.flush();
+      return true;
     },
     setFieldTones(tone) {
       if (destroyed || fieldTone === (tone ?? undefined)) return;

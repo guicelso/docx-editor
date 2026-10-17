@@ -8,6 +8,8 @@
     "chrome-slots",
     "customize-dialogs",
     "zoom",
+    "web-layout",
+    "write-admission",
     "content-controls",
     "document-protection",
     "headers-footers",

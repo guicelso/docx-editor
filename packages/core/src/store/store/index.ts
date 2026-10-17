@@ -81,6 +81,7 @@ export {
   type TreePackageStoreOptions,
 } from './tree-package-store.ts';
 export type { RemotePackageAttribution } from './tree-package-remote.ts';
+export type { WriteAdmission } from './write-admission.ts';
 export {
   addPackageComment,
   deletePackageComments,

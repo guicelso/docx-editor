@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Every participant laid the document out on pages, and a host could not refuse what a write would publish.",
+  "after": "A participant may lay the document out in the web view, and a host's write admission refuses that participant's own writes before they are published.",
+  "reason": "The view is a local layout input that writes nothing, and the admission is asked only for local human and agent writes; remote writes, undo and redo are never asked, so no replica refuses state another replica holds.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/document-web-view-admission.test.ts",
+    "packages/core/src/store/__tests__/write-admission.test.ts"
+  ],
+  "changeset": "web-layout-view-and-write-admission",
+  "migration": null
+}

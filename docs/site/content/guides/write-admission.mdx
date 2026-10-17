@@ -1,0 +1,29 @@
+---
+title: 'Write admission'
+description: 'Decide what a document may contain: the editor asks your admission before it publishes each write.'
+category: 'Guides'
+seoTitle: 'Write admission'
+---
+
+A write admission lets your application decide what a document may contain. The editor asks it about each write before the write is published. Every lane that writes goes through it: typing, paste, drop, toolbar and menu commands, automation, and note or header insertion.
+
+## Set an admission
+
+The admission receives each document part that the write changes, as the part would be published. Return a reason to refuse the whole write, or `null` to accept it.
+
+```ts
+editor.setWriteAdmission(({ part }) =>
+  holdsOnlyText(part) ? null : 'This field holds text only.'
+);
+```
+
+A refused write changes nothing: the document, its revision, and the undo history stay as they were. The reason is in `snapshot().lastRejection`.
+
+The editor keeps the admission across `load`, `attach`, and `detach`. Pass `null` to remove it.
+
+## What the admission is not asked
+
+The admission decides the local reader's writes. The editor does not ask it about these writes:
+
+- An edit from another participant in a collaboration session. Refusing it would make the replicas disagree.
+- Undo and redo, which restore a state the admission already accepted.

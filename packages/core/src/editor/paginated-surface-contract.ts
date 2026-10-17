@@ -638,6 +638,13 @@ export interface PaginatedSurface {
   setFieldSelection(select: ((instruction: string) => boolean) | null): void;
   /** The facade's channel for the host's policy over paragraph breaks and deletions. */
   setEditPolicy(policy: import('../contracts/editor-edit-policy.ts').EditPolicy | null): void;
+  /** The facade's channel for the host's write admission, asked after the view's own. */
+  setWriteAdmission(admission: import('@docx-editor.dev/core/store').WriteAdmission | null): void;
+  /**
+   * Lay out on sheets or in Word's Web Layout. Refused, with the reason in `lastRejection`,
+   * when the document holds what the web view does not lay out; the view in force then stays.
+   */
+  setLayoutView(view: import('./surface-layout-view.ts').SurfaceLayoutView): boolean;
   /**
    * Where the selection is painted, in client coordinates, from layout: one rectangle per line
    * of a range, or a zero-width one at a collapsed caret (in its slot at a tagged edge). The

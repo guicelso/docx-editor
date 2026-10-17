@@ -166,6 +166,8 @@ export interface PaginatedSurfaceState {
    * through the same `onChange` so a toolbar's pressed state has exactly one source.
    */
   readonly formatPainter: FormatPainterSurfaceState;
+  /** Sheets, or Word's Web Layout: the view in force, which a refused request leaves as it was. */
+  readonly layoutView: 'print' | 'web';
   /** Timing and reuse counters for the last pass. Diagnostics, not document state. */
   readonly perf: PaginatedSurfacePerf;
 }

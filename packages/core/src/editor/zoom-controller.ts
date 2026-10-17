@@ -13,6 +13,7 @@
 
 import type { ZoomMode } from '../contracts/editor.ts';
 import { surfaceScroller } from './surface-pages.ts';
+import { scrollerContentWidth } from './scroller-content-width.ts';
 import { fitZoom, isFitMode } from './zoom-fit.ts';
 
 /** What the controller needs from the editor it serves. */
@@ -57,27 +58,6 @@ export interface ZoomController {
   detach(): void;
 }
 
-/** The scroller's content box, or null when it cannot be measured. */
-function availableWidth(container: HTMLElement): number | null {
-  const scroller = surfaceScroller(container);
-  if (!scroller) return null;
-  const width = scroller.clientWidth;
-  if (!Number.isFinite(width) || width <= 0) return null;
-  const style = scroller.ownerDocument.defaultView?.getComputedStyle(scroller);
-  if (!style) return width;
-  // PHYSICAL, not logical. `clientWidth` is content + padding in physical terms, so these are
-  // the two that reduce it whichever way the text runs — and the chrome above uses both
-  // spellings (the comments rail sets `padding-right`, the navigation pane sets
-  // `padding-inline-start`), which computed style resolves into these regardless.
-  //
-  // NaN from a value that is not px (a stylesheet that has not applied, a DOM that reports '')
-  // means "no reservation known", not "give up" — hence `|| 0` rather than bailing out, which
-  // would leave the fit permanently stale.
-  const left = Number.parseFloat(style.paddingLeft) || 0;
-  const right = Number.parseFloat(style.paddingRight) || 0;
-  return Math.max(width - left - right, 0);
-}
-
 /**
  * Drive one editor's fit.
  *
@@ -110,7 +90,7 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
     if (!isFitMode(mode)) return;
     const container = host.container();
     if (!container) return;
-    const width = availableWidth(container);
+    const width = scrollerContentWidth(container);
     if (width === null) return;
     const pageWidthPx = host.pageWidthPx();
     if (pageWidthPx === null) return;

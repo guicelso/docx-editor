@@ -183,6 +183,7 @@ import {
   notesReserveContextKey,
 } from './note-pagination.ts';
 import { passProducerOf } from './pass-producer.ts';
+import { webLayoutGeometry } from './web-layout-view.ts';
 import { documentProjectionProducer } from './document-property-context.ts';
 
 import { noteExclusionLayoutPass } from './exclusion-pass-observer.ts';
@@ -224,7 +225,7 @@ export { type HeaderFooterVariantName, type PageFurniture } from './page-furnitu
 
 import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
 export type { SemanticLayoutOptions } from './semantic-layout-options.ts';
-import type { PreparedBlock, SectionPrepass } from './section-prepass-types.ts';
+import type { PreparedBlock, PreparedBlockMemo, SectionPrepass } from './section-prepass-types.ts';
 export type { SectionPrepass } from './section-prepass-types.ts';
 
 type BlockLayoutOptions = ColumnBalanceBlockLayoutOptions<SemanticLayoutOptions> & {
@@ -233,37 +234,6 @@ type BlockLayoutOptions = ColumnBalanceBlockLayoutOptions<SemanticLayoutOptions>
   /** Set by the one retry of `layoutBlocksWithGeometry`: hidden furniture zones yield. */
   readonly yieldHiddenFurnitureZones?: boolean;
 };
-
-interface PreparedBlockMemo {
-  readonly contentWidth: number;
-  readonly frameEnabled: boolean;
-  readonly producer: string;
-  readonly drawingToken: string;
-  readonly projectionToken: string;
-  /**
-   * The resolved list item this entry was prepared under, by its own cache token.
-   *
-   * The entry embeds the item's indent, its available width and its break-cache key, and none
-   * of the other three validators can see a numbering change. The producer used to carry the
-   * item COUNT, which hid this by going cold on any list edit — and by re-laying out every
-   * paragraph in the document for one Enter in a list. With the count gone, this is the guard
-   * that has to be right.
-   */
-  readonly listToken: string;
-  /**
-   * The resolved REF values this block paints, for the same reason {@link listToken} is
-   * here: a renumbering or bookmark edit moves a REF's painted text while the block's node,
-   * width and producer all stay identical. `''` for the common REF-free block.
-   */
-  readonly refToken: string;
-  /**
-   * Whether the inline-drawing context was present. Pass-constant, but the memo lives
-   * across passes, so it must be compared here for {@link PreparedBlock.key} (which folds
-   * it via `withDrawingContext`) to stay current when a caller toggles the context.
-   */
-  readonly drawingContext: boolean;
-  readonly entry: PreparedBlock;
-}
 
 const preparedBlocks = new WeakMap<OoxmlNode, PreparedBlockMemo>();
 
@@ -334,15 +304,22 @@ export function layoutSemanticDocument(
   const refFields = resolveBodyRefFields(part, blocks, sections, optionsWithLists);
   const optionsForBody = refFields === null ? optionsWithLists : { ...optionsWithLists, refFields };
 
+  const web = options.layoutView?.kind === 'web';
   const runBody = (opts: SemanticLayoutOptions): SemanticLayout => {
-    if (sections.length > 1) {
+    if (sections.length > 1 && !web) {
       return layoutMultiSectionDocument(blocks, sections, revision, opts, layoutBlocksWithGeometry);
     }
 
-    const section = sections[0];
+    // The web view's one sheet is the host's, not any section's.
+    const section = web ? undefined : sections[0];
     const geometry =
-      opts.geometry ?? (section ? geometryOfSection(section.properties) : DEFAULT_PAGE_GEOMETRY);
-    const furniture = furnitureForSection(opts, 0, sections.length) ?? opts.furniture;
+      opts.layoutView?.kind === 'web'
+        ? webLayoutGeometry(opts.layoutView.widthPt)
+        : (opts.geometry ??
+          (section ? geometryOfSection(section.properties) : DEFAULT_PAGE_GEOMETRY));
+    const furniture = web
+      ? undefined
+      : (furnitureForSection(opts, 0, sections.length) ?? opts.furniture);
     const sectionNumbering = section?.properties.pageNumbering;
     const laid = layoutBlocksWithGeometry(blocks, revision, {
       ...opts,
@@ -399,7 +376,7 @@ export function layoutSemanticDocument(
     return withBoundaries;
   };
 
-  if (!options.notes) {
+  if (!options.notes || web) {
     if (options.session) {
       options.session.notes = null;
       options.session.notePageBottomReserves = null;
@@ -429,6 +406,7 @@ function layoutBlocksPass(
   options: BlockLayoutOptions
 ): BlockLayoutResult {
   const geometry = options.geometry;
+  const continuous = options.layoutView?.kind === 'web';
   const keyFor = options.cache?.keyFor?.bind(options.cache) ?? paragraphLayoutKey;
   const contentWidthForReflow = geometry.width - geometry.margin.left - geometry.margin.right;
   const columns = resolveSectionColumns(
@@ -1118,6 +1096,7 @@ function layoutBlocksPass(
   const prepassInputsValid =
     prepassMemo != null &&
     prepassMemo.framePolicy === framePolicy &&
+    prepassMemo.continuous === continuous &&
     drawingEpoch !== null &&
     projectionEpoch !== null &&
     prepassMemo.drawingEpoch === drawingEpoch &&
@@ -1209,6 +1188,7 @@ function layoutBlocksPass(
 
     return {
       framePolicy,
+      continuous,
       positioned,
       bodies,
       producer,
@@ -1511,10 +1491,13 @@ function layoutBlocksPass(
   const flushPage = (): void => {
     publishPositionedTablesForPage();
     const index = pages.length;
-    const box = pageBox(index);
+    const { usedBottom, hasBodyPageFields } = summarizeFlushedPage(pageFragments, columnRegionTop);
+    // The web view's sheet ends where its content does.
+    const box = continuous
+      ? { x: 0, y: 0, width: geometry.width, height: usedBottom }
+      : pageBox(index);
     const header = furnitureFor('header', index, box);
     const footer = furnitureFor('footer', index, box);
-    const { usedBottom, hasBodyPageFields } = summarizeFlushedPage(pageFragments, columnRegionTop);
     const insets = insetsFor(index);
     // `index` is SECTION-local here (multi-section renumbers through `remapPage`), which is
     // exactly what `w:display` asks about: the first page of this section, not of the document.
@@ -1527,7 +1510,7 @@ function layoutBlocksPass(
         x: box.x + geometry.margin.left,
         y: box.y + insets.top,
         width: contentWidthForReflow,
-        height: insets.height,
+        height: continuous ? usedBottom : insets.height,
       },
       fragments: pageFragments,
       hasBodyPageFields,
@@ -1662,8 +1645,9 @@ function layoutBlocksPass(
     columnCount,
   });
 
-  /** `w:pageBreakBefore`, except on an empty section mark after its section's content. */
+  /** `w:pageBreakBefore`, except on an empty section mark and in the web view (no sheets). */
   const breaksBeforeAt = (at: number, entry: PreparedParagraph): boolean =>
+    !continuous &&
     paragraphBreaksBefore(entry.props) &&
     !markIgnoresPageBreakBefore(entry.paragraph, at, prepared.length);
 
@@ -2236,6 +2220,7 @@ function layoutBlocksPass(
       (marksSectionBreak && columnRegionBottom === undefined && columnIndex + 1 >= columns.count);
     // Floating tables and text frames anchor at the paragraph start, which would stay behind.
     const leadingBreak = (): boolean =>
+      !continuous &&
       leadingBreakGroups.admits(previousEntry, entry) &&
       paragraphFrames.checkpoint() === undefined &&
       !tableFloat.positionedTablesByAnchor(positionedTables).has(paragraphId) &&
@@ -2834,7 +2819,7 @@ function layoutBlocksPass(
       if (pending.length === 0) fragmentFirstLineSkip = skipBefore;
       pending.push(record);
       cursorY += pendingLine.height;
-      if (pendingLine.columnBreakAfter) {
+      if (pendingLine.columnBreakAfter && !continuous) {
         const priorColumnWidth = columnWidth();
         const priorPageHadExclusions = pageExclusionZones().length > 0;
         flushFragment(isLastLine);
@@ -2856,7 +2841,7 @@ function layoutBlocksPass(
           continue;
         }
         fragmentFirstLine = lineIndex + 1;
-      } else if (pendingLine.pageBreakAfter) {
+      } else if (pendingLine.pageBreakAfter && !continuous) {
         const priorPageHadExclusions = pageExclusionZones().length > 0;
         flushFragment(isLastLine);
         // Keep the empty section mark with its break when the next section opens a sheet.

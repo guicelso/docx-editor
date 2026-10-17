@@ -23,6 +23,7 @@ import type {
   DocumentSource,
   Editor,
   EditorFontError,
+  EditorLayoutView,
   ZoomMode,
 } from '@docx-editor.dev/core/contracts/editor';
 import {
@@ -74,6 +75,12 @@ export interface DocxEditorRootProps {
   mode?: 'edit' | 'view' | 'suggesting';
   zoom?: number;
   zoomMode?: ZoomMode | 'auto';
+  /**
+   * `'print'` (the default) lays the document out on pages; `'web'` is Word's Web Layout: one
+   * page as wide as the viewport and as tall as the text. A document the web view refuses stays
+   * on pages, with the reason in `lastRejection`. Changes apply without a remount.
+   */
+  view?: EditorLayoutView;
   /**
    * Controlled viewer markup settings. Omitted fields use defaults.
    * Save callback values into this prop to accept API and dialog changes.
@@ -238,6 +245,7 @@ export function useDocxEditorRootOwner(
       ...(p.modules !== undefined ? { modules: p.modules } : {}),
       ...(p.zoom !== undefined ? { zoom: p.zoom } : {}),
       ...(p.zoomMode !== undefined ? { zoomMode: p.zoomMode } : {}),
+      ...(p.view !== undefined ? { view: p.view } : {}),
       ...(p.tableInteractionLabel ? { tableInteractionLabel: p.tableInteractionLabel } : {}),
       ...(p.imageDecodePort ? { imageDecodePort: p.imageDecodePort } : {}),
       onFontError: fireFontError,
@@ -366,6 +374,27 @@ export function useDocxEditorRootOwner(
       if (appliedHostMode.value === mode) return;
       appliedHostMode.value = mode;
       editor.setMode(mode);
+    },
+    { flush: 'post', immediate: true }
+  );
+
+  // Construction already opened the instance in `view`, so only a later change is applied.
+  const appliedView = {
+    editor: null as DocxEditorInstance | null,
+    value: undefined as EditorLayoutView | undefined,
+  };
+  watch(
+    () => [editorRef.value, toValue(props).view] as const,
+    ([editor, view]) => {
+      if (!editor) return;
+      if (appliedView.editor !== editor) {
+        appliedView.editor = editor;
+        appliedView.value = view;
+        return;
+      }
+      if (appliedView.value === view) return;
+      appliedView.value = view;
+      editor.setView(view ?? 'print');
     },
     { flush: 'post', immediate: true }
   );

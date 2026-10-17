@@ -217,6 +217,7 @@ const SNAPSHOT_FIELDS = {
   editable: 'compared',
   zoom: 'compared',
   zoomMode: 'compared',
+  view: 'compared',
   selection: 'compared',
   // Load-bearing: `selection` is a paraId range with no offsets, so collapsing a range
   // INSIDE one paragraph leaves it identical. Without this compare, a control gated on

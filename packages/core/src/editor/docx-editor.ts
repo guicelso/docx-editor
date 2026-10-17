@@ -32,7 +32,6 @@ import {
   commentBodyText,
   commentInitials,
   documentOrder,
-  paragraphFragmentsOfBlocks,
   reviewItemGeometry,
   reviewItemKey,
   type ReviewItem,
@@ -95,7 +94,7 @@ import {
   searchStoriesForSurface,
   selectDocumentSearchMatch,
 } from './docx-editor-story-navigation.ts';
-import { fragmentParagraphs } from '../layout/line-segments.ts';
+import { noteScopeIndexOf } from './note-scope-index.ts';
 import {
   classifyCommand,
   deepFreezeValue,
@@ -192,6 +191,7 @@ import {
 } from './paginated-surface.ts';
 import { surfaceScroller } from './surface-pages.ts';
 import { createZoomLane, zoomFacadeMembers } from './docx-editor-zoom.ts';
+import { createViewLane } from './docx-editor-view.ts';
 import {
   type CommandRefusal,
   createSuggestingConfigurationReporter,
@@ -525,6 +525,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     emitSelectionChange,
   });
   const scaleOf = (): number => zoomLane.scale();
+  const viewLane = createViewLane(config.view, {
+    container: () => container,
+    surface: () => surface,
+    bump,
+    emitSelectionChange,
+  });
   const highlights = createTextHighlights({
     surface: () => surface,
     container: () => container,
@@ -623,6 +629,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       },
       tocLabels: hostConfig.tocLabels(),
       ...hostPolicies.mountOptions(),
+      ...viewLane.mountOptions(),
       onChange: (state) => {
         // The mount-time render reports before `surface` is assigned; nothing observable
         // has changed at that point, so it is not a selection change.
@@ -719,6 +726,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     // handler that throws from that emit would otherwise abort this function with the surface
     // assigned but `unsubscribeSession` unset — an editor that types but never re-renders.
     zoomLane.attach();
+    viewLane.attach();
     // The document arrived: an external store subscribed to `change`/`selectionChange`
     // must learn about it, exactly as it learns about any later commit. Without these a
     // store bound before `load()` never re-reads and keeps rendering "no document".
@@ -1139,6 +1147,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         !(container && refreshWriteBlocked(container)),
       zoom: zoomLane.zoom(),
       zoomMode: zoomLane.mode(),
+      view: viewLane.view(),
       selection: selectionRangeOf(surface),
       // Whether the selection is a CARET rather than a range.
       //
@@ -1297,38 +1306,6 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     );
   }
   const anchorIndexOf = createAnchorIndex();
-
-  /**
-   * Paragraph id → note scope id, built once per LAYOUT from the painted note stories.
-   *
-   * The layout already states which note each paragraph belongs to (`NoteStoryRecord`
-   * carries `scopeId`), so this is a lookup rather than a search. The first version walked
-   * the notes part per item — O(items x notes x subtree), which measured 91 ms per
-   * `getTrackedChanges()` call on a document with 600 note revisions.
-   */
-  const noteScopeIndexCache = new WeakMap<SemanticLayout, Map<string, string>>();
-  function noteScopeIndexOf(layout: SemanticLayout): Map<string, string> {
-    const cached = noteScopeIndexCache.get(layout);
-    if (cached) return cached;
-    const index = new Map<string, string>();
-    for (const page of layout.pages) {
-      for (const area of [page.footnotes, page.endnotes]) {
-        if (!area) continue;
-        for (const note of area.notes) {
-          for (const fragment of paragraphFragmentsOfBlocks(note.fragments)) {
-            // Every paragraph the fragment DRAWS. A note whose paragraphs a resolved view
-            // merges publishes one fragment, and an absorbed member with no scope made its
-            // card look like a body card: no note to accept it in, no note to scroll to.
-            for (const paragraphId of fragmentParagraphs(fragment)) {
-              if (!index.has(paragraphId)) index.set(paragraphId, note.scopeId);
-            }
-          }
-        }
-      }
-    }
-    noteScopeIndexCache.set(layout, index);
-    return index;
-  }
 
   /**
    * Which story a review item lives in, from the part name its ranges carry.
@@ -1830,6 +1807,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       // new element took the `else bump()` branch and left the observer watching an element
       // this editor no longer uses — and holding it alive if the host dropped it.
       zoomLane.detach();
+      viewLane.detach();
       container = el;
       // A probe answers for one document's font set; the new container may live in a
       // different one (an iframe host), so it re-creates on the next derivation.
@@ -1849,6 +1827,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       // Before the container goes: the observer is on an element found THROUGH it, and one
       // left running would keep re-fitting a document that is no longer mounted.
       zoomLane.detach();
+      viewLane.detach();
       // Reclaimed before the surface save, applied after: the scheduled document is
       // the newer one, so it wins the pending slot.
       const reclaimed = openScheduler.cancel();
@@ -2609,6 +2588,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     ...zoomFacadeMembers(zoomLane, () => surface),
     ...highlights.members,
     ...hostPolicies.members,
+    ...viewLane.members,
 
     relayout(options?: { sync?: boolean }) {
       // `layout()` flushes any commit the scheduler has not published yet; the surface
@@ -2647,6 +2627,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       suggestingReporter.dispose();
       openScheduler.cancel();
       zoomLane.detach();
+      viewLane.detach();
       disposeEmbeddedFaces();
       disposeShapedFonts();
       disposeShapedFonts = () => {};

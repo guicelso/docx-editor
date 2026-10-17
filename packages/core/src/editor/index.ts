@@ -178,6 +178,7 @@ export {
   type ReviewWriteIntent,
   type SurfaceFormatting,
 } from './paginated-surface.ts';
+export type { SurfaceLayoutView } from './surface-layout-view.ts';
 export {
   createDocxEditor,
   type DocxEditorInstance,

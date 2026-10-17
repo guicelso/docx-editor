@@ -531,7 +531,7 @@ export type EditIntent = {
 };
 
 // @public
-export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView, EditorEditPolicy {
+export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorHostPolicies, EditorViewControl {
     acceptReviewItem(key: string): ExecResult;
     addComment(text: string, author?: string): ExecResult;
     beginHistoryGroup(): HistoryGroup;
@@ -1056,6 +1056,13 @@ export interface EditorHighlights {
 }
 
 // @public
+export interface EditorHostPolicies extends EditorContentControlView, EditorEditPolicy, EditorWriteAdmission {
+}
+
+// @public
+export type EditorLayoutView = 'print' | 'web';
+
+// @public
 export interface EditorNoteCommands {
     convertAllNotes: {
         fromKind: NoteKind;
@@ -1239,9 +1246,21 @@ export interface EditorSnapshot {
     readonly tocContext: {
         readonly id: string;
     } | null;
+    readonly view?: EditorLayoutView;
     // (undocumented)
     readonly zoom: number;
     readonly zoomMode?: ZoomMode;
+}
+
+// @public
+export interface EditorViewControl {
+    getView(): EditorLayoutView;
+    setView(view: EditorLayoutView): ExecResult;
+}
+
+// @public
+export interface EditorWriteAdmission {
+    setWriteAdmission(admission: WriteAdmission | null): void;
 }
 
 // @public
@@ -2372,6 +2391,11 @@ export interface Watermark {
     // (undocumented)
     readonly text?: string;
 }
+
+// @public
+export type WriteAdmission = (request: {
+    readonly part: OoxmlPart;
+}) => string | null;
 
 // @public
 export type ZoomFitTarget = 'pageWidth';

@@ -44,6 +44,9 @@ const GRANDFATHERED_TYPE_EDGES: readonly { readonly file: string; readonly to: L
   // the selected-image read model names drawing, crop and image-resource types the store
   // lane owns. Compile-time only, and one fewer line in a file at its cap.
   { file: 'contracts/editor-image-state.ts', to: 'store' },
+  // The store asks a host's write admission at its commit, and the store may not import
+  // contracts, so the admission's type lives in the store and this contract names it.
+  { file: 'contracts/editor-write-admission.ts', to: 'store' },
   { file: 'contracts/modules.ts', to: 'layout' },
   { file: 'contracts/modules.ts', to: 'store' },
   { file: 'contracts/modules.ts', to: 'collaboration' },

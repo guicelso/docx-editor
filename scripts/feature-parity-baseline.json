@@ -327,6 +327,7 @@
         "revisionMarkup",
         "tableInteractionLabel",
         "translate",
+        "view",
         "zoom",
         "zoomMode"
       ],
@@ -518,6 +519,7 @@
         "tableInteractionLabel",
         "translate",
         "translateResolver",
+        "view",
         "zoom",
         "zoomMode"
       ],

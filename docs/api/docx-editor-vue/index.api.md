@@ -60,6 +60,7 @@ import { EditorEvents } from '@docx-editor.dev/core/contracts/editor';
 import { EditorExecOptions } from '@docx-editor.dev/core/contracts/editor';
 import { EditorFontError } from '@docx-editor.dev/core/contracts/editor';
 import { EditorFontErrorCode } from '@docx-editor.dev/core/contracts/editor';
+import { EditorLayoutView } from '@docx-editor.dev/core/contracts/editor';
 import { EditorModule } from '@docx-editor.dev/core/editor';
 import { EditorQuery } from '@docx-editor.dev/core/contracts/editor';
 import { EditorScope } from '@docx-editor.dev/core/contracts/editor';
@@ -3951,6 +3952,10 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
         default: undefined;
         type: PropType<DocxEditorRootProps['translate']>;
     };
+    view: {
+        default: undefined;
+        type: PropType<EditorLayoutView>;
+    };
     zoom: {
         default: undefined;
         type: NumberConstructor;
@@ -4006,6 +4011,10 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
         default: undefined;
         type: PropType<DocxEditorRootProps['translate']>;
     };
+    view: {
+        default: undefined;
+        type: PropType<EditorLayoutView>;
+    };
     zoom: {
         default: undefined;
         type: NumberConstructor;
@@ -4029,6 +4038,7 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
     modules: readonly EditorModule[];
     tableInteractionLabel: ((key: 'table.insertRowBelow' | 'table.insertColumnRight') => string) | undefined;
     translate: ((key: string, params?: Record<string, string | number>) => string) | undefined;
+    view: EditorLayoutView;
     zoom: number;
     zoomMode: "auto" | ZoomMode;
 }, {}, {}, {}, string, vue.ComponentProvideOptions, true, {}, any>;
@@ -4073,6 +4083,7 @@ export interface DocxEditorRootProps {
     // (undocumented)
     tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
+    view?: EditorLayoutView;
     // (undocumented)
     zoom?: number;
     // (undocumented)

@@ -343,6 +343,11 @@ export {
   type SemanticLayoutOptions,
 } from './semantic-layout.ts';
 export {
+  webLayoutViewRefusal,
+  type LayoutView,
+  type WebLayoutViewRefusal,
+} from './web-layout-view.ts';
+export {
   formatPageNumber,
   type FieldLinkProjector,
   type HyperlinkProjector,

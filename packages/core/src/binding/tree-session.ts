@@ -1,4 +1,5 @@
 import type { PlaceholderPrompt } from '../store/package/ooxml-edit.ts';
+import type { WriteAdmission } from '../store/store/write-admission.ts';
 import { shareUndoHistoryPosition } from '../store/store/undo-history-position.ts';
 import { createSessionPackageWriter } from './session-package-writer.ts';
 // Tree-backed editing session (cutover step 2b).
@@ -106,7 +107,11 @@ import {
   type DocumentProperties,
 } from '../store/package/document-properties.ts';
 import { createCollaborationDocumentPort } from '../collaboration/replication.ts';
-import { commitSessionTreeOps, commitSessionTreeOpsAtomic } from './tree-session-apply.ts';
+import {
+  commitSessionTreeOps,
+  commitSessionTreeOpsAtomic,
+  rejectionReasonOf,
+} from './tree-session-apply.ts';
 
 // The session view contract (TreeApplyResult + TreeDocxSessionView) lives in
 // tree-session-contract.ts; re-exported so every existing import through this module stays
@@ -179,6 +184,8 @@ export interface OpenTreeSessionOptions {
    * and whenever an edit creates or empties one. Absent, Word's English defaults.
    */
   readonly placeholderPrompt?: PlaceholderPrompt;
+  /** The host's write admission, read at every local commit (see `WriteAdmission`). */
+  readonly writeAdmission?: () => WriteAdmission | undefined;
 }
 
 /**
@@ -218,7 +225,10 @@ export function openTreeSession(
   const packageStore = new TreePackageStore(
     pkgLoaded,
     materializeGlossaryPlaceholders(pkgLoaded, normalized, options.placeholderPrompt),
-    options.placeholderPrompt ? { placeholderPrompt: options.placeholderPrompt } : {}
+    {
+      ...(options.placeholderPrompt ? { placeholderPrompt: options.placeholderPrompt } : {}),
+      ...(options.writeAdmission ? { writeAdmission: options.writeAdmission } : {}),
+    }
   );
 
   let headerFooterBySection: {
@@ -772,7 +782,7 @@ export function openTreeSession(
             committed: false,
             rejected: true,
             opCount: mapped.ops.length,
-            reason: result.reason,
+            reason: rejectionReasonOf(result),
           };
         }
         return { committed: true, rejected: false, opCount: mapped.ops.length };

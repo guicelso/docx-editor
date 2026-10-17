@@ -20,6 +20,7 @@ import type {
   DocumentSource,
   Editor,
   EditorFontError,
+  EditorLayoutView,
   ZoomMode,
 } from '@docx-editor.dev/core/contracts/editor';
 import type { EditorModule, ImageDecodePort } from '@docx-editor.dev/core/editor';
@@ -133,6 +134,7 @@ export const DocxEditorRoot = defineComponent({
     reviewDisplayMode: String as PropType<ReviewDisplayMode>,
     zoom: { type: Number, default: undefined },
     zoomMode: { type: [Object, String] as PropType<ZoomMode | 'auto'>, default: undefined },
+    view: { type: String as PropType<EditorLayoutView>, default: undefined },
     tableInteractionLabel: {
       type: Function as PropType<DocxEditorRootProps['tableInteractionLabel']>,
       default: undefined,

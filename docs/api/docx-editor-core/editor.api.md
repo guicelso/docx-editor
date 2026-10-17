@@ -1307,6 +1307,7 @@ export interface DocxEditorConfig {
     revisionStyles?: RevisionStyles;
     tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
+    view?: EditorLayoutView;
     zoom?: number;
     zoomMode?: ZoomMode | 'auto';
 }
@@ -2211,6 +2212,7 @@ export interface PaginatedSurface {
         readonly left?: number | null;
         readonly right?: number | null;
     }): boolean;
+    setLayoutView(view: SurfaceLayoutView): boolean;
     setLocale(locale: string | undefined): void;
     // (undocumented)
     setNoteProperties(args: {
@@ -2258,6 +2260,7 @@ export interface PaginatedSurface {
     setTocLabels(labels: NonNullable<PaginatedSurfaceOptions['tocLabels']>): void;
     setTrackedChangesFilter(predicate: TrackedChangePredicate | null, mode?: TrackedChangeFilterMode): void;
     setTranslate(translate: PaginatedSurfaceOptions['translate']): void;
+    setWriteAdmission(admission: WriteAdmission | null): void;
     showAllRevisionAuthors(): void;
     // (undocumented)
     splitParagraph(): void;
@@ -2287,6 +2290,7 @@ export interface PaginatedSurfaceOptions {
     readonly fontAlias?: (family: string) => string | undefined;
     readonly hiddenRevisionAuthors?: readonly string[];
     readonly imageDecodePort?: ImageDecodePort;
+    readonly layoutView?: SurfaceLayoutView;
     readonly locale?: string;
     // (undocumented)
     readonly measurer?: TextMeasurer;
@@ -2317,6 +2321,7 @@ export interface PaginatedSurfaceOptions {
         readonly title: string;
     };
     readonly translate?: (key: string, params?: Record<string, string | number>) => string;
+    readonly writeAdmission?: WriteAdmission;
 }
 
 // @public
@@ -2332,6 +2337,7 @@ export interface PaginatedSurfaceState {
     readonly formatPainter: FormatPainterSurfaceState;
     // (undocumented)
     readonly lastRejection: string | null;
+    readonly layoutView: 'print' | 'web';
     // (undocumented)
     readonly pageCount: number;
     readonly pendingFormat: readonly {
@@ -3271,6 +3277,14 @@ export interface SurfaceHyperlink {
 
 // @public
 export type SurfaceInsertImageInput = Omit<InsertImageInput, 'decodePort' | 'actorId'>;
+
+// @public
+export type SurfaceLayoutView = {
+    readonly kind: 'print';
+} | {
+    readonly kind: 'web';
+    readonly widthPx: number;
+};
 
 // @public
 export interface SurfaceNavigation {

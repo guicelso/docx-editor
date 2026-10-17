@@ -22,6 +22,7 @@ import type { DocxEditorChildren } from '../docx-editor-children';
 
 const selectPaneOpen = (snapshot: EditorSnapshot): boolean => snapshot.reviewPaneOpen ?? true;
 const selectZoomFitting = (snapshot: EditorSnapshot): boolean => snapshot.zoomMode?.type === 'fit';
+const selectWebView = (snapshot: EditorSnapshot): boolean => snapshot.view === 'web';
 
 /** @public */
 export interface DocxEditorViewportProps {
@@ -46,6 +47,7 @@ export const DocxEditorViewport = defineComponent({
     const editorRef = useDocxEditor();
     const paneOpen = useEditorState(selectPaneOpen);
     const fitting = useEditorState(selectZoomFitting);
+    const web = useEditorState(selectWebView);
     const rail = useReviewRailRegistry();
     const reserve = computed(() => (rail.value.mounted ?? 0) > 0);
     const reviewGutter = useReviewGutter();
@@ -108,6 +110,7 @@ export const DocxEditorViewport = defineComponent({
       };
       if (reserve.value) attrs['data-review-pane'] = paneOpen.value ? 'open' : 'closed';
       if (fitting.value) attrs['data-zoom-fit'] = '';
+      if (web.value) attrs['data-docx-view'] = 'web';
       return h('div', attrs, slots.default?.());
     };
   },

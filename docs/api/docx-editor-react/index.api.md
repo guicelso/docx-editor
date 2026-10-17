@@ -55,6 +55,7 @@ import { EditorEvents } from '@docx-editor.dev/core/contracts/editor';
 import { EditorExecOptions } from '@docx-editor.dev/core/contracts/editor';
 import { EditorFontError } from '@docx-editor.dev/core/contracts/editor';
 import { EditorFontErrorCode } from '@docx-editor.dev/core/contracts/editor';
+import { EditorLayoutView } from '@docx-editor.dev/core/contracts/editor';
 import { EditorModule } from '@docx-editor.dev/core/editor';
 import { EditorQuery } from '@docx-editor.dev/core/contracts/editor';
 import { EditorScope } from '@docx-editor.dev/core/contracts/editor';
@@ -1349,6 +1350,7 @@ export interface DocxEditorRootProps {
     revisionMarkup?: RevisionMarkupOptions;
     tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
+    view?: EditorLayoutView;
     zoom?: number;
     zoomMode?: ZoomMode | 'auto';
 }

@@ -5115,6 +5115,7 @@ export interface TreeDocumentStoreOptions {
     readonly historyLimit?: number;
     readonly placeholderPrompt?: PlaceholderPrompt;
     readonly settingsPart?: () => OoxmlPart | null | undefined;
+    readonly writeAdmission?: () => WriteAdmission | undefined;
 }
 
 // @public
@@ -5213,6 +5214,8 @@ export type TreeOpRejection = 'unknown-op' | 'unknown-paragraph' | 'not-a-paragr
 * applied while leaving the row, cell, or section it describes untouched.
 */
 | 'unsupported-revision' | 'tree-invariant'
+/** The host's write admission refused what the write would publish; `detail` is its reason. */
+| 'write-refused'
 /** No content control in this part carries the addressed node id. */
 | 'unknown-content-control'
 /** The addressed node exists and is not a `w:sdt`. */
@@ -5345,6 +5348,7 @@ export interface TreePackageStoreOptions {
     readonly historyLimit?: number;
     readonly maxEditableStoryParts?: number;
     readonly placeholderPrompt?: PlaceholderPrompt;
+    readonly writeAdmission?: () => WriteAdmission | undefined;
 }
 
 // @public
@@ -5571,6 +5575,11 @@ export function wrapTargetToAnchorSpec(target: ImageWrapTarget): {
     readonly wrapLocalName: 'wrapNone' | 'wrapSquare' | 'wrapTight' | 'wrapThrough' | 'wrapTopAndBottom';
     readonly wrapText?: 'bothSides' | 'left' | 'right' | 'largest';
 };
+
+// @public
+export type WriteAdmission = (request: {
+    readonly part: OoxmlPart;
+}) => string | null;
 
 // @public
 export function writeOoxmlPackage(pkg: OoxmlPackage): Uint8Array;

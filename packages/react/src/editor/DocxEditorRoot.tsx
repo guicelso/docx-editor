@@ -27,6 +27,7 @@ import type {
   DocumentSource,
   Editor,
   EditorFontError,
+  EditorLayoutView,
   FontConfiguration,
   ZoomMode,
 } from '@docx-editor.dev/core/contracts/editor';
@@ -62,8 +63,8 @@ import {
 
 /**
  * Props for `DocxEditor.Root`. Only `document`, `fonts`, and `imageDecodePort` identity remounts
- * the editor. Later `author`, `locale`, `mode`, `translate`, `zoom`, and `zoomMode` changes use
- * instance setters. `modules` is sampled at mount only.
+ * the editor. Later `author`, `locale`, `mode`, `translate`, `view`, `zoom`, and `zoomMode` changes
+ * use instance setters. `modules` is sampled at mount only.
  *
  * @public
  */
@@ -121,6 +122,12 @@ export interface DocxEditorRootProps {
    * navigation pane shrinks the document by what it took. Pass `{ type: 'fixed' }` to opt out.
    */
   zoomMode?: ZoomMode | 'auto';
+  /**
+   * `'print'` (the default) lays the document out on pages; `'web'` is Word's Web Layout: one
+   * page as wide as the viewport and as tall as the text. A document the web view refuses stays
+   * on pages, with the reason in `lastRejection`. Changes apply without a remount.
+   */
+  view?: EditorLayoutView;
   /**
    * Controlled viewer markup settings. Omitted fields use defaults.
    * Save callback values into this prop to accept API and dialog changes.
@@ -237,6 +244,7 @@ export function DocxEditorRoot(props: DocxEditorRootProps) {
     mode,
     zoom,
     zoomMode,
+    view,
     tableInteractionLabel,
     imageDecodePort,
     children,
@@ -292,6 +300,7 @@ export function DocxEditorRoot(props: DocxEditorRootProps) {
       ...(p.modules !== undefined ? { modules: p.modules } : {}),
       ...(p.zoom !== undefined ? { zoom: p.zoom } : {}),
       ...(p.zoomMode !== undefined ? { zoomMode: p.zoomMode } : {}),
+      ...(p.view !== undefined ? { view: p.view } : {}),
       ...(p.tableInteractionLabel ? { tableInteractionLabel: p.tableInteractionLabel } : {}),
       ...(p.imageDecodePort ? { imageDecodePort: p.imageDecodePort } : {}),
       onFontError: (error) => propsRef.current.onFontError?.(error),
@@ -410,6 +419,22 @@ export function DocxEditorRoot(props: DocxEditorRootProps) {
     appliedMode.current.value = mode;
     editor.setMode(mode);
   }, [editor, mode]);
+
+  // Construction already opened the instance in `view`, so only a later change is applied.
+  const appliedView = useRef<{
+    editor: DocxEditorInstance | null;
+    value: EditorLayoutView | undefined;
+  }>({ editor: null, value: undefined });
+  useEffect(() => {
+    if (!editor) return;
+    if (appliedView.current.editor !== editor) {
+      appliedView.current = { editor, value: view };
+      return;
+    }
+    if (appliedView.current.value === view) return;
+    appliedView.current.value = view;
+    editor.setView(view ?? 'print');
+  }, [editor, view]);
 
   useEffect(() => {
     if (!editor) return;

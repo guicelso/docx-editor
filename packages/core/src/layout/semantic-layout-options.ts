@@ -13,6 +13,7 @@ import type { SectionColumns } from './section-properties.ts';
 import type { SectionPageBorders } from './page-borders.ts';
 import type { PageGeometry, TextMeasurer } from './semantic-records.ts';
 import type { StyleCascadeTable } from './style-cascade.ts';
+import type { LayoutView } from './web-layout-view.ts';
 
 /**
  * Everything a layout pass needs beyond the document itself.
@@ -22,6 +23,13 @@ import type { StyleCascadeTable } from './style-cascade.ts';
  */
 export interface SemanticLayoutOptions {
   readonly geometry?: PageGeometry;
+  /**
+   * Sheets (`print`, the default) or Word's Web Layout: one sheet as wide as the host and as
+   * tall as its content, with no furniture, notes or page borders, where page and column
+   * breaks open nothing. A caller refuses what that view does not lay out
+   * (`webLayoutViewRefusal`) before asking for it.
+   */
+  readonly layoutView?: LayoutView;
   readonly measurer: TextMeasurer;
   /**
    * Reuse of measured-and-broken paragraphs across revisions (task 9.2).

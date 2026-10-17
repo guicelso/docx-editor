@@ -741,6 +741,18 @@ export const wordFeatures: WordFeature[] = [
       'The layout engine uses page breaks, paragraph keep rules, and section settings to calculate pages. You can insert a hard page break, which writes `w:br w:type="page"`. Manual page breaks inside table cells retain their document offsets but do not add lines, line height, or pages. Line wrapping, tab alignment, bidirectional text order, and text wrap around floating pictures ignore them. If the font of the run has Arabic glyphs, layout measures Arabic letters on the two sides of a break as one joined word. If the font has no Arabic glyphs, the browser fallback measures each side separately, so the width can differ from the same text without the break. Manual line breaks still start a new line. When a paragraph starts with a manual page break and has text after the break, the text starts on the next page, even when the current page has no room for another line. A list number or bullet goes to the next page with the text. The top border of the paragraph also goes to the text on the next page, and lines that hold only page breaks draw no border. The space before of the paragraph goes there too, reduced by the space after of the paragraph above. Shading fills each break line where it sits. A break that the current view hides does not count. Paragraphs with only a page break, or with anchored floating tables, text frames, or drawings, keep the ordinary rule, so after a full page their text starts one page later.',
   },
   {
+    id: 'layout.web-view',
+    name: 'Web Layout view',
+    category: 'layout',
+    editing: 'partial',
+    rendering: 'partial',
+    roundTrip: 'full',
+    tier: 'community',
+    notes:
+      'The host can show the document on one page as wide as the viewport and as tall as the text. The page has no margins, headers, footers, notes, or page borders. Page and column breaks do not start a new page. The view refuses a document with columns, a document grid, notes, floating pictures, floating tables, or text frames. In the view, a write that adds them is refused too. The host chooses the view; the editor does not read or write the `w:view` setting.',
+    docsLink: '/docs/2.x/guides/web-layout',
+  },
+  {
     id: 'layout.sections',
     name: 'Sections (margins, size, orientation, per-section headers)',
     category: 'layout',

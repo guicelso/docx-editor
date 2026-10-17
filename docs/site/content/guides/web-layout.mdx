@@ -1,0 +1,56 @@
+---
+title: 'Web Layout view'
+description: "Show a document the way Word's Web Layout does: one page as wide as the viewport and as tall as the text."
+category: 'Guides'
+seoTitle: 'Web Layout view'
+---
+
+The editor opens a document in Print Layout, on pages. Web Layout is the view Word names `web`. It shows one page as wide as the viewport and as tall as the text. It has no margins, headers, footers, notes, or page borders. A page break or a column break does not open a new page.
+
+Use Web Layout when the document is a passage of text inside your own interface, such as a field in a form.
+
+## Choose the view
+
+Set `view` on the root. A later change switches the view without a remount, and keeps edits, the caret, and undo history.
+
+<FrameworkTabs>
+<Framework value="react">
+
+```tsx
+<DocxEditor.Root document={bytes} view="web">
+  <DocxEditor.Viewport>
+    <DocxEditor.Content />
+  </DocxEditor.Viewport>
+</DocxEditor.Root>
+```
+
+</Framework>
+<Framework value="vue">
+
+```vue
+<DocxEditorRoot :document="bytes" view="web">
+  <DocxEditorViewport>
+    <DocxEditorContent />
+  </DocxEditorViewport>
+</DocxEditorRoot>
+```
+
+</Framework>
+</FrameworkTabs>
+
+From code, call `editor.setView('web')` or `editor.setView('print')`. `editor.getView()` and `snapshot().view` report the view in force.
+
+The page follows the content width of `DocxEditor.Viewport`. When the viewport changes size, the text wraps again at the new width. The viewport sets `data-docx-view="web"`, and the stylesheet removes its padding and the page shadow.
+
+## Content the view refuses
+
+Word does not define how Web Layout shows columns, a document grid, notes, or content that is positioned against the page. The editor refuses these instead of approximating them:
+
+- Columns
+- A document grid
+- Footnotes and endnotes
+- Floating pictures and shapes
+- Floating tables
+- Text frames
+
+If the document has one of these, `setView('web')` returns `unsupported` and the editor stays in Print Layout. The reason is also in `snapshot().lastRejection`. In Web Layout, a write that would add one of these is refused the same way.

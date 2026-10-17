@@ -22,10 +22,10 @@ export type {
 } from './editor-anchor.ts';
 import type { EditorHighlights, HighlightRect } from './editor-highlights.ts';
 export type * from './editor-highlights.ts';
-import type { EditorContentControlView } from './editor-content-control-view.ts';
-export type * from './editor-content-control-view.ts';
-import type { EditorEditPolicy } from './editor-edit-policy.ts';
-export type * from './editor-edit-policy.ts';
+import type { EditorHostPolicies } from './editor-host-policies.ts';
+export type * from './editor-host-policies.ts';
+import type { EditorLayoutView, EditorViewControl } from './editor-view.ts';
+export type * from './editor-view.ts';
 export type { DocumentChange, EditorEvents } from './editor-events.ts';
 import type { DocumentEditingMode, ResolveReviewChangesOptions } from './editor-review.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
@@ -308,7 +308,7 @@ export type CanResult = { ok: true } | { ok: false; code: ExecErrorCode; reason:
  * ```
  */
 export interface Editor
-  extends EditorAnchorNavigation, EditorHighlights, EditorContentControlView, EditorEditPolicy {
+  extends EditorAnchorNavigation, EditorHighlights, EditorHostPolicies, EditorViewControl {
   /**
    * Load a new document (DOCX bytes, `'blank'`, or a handle), replacing the current one.
    *
@@ -1570,6 +1570,8 @@ export interface EditorSnapshot {
    * it, and a consumer reads absent as a plain fixed scale.
    */
   readonly zoomMode?: ZoomMode;
+  /** The view in force (see `EditorViewControl`). Optional and additive; absent reads as `print`. */
+  readonly view?: EditorLayoutView;
   readonly selection: DocRange | null;
   /**
    * Whether the selection is a CARET rather than a range. `true` when nothing is loaded.

@@ -60,11 +60,13 @@ import {
   locateHeaderFooterPart,
 } from './tree-package-gates.ts';
 import { cascadeEmptiedComments } from '../package/comment-lifecycle.ts';
+import { writeAdmissionRefusal, type WriteAdmission } from './write-admission.ts';
 import {
   TreeDocumentStore,
   type SelectionMark,
   type TransactOptions,
   type TreeDocumentCheckpoint,
+  type TreeDocumentStoreOptions,
   type TreeModelChange,
   type TreeStoryRef,
   type TransactionContext,
@@ -165,6 +167,8 @@ export interface TreePackageStoreOptions {
   readonly cascadeDeletedNoteReferences?: NoteCascadeFn;
   /** The prompt an empty control shows, in the reader's language, in every story it opens. */
   readonly placeholderPrompt?: PlaceholderPrompt;
+  /** The host's admission, asked by every story it opens and by the lifecycle lane. */
+  readonly writeAdmission?: () => WriteAdmission | undefined;
 }
 
 /**
@@ -187,6 +191,7 @@ export class TreePackageStore {
   private readonly maxEditableStoryParts: number;
   private readonly cascadeNoteReferences: NoteCascadeFn;
   private readonly placeholderPrompt: PlaceholderPrompt | undefined;
+  private readonly writeAdmission: (() => WriteAdmission | undefined) | undefined;
   private lastChange: TreeModelChange | null = null;
   /**
    * Hyperlink externals minted via {@link replacePackageShell} (outside package history).
@@ -227,19 +232,12 @@ export class TreePackageStore {
     this.cascadeNoteReferences =
       options.cascadeDeletedNoteReferences ?? cascadeDeletedNoteReferences;
     this.placeholderPrompt = options.placeholderPrompt;
+    this.writeAdmission = options.writeAdmission;
     // The WHOLE package, not the part alone. A transaction writing several parts as one unit —
     // a comment's story markers plus its body in `comments.xml` plus the relationship and
     // content-type override — needs the package as its working set; a store handed one part
     // rebuilds a stub package the invariant check refuses.
-    this.body = new TreeDocumentStore(this.pkg, main.name, {
-      historyLimit: this.historyLimit,
-      // The SAME live getter the story stores get. A store keeps its own working copy, so a
-      // `settings.xml` replaced through the coordinator left the body reading stale protection —
-      // making the body the one story a protected document still let you edit. Protection that
-      // holds in a header but not the body is worse than none: it looks enforced.
-      settingsPart: () => settingsPartOf(this.pkg),
-      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
-    });
+    this.body = new TreeDocumentStore(this.pkg, main.name, this.storeOptions());
     this.body.setStoryRef({ kind: 'body', partName: main.name });
     registerUndoHistoryPosition(this, {
       current: () => this.undoOrder.at(-1) ?? null,
@@ -730,37 +728,12 @@ export class TreePackageStore {
     const locked = lifecycleProtectionRefusal(settingsPartOf(before), op);
     if (locked) return { ok: false, reason: locked };
 
-    if (isNoteLifecycleOp(op)) {
-      const result = applyNoteLifecycleOp(before, op);
-      if (!result.ok) {
-        return {
-          ok: false,
-          reason: result.reason,
-          ...(result.detail ? { detail: result.detail } : {}),
-        };
-      }
-      // Identity/no-op success (e.g. empty convertAllNotes): no pointer, revision, or event.
-      if (result.package === before) {
-        return { ok: true, change: null };
-      }
-      this.installPackageSnapshotInternal(result.package);
-      this.pushUndoPointer({ kind: 'package', before, after: result.package });
-      this.packageRev += 1;
-      const story: TreeStoryRef = { kind: 'body', partName: this.body.part.name };
-      const change = this.publishSynthetic(
-        ORIGIN_IDS.mutationHuman,
-        result.impact,
-        story,
-        result.createdPartName ? [result.createdPartName] : []
-      );
-      this.evictUnreachableStories();
-      return { ok: true, change };
-    }
-
-    if (!isHeaderFooterLifecycleOp(op)) {
-      return { ok: false, reason: 'invalidArgs', detail: 'not-lifecycle-op' };
-    }
-    const result = applyHeaderFooterLifecycleOp(before, op);
+    const result = isNoteLifecycleOp(op)
+      ? applyNoteLifecycleOp(before, op)
+      : isHeaderFooterLifecycleOp(op)
+        ? applyHeaderFooterLifecycleOp(before, op)
+        : null;
+    if (!result) return { ok: false, reason: 'invalidArgs', detail: 'not-lifecycle-op' };
     if (!result.ok) {
       return {
         ok: false,
@@ -768,6 +741,16 @@ export class TreePackageStore {
         ...(result.detail ? { detail: result.detail } : {}),
       };
     }
+    // Identity/no-op success (e.g. empty convertAllNotes): no pointer, revision, or event.
+    if (isNoteLifecycleOp(op) && result.package === before) return { ok: true, change: null };
+    // Lifecycle ops are always the local reader's: they never arrive from a peer.
+    const refusal = writeAdmissionRefusal(
+      this.writeAdmission,
+      ORIGIN_IDS.mutationHuman,
+      before,
+      result.package
+    );
+    if (refusal !== null) return { ok: false, reason: 'write-refused', detail: refusal };
 
     this.installPackageSnapshotInternal(result.package);
     this.pushUndoPointer({ kind: 'package', before, after: result.package });
@@ -1125,13 +1108,7 @@ export class TreePackageStore {
       };
     }
     const normalized = normalizeParagraphIdentity(part);
-    const store = new TreeDocumentStore(normalized, {
-      historyLimit: this.historyLimit,
-      // A story store is built from a PART, whose synthetic package holds no `settings.xml`
-      // — so without this a protected document refused a body edit and accepted a header one.
-      settingsPart: () => settingsPartOf(this.pkg),
-      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
-    });
+    const store = new TreeDocumentStore(normalized, this.storeOptions());
     const story: TreeStoryRef = {
       kind: 'notesPart',
       partName: normalized.name,
@@ -1184,13 +1161,7 @@ export class TreePackageStore {
     }
 
     const normalized = normalizeParagraphIdentity(located.part);
-    const store = new TreeDocumentStore(normalized, {
-      historyLimit: this.historyLimit,
-      // A story store is built from a PART, whose synthetic package holds no `settings.xml`
-      // — so without this a protected document refused a body edit and accepted a header one.
-      settingsPart: () => settingsPartOf(this.pkg),
-      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
-    });
+    const store = new TreeDocumentStore(normalized, this.storeOptions());
     const story: TreeStoryRef = {
       kind: 'headerFooter',
       partName: normalized.name,
@@ -1203,6 +1174,20 @@ export class TreePackageStore {
       this.pkg = withPart(this.pkg, normalized);
     }
     return { ok: true, story, store };
+  }
+
+  /**
+   * What every store is built with. Settings and the admission are read live from the
+   * coordinator: a store keeps its own working package, and a story store's holds no
+   * `settings.xml`, so a captured copy would enforce protection in one story and not another.
+   */
+  private storeOptions(): TreeDocumentStoreOptions {
+    return {
+      historyLimit: this.historyLimit,
+      settingsPart: () => settingsPartOf(this.pkg),
+      ...(this.placeholderPrompt ? { placeholderPrompt: this.placeholderPrompt } : {}),
+      ...(this.writeAdmission ? { writeAdmission: this.writeAdmission } : {}),
+    };
   }
 
   private storyRefForPart(partName: string): TreeStoryRef | null {

@@ -24,6 +24,8 @@ export type SectionPrepassGuard =
 
 export const SECTION_PREPASS_GUARDS = {
   framePolicy: 'validity-checked',
+  // The web view folds no leading page break out of a border group; the flow keys carry that.
+  continuous: 'validity-checked',
   // The block list itself — compared element-wise by identity, which is what makes a
   // typing pass in a many-section document reuse every section but the edited one.
   bodies: 'validity-checked',

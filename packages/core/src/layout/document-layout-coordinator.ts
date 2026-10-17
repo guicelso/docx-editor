@@ -17,6 +17,7 @@ import type { RevisionAuthorFilter, RevisionDisplayMode } from './revision-proje
 import { layoutSemanticDocument, type SemanticLayoutOptions } from './semantic-layout.ts';
 import type { SemanticLayout, TextMeasurer } from './semantic-records.ts';
 import type { StyleCascadeTable } from './style-cascade.ts';
+import type { LayoutView } from './web-layout-view.ts';
 
 type SemanticLayoutOptionRole =
   | 'document-coordinator'
@@ -31,6 +32,7 @@ type SemanticLayoutOptionRole =
  */
 export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
   geometry: 'low-level-test-override',
+  layoutView: 'document-coordinator',
   measurer: 'document-coordinator',
   cache: 'document-coordinator',
   retainKeys: 'layout-internal',
@@ -114,6 +116,8 @@ export interface LayoutDocumentViewOptions {
   readonly drawingLayoutEpochForPart?: (partName: string) => string;
   readonly displayMode?: RevisionDisplayMode;
   readonly revisionAuthorFilter?: RevisionAuthorFilter;
+  /** Sheets or the web view; absent lays the document out on sheets. */
+  readonly layoutView?: LayoutView;
 }
 
 type LayoutDocumentViewSink = 'notes' | 'semantic-layout' | 'both';
@@ -143,6 +147,7 @@ const _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS = {
   drawingLayoutEpochForPart: 'notes',
   displayMode: 'both',
   revisionAuthorFilter: 'both',
+  layoutView: 'semantic-layout',
 } as const satisfies Readonly<Record<keyof LayoutDocumentViewOptions, LayoutDocumentViewSink>>;
 
 type CoordinatorInputsFor<Sink extends Exclude<LayoutDocumentViewSink, 'both'>> = {
@@ -204,6 +209,7 @@ export function layoutDocumentView(options: LayoutDocumentViewOptions): Semantic
     drawingLayoutEpoch: options.drawingLayoutEpoch,
     displayMode: options.displayMode,
     revisionAuthorFilter: options.revisionAuthorFilter,
+    layoutView: options.layoutView,
   } satisfies Record<CoordinatorInputsFor<'semantic-layout'>, unknown>;
   const semanticOptions = {
     measurer: semanticInputs.measurer,
@@ -235,6 +241,7 @@ export function layoutDocumentView(options: LayoutDocumentViewOptions): Semantic
     notes,
     displayMode: semanticInputs.displayMode,
     revisionAuthorFilter: semanticInputs.revisionAuthorFilter,
+    layoutView: semanticInputs.layoutView,
   } satisfies SemanticLayoutOptions & Record<DocumentCoordinatedSemanticOption, unknown>;
   return layoutSemanticDocument(
     semanticInputs.view.part(),

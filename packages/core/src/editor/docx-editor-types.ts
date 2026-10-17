@@ -146,6 +146,11 @@ export interface DocxEditorConfig {
    * the old unconditional behaviour.
    */
   zoomMode?: ZoomMode | 'auto';
+  /**
+   * The view to open in: `print` (the default) or Word's Web Layout. A document the web view
+   * refuses opens on pages, with the reason in `lastRejection`; see `setView`.
+   */
+  view?: import('../contracts/editor-view.ts').EditorLayoutView;
   onFontError?: (error: EditorFontError) => void;
   /** Localized labels for table insertion furniture on the painted surface. */
   tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;

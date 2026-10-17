@@ -608,6 +608,8 @@ export function openDocumentForExport(
         showFieldCodes: false,
         // View-only chrome: an exported or printed document never carries tags.
         contentControlView: undefined,
+        // Export and print are paged: the web view is how a host shows a document, not a file.
+        layoutView: undefined,
       } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
       if (!layoutHasPendingImages(layout)) {
         const restartedBeforePublish = restartOnRevisionDrift();

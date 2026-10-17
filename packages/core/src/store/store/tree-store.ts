@@ -34,6 +34,7 @@ import {
 } from './tree-op-content-controls.ts';
 import { nextRevisionId } from './tree-op-revision-ids.ts';
 import { PROPERTY_CHANGE_WRAPPER_OF_OP } from './tree-op-tracked-properties.ts';
+import { writeAdmissionRefusal, type WriteAdmission } from './write-admission.ts';
 import type { PlaceholderPrompt, TransactionRevisionIds } from '../package/ooxml-edit.ts';
 
 /**
@@ -242,6 +243,8 @@ export interface TreeDocumentStoreOptions {
   readonly settingsPart?: () => OoxmlPart | null | undefined;
   /** The prompt an empty control shows, in the reader's language (see `EditOptions`). */
   readonly placeholderPrompt?: PlaceholderPrompt;
+  /** The host's admission, read live like {@link settingsPart}: the host replaces it at will. */
+  readonly writeAdmission?: () => WriteAdmission | undefined;
 }
 
 /** A package holding exactly one part, for callers that never open a real one. */
@@ -301,6 +304,7 @@ export class TreeDocumentStore {
   /** See {@link TreeDocumentStoreOptions.settingsPart}. */
   private readonly settingsPartOverride: (() => OoxmlPart | null | undefined) | undefined;
   private readonly placeholderPrompt: PlaceholderPrompt | undefined;
+  private readonly writeAdmission: (() => WriteAdmission | undefined) | undefined;
   /** Package-aware story tag applied to publishes (including undo/redo). */
   private storyRef: TreeStoryRef | null = null;
 
@@ -337,6 +341,7 @@ export class TreeDocumentStore {
     this.historyLimit = options.historyLimit ?? 200;
     this.settingsPartOverride = options.settingsPart;
     this.placeholderPrompt = options.placeholderPrompt;
+    this.writeAdmission = options.writeAdmission;
   }
 
   /**
@@ -798,6 +803,10 @@ export class TreeDocumentStore {
         detail: JSON.stringify(packageValidation.issues),
       };
     }
+
+    // Asked last, over a result the engine already holds valid, so the host judges content.
+    const refusal = writeAdmissionRefusal(this.writeAdmission, origin, before, working);
+    if (refusal !== null) return { ok: false, reason: 'write-refused', detail: refusal };
 
     if (recordsHistory) {
       if (this.composition) {

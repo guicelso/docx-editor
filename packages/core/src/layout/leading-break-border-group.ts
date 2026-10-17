@@ -37,6 +37,7 @@ export type LeadingBreakView = Pick<
   | 'inlineDrawingLayout'
   | 'noteMarks'
   | 'documentProperties'
+  | 'layoutView'
 > & { readonly refFields?: RefFieldContext };
 
 const holdsBreak = new WeakMap<OoxmlElement, boolean>();
@@ -94,6 +95,8 @@ export function createLeadingBreakGroups(
 
   /** Whether a regular paragraph's display opens with a page break and shows content after. */
   const opensWithBreak = (block: PreparedParagraph): boolean => {
+    // The web view opens no sheet at a break, so the text after it stays in the box above.
+    if (view.layoutView?.kind === 'web') return false;
     if (block.frame || !modelHoldsPageBreak(block.paragraph)) return false;
     const known = memo.get(block.paragraph);
     if (known !== undefined) return known;

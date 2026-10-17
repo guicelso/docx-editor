@@ -1885,6 +1885,14 @@ export interface LayoutShapingOptions {
 }
 
 // @public
+export type LayoutView = {
+    readonly kind: 'print';
+} | {
+    readonly kind: 'web';
+    readonly widthPt: number;
+};
+
+// @public
 export interface LevelOverride {
     readonly level?: NumberingLevel;
     // (undocumented)
@@ -3710,6 +3718,7 @@ export interface SemanticLayoutOptions {
     // (undocumented)
     readonly geometry?: PageGeometry;
     readonly inlineDrawingLayout?: InlineDrawingLayoutContext;
+    readonly layoutView?: LayoutView;
     readonly listItems?: ReadonlyMap<string, ResolvedListItem>;
     // (undocumented)
     readonly measurer: TextMeasurer;
@@ -4778,6 +4787,12 @@ export const W15_NAMESPACE_URI = "http://schemas.microsoft.com/office/word/2012/
 
 // @public
 export function walkStoryParagraphs(blocks: readonly OoxmlElement[], maxTableDepth?: number): OoxmlElement[];
+
+// @public
+export type WebLayoutViewRefusal = 'columns' | 'line-grid' | 'notes' | 'floating-drawing' | 'floating-table' | 'text-frame';
+
+// @public
+export function webLayoutViewRefusal(part: OoxmlPart, styles: StyleCascadeTable | undefined, widthPt: number): WebLayoutViewRefusal | null;
 
 // @public
 export function withDefaultTabInterval(tabs: ResolvedTabStops, defaultIntervalPt: number | undefined): ResolvedTabStops;

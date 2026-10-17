@@ -159,4 +159,8 @@ export interface PaginatedSurfaceOptions {
   readonly fieldSelection?: (instruction: string) => boolean;
   /** The host's policy over paragraph breaks and deletions, asked before the engine writes. */
   readonly editPolicy?: import('../contracts/editor-edit-policy.ts').EditPolicy;
+  /** The host's say over what each local write publishes, asked at the store's commit. */
+  readonly writeAdmission?: import('@docx-editor.dev/core/store').WriteAdmission;
+  /** Opens in this view when the document allows it; otherwise on sheets, with the reason. */
+  readonly layoutView?: import('./surface-layout-view.ts').SurfaceLayoutView;
 }

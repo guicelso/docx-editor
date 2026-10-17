@@ -23,6 +23,7 @@ import { ScopedByAncestorContext, useScopeClassName } from './scope-context';
 const selectPaneOpen = (snapshot: EditorSnapshot): boolean => snapshot.reviewPaneOpen ?? true;
 /** Fit modes must not animate nav padding: intermediate widths chase the page forever. */
 const selectZoomFitting = (snapshot: EditorSnapshot): boolean => snapshot.zoomMode?.type === 'fit';
+const selectWebView = (snapshot: EditorSnapshot): boolean => snapshot.view === 'web';
 
 /** Props for `DocxEditor.Viewport`. @public */
 export interface DocxEditorViewportProps {
@@ -57,6 +58,7 @@ export function DocxEditorViewport({ className, style, children }: DocxEditorVie
   // The stylesheet consumes it through `--docx-review-gutter`/`--docx-review-gutter-start`.
   const reviewGutter = useReviewGutter();
   const fitting = useEditorState(selectZoomFitting);
+  const web = useEditorState(selectWebView);
   const rail = useContext(ReviewRailContext);
   const reserve = (rail?.mounted ?? 0) > 0;
   // The navigation pane needs this element's width to decide whether it has to move the
@@ -100,6 +102,7 @@ export function DocxEditorViewport({ className, style, children }: DocxEditorVie
       onKeyDownCapture={onKeyDownCapture}
       {...(reserve ? { 'data-review-pane': paneOpen ? 'open' : 'closed' } : {})}
       {...(fitting ? { 'data-zoom-fit': '' } : {})}
+      {...(web ? { 'data-docx-view': 'web' } : {})}
       className={`${scopeClassName}docx-editor-one-surface docx-editor-one-surface__viewport docx-editor__scroll-container${
         className ? ` ${className}` : ''
       }`}

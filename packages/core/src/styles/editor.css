@@ -2497,6 +2497,12 @@ a.docx-hyperlink:focus-visible {
 .docx-editor-one-surface__viewport--hosted {
   overflow: visible;
 }
+
+/* Web Layout: the page is the viewport's content box, so no breathing room and no gutter. */
+.docx-editor-one-surface__viewport[data-docx-view='web'] {
+  padding: 0;
+  scrollbar-gutter: auto;
+}
 /* The title + menu column, INSIDE the header row (legacy layout). It used to render as
  * two full-width bands under the header, which turned a single ~110px product band into
  * three tall stacked strips with the menu floating in whitespace. */
@@ -3155,6 +3161,10 @@ a.docx-hyperlink:focus-visible {
      triple-click-for-a-paragraph; the surface reads the result back as model positions. */
   user-select: text;
   -webkit-user-select: text;
+}
+/* Web Layout's page is the text's own ground, not a sheet of paper. */
+.docx-paginated-surface--web .docx-page {
+  box-shadow: none;
 }
 /* The caret and the TEXT highlight are the BROWSER's, so they follow real glyph shapes and
    per-line metrics instead of the uniform band a hand-drawn rectangle produces. */
@@ -6843,6 +6853,9 @@ a.docx-hyperlink:focus-visible {
  * to be an inline style on the element, which a class cannot override at all. */
 :where(.docx-paginated-surface) {
   margin: 24px auto;
+}
+:where(.docx-paginated-surface--web) {
+  margin: 0;
 }
 
 /* ── The context menu ──────────────────────────────────────────────────────────────────

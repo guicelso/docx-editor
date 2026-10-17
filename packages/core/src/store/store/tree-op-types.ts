@@ -1199,6 +1199,8 @@ export type TreeOpRejection =
    */
   | 'unsupported-revision'
   | 'tree-invariant'
+  /** The host's write admission refused what the write would publish; `detail` is its reason. */
+  | 'write-refused'
   /** No content control in this part carries the addressed node id. */
   | 'unknown-content-control'
   /** The addressed node exists and is not a `w:sdt`. */
