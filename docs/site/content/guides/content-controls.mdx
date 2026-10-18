@@ -148,6 +148,25 @@ The inspector state carries `tag`, `alias`, `id`, `controlType`, `locked`, `remo
 
 A data-bound control rejects a direct write: its content comes from the Custom XML store, so writing it here would not persist in Word. `setValueDisabledReason` reports the reason instead of dropping the write.
 
+## Tags the host draws
+
+`editor.setContentControlTags` draws a label at each edge of a control, as the host names it from the control's `tag`. The labels are view only: they never reach the document, the saved bytes, the clipboard or a collaborator.
+
+A label can also be a link. `editor.setContentControlTagPress` is asked for a plain press on a label, in viewing too, with the control and the edge the layout's hit test found under the pointer. Returning `true` takes the press, and the caret does not move; returning `false` leaves the caret to land beside the label, as it does without a policy.
+
+```ts
+editor.setContentControlTags({
+  labelsOf: ({ tag }) => (tag?.startsWith('clause:') ? { open: { text: tag.slice(7) } } : null),
+});
+editor.setContentControlTagPress(({ control, edge }) => {
+  if (edge !== 'open' || !control.tag?.startsWith('clause:')) return false;
+  openClause(control.tag.slice(7));
+  return true;
+});
+```
+
+The press stays visible to the page's own listeners, so a host that closes a popover on a press elsewhere still sees it.
+
 ## Creating a control in the editor
 
 `insertContentControl` authors a new control in the open document, as one undoable step. Select text to wrap it in a control, or leave the caret where it is to insert an empty control that shows Word's prompt for its type:

@@ -163,6 +163,8 @@ export interface PointerHost {
   selectContentControl?(controlId: string): boolean;
   /** Whether a plain press on a field with this instruction selects it whole; else the caret. */
   selectsField?(instruction: string): boolean;
+  /** Whether the host takes a plain press on this view-only tag; else the caret goes beside it. */
+  takesTagPress?(tag: SemanticHitTag): boolean;
 }
 
 export interface PointerControllerOptions {
@@ -214,6 +216,10 @@ interface Gesture {
 }
 
 /** A press that selected one unit — a prompt, a field — and extends from it whole. */
+function hasModifier(event: PointerEvent): boolean {
+  return event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+}
+
 function unitGesture(event: PointerEvent, unit: PositionRange, hit: SemanticHit): Gesture {
   const { pointerId, clientX, clientY } = event;
   return {
@@ -608,6 +614,15 @@ export function createPointerController(
       const kind = widget.dataset.docxCcWidget;
       if (controlId && kind) host.onContentControlWidget?.(controlId, kind);
       return;
+    }
+    // A host's tag is its link, so it is asked before the viewing lock. Prevented and never
+    // stopped: the page's outside-press listeners still see where the press landed.
+    if (host.takesTagPress && !hasModifier(event)) {
+      const tag = resolve(event.clientX, event.clientY)?.contentControlTag;
+      if (tag && host.takesTagPress(tag)) {
+        event.preventDefault();
+        return;
+      }
     }
     // Not prevented: nothing here claims the press, so outside-click handlers and link
     // activation still see the ordinary mouse events, and the pages layer is not focusable

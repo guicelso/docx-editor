@@ -3,6 +3,7 @@
 import type {
   ContentControlPromptDisplay,
   ContentControlTagDisplay,
+  ContentControlTagPressPolicy,
   EditorContentControlView,
   FieldTone,
 } from '../contracts/editor-content-control-view.ts';
@@ -11,7 +12,7 @@ import type { PaginatedSurface, PaginatedSurfaceOptions } from './paginated-surf
 
 type ViewMountOptions = Pick<
   PaginatedSurfaceOptions,
-  'contentControlView' | 'fieldTone' | 'fieldSelection'
+  'contentControlView' | 'fieldTone' | 'fieldSelection' | 'contentControlTagPress'
 >;
 
 /**
@@ -30,6 +31,7 @@ export function createEditorContentControlView(host: { surface(): PaginatedSurfa
   let view: ContentControlView | null = null;
   let tone: FieldTone | null = null;
   let selection: ((instruction: string) => boolean) | null = null;
+  let tagPress: ContentControlTagPressPolicy | null = null;
   // Each change is a new view object: layout asks every control again and keeps what is unchanged.
   const install = (): void => {
     view = tags || prompts ? { ...(tags ? { tags } : {}), ...(prompts ? { prompts } : {}) } : null;
@@ -40,6 +42,7 @@ export function createEditorContentControlView(host: { surface(): PaginatedSurfa
       ...(view ? { contentControlView: view } : {}),
       ...(tone ? { fieldTone: tone } : {}),
       ...(selection ? { fieldSelection: selection } : {}),
+      ...(tagPress ? { contentControlTagPress: tagPress } : {}),
     }),
     members: {
       setContentControlTags(display) {
@@ -57,6 +60,10 @@ export function createEditorContentControlView(host: { surface(): PaginatedSurfa
       setFieldSelection(next) {
         selection = next;
         host.surface()?.setFieldSelection(next);
+      },
+      setContentControlTagPress(next) {
+        tagPress = next;
+        host.surface()?.setContentControlTagPress(next);
       },
     },
   };

@@ -921,6 +921,7 @@ export function mountPaginatedSurface(
   let contentControlView = options.contentControlView;
   let fieldTone = options.fieldTone;
   let fieldSelection = options.fieldSelection;
+  let contentControlTagPress = options.contentControlTagPress;
   let editPolicy = options.editPolicy;
   const takesEdit = (intent: Parameters<NonNullable<typeof editPolicy>>[0]) =>
     editPolicy?.(intent) === 'handled';
@@ -5477,6 +5478,9 @@ export function mountPaginatedSurface(
     setFieldSelection(select) {
       fieldSelection = select ?? undefined;
     },
+    setContentControlTagPress(press) {
+      contentControlTagPress = press ?? undefined;
+    },
     setEditPolicy(policy) {
       editPolicy = policy ?? undefined;
     },
@@ -6279,6 +6283,11 @@ export function mountPaginatedSurface(
       // click sent its second press elsewhere — a blank footer band never opened.
       onHover: setHoveredControlId,
       selectsField: (instruction) => fieldSelection?.(instruction) === true,
+      takesTagPress: ({ controlId, edge }) => {
+        if (!contentControlTagPress) return false;
+        const record = contentControlsInLayout(editingLayout()).find(({ id }) => id === controlId);
+        return contentControlTagPress({ control: { controlId, tag: record?.tag }, edge });
+      },
       setSelection: (next, tag) => {
         setSelection(next, false, 'none');
         if (tag) caretSlots.chooseBeside(tag);

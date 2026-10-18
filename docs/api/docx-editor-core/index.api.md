@@ -959,6 +959,15 @@ export interface ContentControlTagInk {
 export type ContentControlTagLabel = ContentControlTagInk | ContentControlTagEdgeOnly | ContentControlTagSequence;
 
 // @public
+export interface ContentControlTagPress {
+    readonly control: ContentControlSubject;
+    readonly edge: 'open' | 'close';
+}
+
+// @public
+export type ContentControlTagPressPolicy = (press: ContentControlTagPress) => boolean;
+
+// @public
 export interface ContentControlTagSequence {
     // (undocumented)
     readonly labels: readonly ContentControlTagInk[];
@@ -1865,6 +1874,7 @@ export type EditorCommandShape<T> = {
 // @public
 export interface EditorContentControlView {
     setContentControlPrompts(display: ContentControlPromptDisplay | null): void;
+    setContentControlTagPress(press: ContentControlTagPressPolicy | null): void;
     setContentControlTags(display: ContentControlTagDisplay | null): void;
     setFieldSelection(select: ((instruction: string) => boolean) | null): void;
     setFieldTones(tone: FieldTone | null): void;

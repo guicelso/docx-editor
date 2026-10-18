@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A press on a view-only content-control tag always placed the caret beside the tag, and the host could not take it.",
+  "after": "A host policy may take a plain press on a view-only tag; a taken press moves no caret and writes nothing.",
+  "reason": "The policy is a local view input of one participant: it neither writes the document nor moves a shared cursor, so no shared field, operation, snapshot or protocol message changes.",
+  "tests": ["packages/core/src/editor/__tests__/content-control-tag-press.test.ts"],
+  "changeset": "content-control-tag-press",
+  "migration": null
+}

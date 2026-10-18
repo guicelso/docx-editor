@@ -90,6 +90,24 @@ export interface ContentControlPromptDisplay {
   readonly promptOf: (control: ContentControlSubject) => string | null;
 }
 
+/** A press on a content control's view-only tag: the control the tag labels and its edge. @public */
+export interface ContentControlTagPress {
+  /** The control the pressed tag labels. */
+  readonly control: ContentControlSubject;
+  /** Which of its tags: the one at its start or the one at its end. */
+  readonly edge: 'open' | 'close';
+}
+
+/**
+ * Whether the host takes a press on a view-only tag, as a link it draws there. @public
+ *
+ * Asked for a plain primary press (no modifier) that the layout's hit test resolves to a tag, in
+ * viewing too. True takes it: the press places no caret and makes no selection. False, or no
+ * policy, leaves it to place the caret beside the tag. Either way the press stays visible to the
+ * page's outside-press listeners, so a host closing something on a press elsewhere still sees it.
+ */
+export type ContentControlTagPressPolicy = (press: ContentControlTagPress) => boolean;
+
 /**
  * The host's name for a field, from its instruction (untrusted file text), or undefined for
  * none. Letters, digits and `-`, starting with a letter, at most 32: it lands in an attribute.
@@ -121,4 +139,6 @@ export interface EditorContentControlView {
    * nearer edge of a field.
    */
   setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+  /** Take presses on the view-only tags the host draws, as it decides per tag. */
+  setContentControlTagPress(press: ContentControlTagPressPolicy | null): void;
 }

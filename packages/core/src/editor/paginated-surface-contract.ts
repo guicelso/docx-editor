@@ -636,6 +636,10 @@ export interface PaginatedSurface {
   setFieldTones(tone: import('../contracts/editor-content-control-view.ts').FieldTone | null): void;
   /** The facade's channel for which fields a plain press selects whole. */
   setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+  /** The facade's channel for which presses on a view-only tag the host takes. */
+  setContentControlTagPress(
+    press: import('../contracts/editor-content-control-view.ts').ContentControlTagPressPolicy | null
+  ): void;
   /** The facade's channel for the host's policy over paragraph breaks and deletions. */
   setEditPolicy(policy: import('../contracts/editor-edit-policy.ts').EditPolicy | null): void;
   /** The facade's channel for the host's write admission, asked after the view's own. */
