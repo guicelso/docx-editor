@@ -573,12 +573,11 @@ export function mountPaginatedSurface(
   let cellSelection: CellSelection | null = null;
   let lastRejection: string | null = null;
   /**
-   * Publish an early-return refusal. It does not EMIT: the facade treats a publish that moves
-   * neither the selection nor the pending format as quiet, which a refusal is. What it does
-   * do is invalidate the version-cached `snapshot()`, so the reason is there the moment
-   * anyone reads it. Stored alone it was not — the snapshot kept its stale value until an
-   * unrelated tick bumped the version, and then delivered a section break's message on a
-   * caret move. Returns false so a refusing command can `return publishRefusal(reason)`.
+   * Publish an early-return refusal: the reason moves the version-cached `snapshot()`, and a
+   * reason that differs from the last one is a tick the facade emits. Stored alone it was not —
+   * the snapshot kept its stale value until an unrelated tick bumped the version, and then
+   * delivered a section break's message on a caret move. Returns false so a refusing command
+   * can `return publishRefusal(reason)`.
    */
   function publishRefusal(reason: string): false {
     lastRejection = reason;

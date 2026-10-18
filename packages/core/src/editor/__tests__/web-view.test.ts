@@ -158,4 +158,24 @@ describe('the write admission', () => {
       'defY'
     );
   });
+
+  test('a refused write wakes the host, and the next accepted write wakes it again', async () => {
+    const { editor } = mounted(docx(`<w:p>${run('abc')}</w:p>`), {});
+    editor.setWriteAdmission(({ part }) =>
+      /"value":"[^"]*X/.test(JSON.stringify(part.root)) ? 'no X in a sentence' : null
+    );
+    putCaret(editor.surface!, 3);
+    const heard: (string | null)[] = [];
+    const listen = () => heard.push(editor.snapshot().lastRejection ?? null);
+    cleanups.push(editor.on('selectionChange', listen), editor.on('change', listen));
+
+    editor.surface!.type('X');
+
+    expect(heard).toEqual(['no X in a sentence']);
+
+    editor.surface!.type('Y');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(heard.at(-1)).toBeNull();
+  });
 });
