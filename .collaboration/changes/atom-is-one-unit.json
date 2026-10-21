@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tag drawn on an atom kept a caret slot on its inner side, so the caret could stand inside the atom and typing there landed in its content; an atom without a tag at an edge left the write to the offset, which put it inside; a key reached an atom whole only through a drawn tag; a piece's names had no role; the neutral chip was painted heavier than layout measured it.",
+  "after": "An atom's tags belong to the unit: no slot stands inside an atom, a slot beside its tag stands outside it, and its edge decides the same where no tag is drawn. A key at an atom's outer edge selects it whole, an empty one included, and its tags carry its control, hover and selection. A piece's names carry a role as data-piece-role. The neutral chip is painted in the measured weight.",
+  "reason": "Caret placement, selection and paint of the host's view only; nothing reaches the document, an operation or shared updates.",
+  "tests": [
+    "packages/core/src/editor/__tests__/piece-atom-slots.test.ts",
+    "packages/core/src/editor/__tests__/content-control-view-facade.test.ts",
+    "packages/core/src/editor/__tests__/block-control-slots.test.ts",
+    "packages/core/src/editor/__tests__/block-place-writes.test.ts"
+  ],
+  "changeset": "atom-is-one-unit",
+  "migration": null
+}

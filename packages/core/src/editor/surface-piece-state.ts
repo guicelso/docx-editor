@@ -1,10 +1,11 @@
 // The state of an atom — a field, or a content control the reader meets as one unit — set on the
-// atom's own painted span, in place.
+// atom's own painted elements, in place.
 //
 // A control's chrome is a layer beside the text, not around it, so `data-hover` and `data-selected`
-// on the chrome cannot reach the atom's text in a stylesheet. The atom carries them itself: the
-// hover from the one layout answer the chrome's retint reads, the selection from the model's. The
-// marks move as the pointer and the selection move, and nothing is repainted for them.
+// on the chrome cannot reach the atom's text in a stylesheet. The atom carries them itself, on
+// every element that names its control (`data-piece-control`: its text and its tags): the hover
+// from the one layout answer the chrome's retint reads, the selection from the control the keys
+// hold whole. The marks move as the pointer and the selection move, and nothing is repainted.
 
 import type { EditorHover } from '../contracts/editor.ts';
 import type { SemanticSelection } from '../layout/semantic-interaction.ts';
@@ -49,26 +50,34 @@ export function syncHoveredPieces(
 }
 
 /**
- * Mark the atom the selection is exactly: one field unit — the press on a field, or a range that
- * covers one and nothing else — or the whole content of an atom control. The selection highlight
- * is a tint under the text; a host drawing the atom as a chip needs to say which chip is the
- * subject of the toolbar and of its own inspector.
+ * Mark the atom selected whole: the atom control the keys hold — a press on it, or a range that
+ * runs from one end of it to the other, an empty one included — or one field unit, the press on a
+ * field or a range that covers one and nothing else. The selection highlight is a tint under the
+ * text; a host drawing the atom as a chip needs to say which chip is the subject of the toolbar
+ * and of its own inspector.
  */
 export function syncSelectedPiece(
   pagesLayer: HTMLElement,
   selection: SemanticSelection,
+  selectedControlId: string | null,
   options?: { readonly domReplaced?: boolean }
 ): void {
-  const range = singleParagraphRangeOf(selection);
-  const key = range ? rangeKey(range.paragraphId, range.start, range.end) : null;
+  const range = selectedControlId === null ? singleParagraphRangeOf(selection) : null;
+  const field = range !== null && range.end - range.start === 1 ? range : null;
+  const key =
+    selectedControlId ?? (field ? rangeKey(field.paragraphId, field.start, field.end) : null);
   const marks = reset(selectedByLayer, pagesLayer, key, SELECTED_ATTRIBUTE, options);
-  if (!marks || !range) return;
-  const candidates =
-    range.end - range.start === 1
-      ? '[data-field-atom], [data-piece-control]'
-      : '[data-piece-control]';
-  for (const atom of pagesLayer.querySelectorAll<HTMLElement>(candidates)) {
-    if (spanCovers(atom, range.paragraphId, range.start, range.end)) {
+  if (!marks) return;
+  if (selectedControlId !== null) {
+    for (const atom of pagesLayer.querySelectorAll<HTMLElement>('[data-piece-control]')) {
+      if (atom.dataset.pieceControl === selectedControlId) {
+        mark(marks, atom, SELECTED_ATTRIBUTE, 'true');
+      }
+    }
+    return;
+  }
+  for (const atom of pagesLayer.querySelectorAll<HTMLElement>('[data-field-atom]')) {
+    if (field && spanCovers(atom, field.paragraphId, field.start, field.end)) {
       mark(marks, atom, SELECTED_ATTRIBUTE, 'true');
     }
   }

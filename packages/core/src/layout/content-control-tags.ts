@@ -65,6 +65,11 @@ export interface ContentControlTagMark {
   /** A chip's mark, already checked. */
   readonly mark?: string;
   /**
+   * Present on a tag of a control the host made an atom: the tag is part of that unit, painted
+   * with its control so it carries the unit's hover and selection.
+   */
+  readonly atom?: true;
+  /**
    * Present for a tag drawn as text in the line, one that draws nothing, or a sequence of labels;
    * absent for a chip.
    */

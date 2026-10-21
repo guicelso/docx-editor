@@ -13,6 +13,9 @@ import type { PaginatedSurface } from '../paginated-surface.ts';
 import { mount } from './paginated-surface-fixtures.ts';
 import { slotPlacementOf } from '../surface-caret-slots.ts';
 
+/** No control here is an atom: these slots follow the edges alone. */
+const NO_ATOMS: ReadonlySet<string> = new Set();
+
 const paragraph = (text: string) => `<w:p><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
 const block = (tag: string, inner: string) =>
   `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/><w:richText/></w:sdtPr><w:sdtContent>${inner}</w:sdtContent></w:sdt>`;
@@ -111,8 +114,10 @@ describe('the slot outside a block tag', () => {
   test('names the place between blocks: before the opening tag, after the closing one', () => {
     const block_ = { controlId: 'B', edge: 'open', level: 'block' } as const;
 
-    expect(slotPlacementOf({ left: null, right: block_ })).toEqual({ block: { before: 'B' } });
-    expect(slotPlacementOf({ left: { ...block_, edge: 'close' }, right: null })).toEqual({
+    expect(slotPlacementOf({ left: null, right: block_ }, NO_ATOMS)).toEqual({
+      block: { before: 'B' },
+    });
+    expect(slotPlacementOf({ left: { ...block_, edge: 'close' }, right: null }, NO_ATOMS)).toEqual({
       block: { after: 'B' },
     });
   });

@@ -6,9 +6,9 @@
 // from its boundary (`surface-text-form-fields.ts`); this is the same rule for a control, whose
 // boundary the tags make visible. A control showing its prompt holds nothing to lose, so with
 // the tags drawn a key in it removes it at once. Without drawn tags a key at an edge keeps Word's
-// rule and takes one character. A control the host made an atom is selected whole by a press, as a
-// field is, and the next key removes it. A wrapper locked against deletion is refused by the store,
-// as every removal is.
+// rule and takes one character. A control the host made an atom is one unit with or without tags:
+// a key at its outer edge selects it whole, as a press does, and the next key removes it. A wrapper
+// locked against deletion is refused by the store, as every removal is.
 
 import type {
   CaretSlot,
@@ -59,6 +59,8 @@ export interface ControlKeys {
   removeSelected(): boolean;
   /** The control selected whole, while the selection still selects it. */
   selectedId(): string | null;
+  /** Select a control whole, from one end of it to the other: an empty one too, at its offset. */
+  selectWhole(controlId: string, selection: SemanticSelection): void;
   /** A selection move forgets the selected control unless it still selects it. */
   forgetUnlessAt(next: SemanticSelection): void;
 }
@@ -223,6 +225,32 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
     return control?.prompt ? control : undefined;
   };
 
+  const selectWhole = (controlId: string, selection: SemanticSelection): void => {
+    // Held BEFORE the selection moves, so the paint the move triggers draws it selected.
+    selected = { controlId, selection };
+    deps.select(selection);
+  };
+
+  /**
+   * The atom the key meets at its outer edge, where no drawn tag stands on that side of the caret:
+   * a caret at an atom's edge stands outside it, so the atom is the next thing the key would take.
+   */
+  const atomBeside = (direction: 'backward' | 'forward'): PlacedControl | undefined => {
+    const atoms = deps.atomIds();
+    const selection = deps.selection();
+    if (atoms.size === 0 || !isCollapsedSelection(selection)) return undefined;
+    const slot = deps.drawnSlot();
+    const tag = direction === 'backward' ? slot?.left : slot?.right;
+    if (tag !== undefined && tag !== null) return undefined;
+    const { head } = selection;
+    return inlineControlsOf(head.paragraphId).find(
+      (control) =>
+        atoms.has(control.controlId) &&
+        control.from.offset < control.to.offset &&
+        (direction === 'backward' ? control.to : control.from).offset === head.offset
+    );
+  };
+
   const removeSelected = (): boolean => {
     const control = selectedNow();
     if (!control) return false;
@@ -233,6 +261,11 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
   return {
     press(direction) {
       if (removeSelected()) return true;
+      const atom = atomBeside(direction);
+      if (atom) {
+        selectWhole(atom.controlId, { anchor: atom.from, head: atom.to });
+        return true;
+      }
       if (!deps.tagsDrawn()) return false;
       const prompt = promptAtSelection();
       if (prompt) {
@@ -245,16 +278,12 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
         ? placedById(deps.selection().head.paragraphId, tag.controlId)
         : undefined;
       if (!control) return false;
-      // Held BEFORE the selection moves, so the paint the move triggers draws it selected.
-      selected = {
-        controlId: control.controlId,
-        selection: { anchor: control.from, head: control.to },
-      };
-      deps.select(selected.selection);
+      selectWhole(control.controlId, { anchor: control.from, head: control.to });
       return true;
     },
     removeSelected,
     selectedId: () => selectedNow()?.controlId ?? null,
+    selectWhole,
     forgetUnlessAt(next) {
       if (selected && !selectionsEqual(next, selected.selection)) selected = null;
     },

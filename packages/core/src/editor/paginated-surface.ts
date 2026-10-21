@@ -264,7 +264,7 @@ import {
   createPointerController,
   type PointerController,
 } from './surface-pointer.ts';
-import { atomControlIdsOf, stepOverAtoms } from './surface-pointer-units.ts';
+import { atomControlIdsOf, atomRangeOf, stepOverAtoms } from './surface-pointer-units.ts';
 import { createReviewViewState } from './surface-review-view.ts';
 import { selectionsEqual } from './dom-selection.ts';
 import { createSurfaceSelectionSync } from './surface-selection-sync.ts';
@@ -948,6 +948,7 @@ export function mountPaginatedSurface(
     selection: () => selection,
     layout: () => editingLayout(),
     edgesAt: controlEdgesAt,
+    atomIds: () => atomControlIdsOf(editingLayout()),
     changed: () => {
       caret.update();
       // The slot alone can move the caret into another control, whose chrome is painted active.
@@ -963,6 +964,7 @@ export function mountPaginatedSurface(
     selection: () => selection,
     measurer: () => measurer,
     slot: () => caretSlots.neighbours(),
+    atomIds: () => atomControlIdsOf(currentLayout),
   });
   const controlKeys = createControlKeys({
     part: (paragraphId) => partOfNodeId(session, paragraphId) ?? session.part(),
@@ -2641,7 +2643,7 @@ export function mountPaginatedSurface(
     // Paint just rebuilt every span, so the caret's field lost its mark with the old DOM.
     textboxEditing?.syncDom();
     syncActiveFieldShading(pagesLayer, collapsedCaretPosition(), { domReplaced: true });
-    syncSelectedPiece(pagesLayer, selection, { domReplaced: true });
+    syncSelectedPiece(pagesLayer, selection, controlKeys.selectedId(), { domReplaced: true });
     syncHoveredPieces(pagesLayer, hover, { domReplaced: true });
     setHeaderFooterEditingChrome(container, pagesLayer, activeHf != null);
     // Viewing mode hides write affordances the painter cannot know about — today the
@@ -3400,7 +3402,7 @@ export function mountPaginatedSurface(
     updateCaret: () => {
       caret.update();
       syncActiveFieldShading(pagesLayer, collapsedCaretPosition());
-      syncSelectedPiece(pagesLayer, selection);
+      syncSelectedPiece(pagesLayer, selection, controlKeys.selectedId());
     },
     textOf: (paragraphId) => textOf(paragraphId),
     pendingFormatOps: (paragraphId, offset, length, replacing) =>
@@ -6296,6 +6298,11 @@ export function mountPaginatedSurface(
       // click sent its second press elsewhere — a blank footer band never opened.
       onHover: setHover,
       selectsField: (instruction) => fieldSelection?.(instruction) === true,
+      selectContentControl: (controlId) => {
+        const range = atomRangeOf(editingLayout(), controlId);
+        if (range) controlKeys.selectWhole(controlId, { anchor: range.from, head: range.to });
+        return range !== null;
+      },
       takesTagPress: ({ controlId, edge }) => {
         if (!contentControlTagPress) return false;
         const record = contentControlsInLayout(editingLayout()).find(({ id }) => id === controlId);

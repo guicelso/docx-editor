@@ -2896,6 +2896,7 @@ export interface PieceAtom extends PieceName {
 // @public
 export interface PieceName {
     readonly form?: string;
+    readonly role?: string;
     readonly state?: string;
     readonly tone?: string;
 }

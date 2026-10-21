@@ -81,7 +81,12 @@ export function samePieceNames(
   left: PieceNameRecord | undefined,
   right: PieceNameRecord | undefined
 ): boolean {
-  return left?.tone === right?.tone && left?.form === right?.form && left?.state === right?.state;
+  return (
+    left?.tone === right?.tone &&
+    left?.form === right?.form &&
+    left?.state === right?.state &&
+    left?.role === right?.role
+  );
 }
 
 /**

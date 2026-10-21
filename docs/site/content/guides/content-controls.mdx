@@ -169,9 +169,11 @@ The press stays visible to the page's own listeners, so a host that closes a pop
 
 ## Pieces the host names
 
-A host that styles the document's controls and fields as pieces of its own names them for its stylesheet. A tag label carries `tone`, `form` and `state`; the engine publishes them as `data-piece-tone`, `data-piece-form` and `data-piece-state` on what it paints, and writes no colour of its own.
+A host that styles the document's controls and fields as pieces of its own names them for its stylesheet. A tag label carries `tone`, `form`, `state` and `role`; the engine publishes them as `data-piece-tone`, `data-piece-form`, `data-piece-state` and `data-piece-role` on what it paints, and writes no colour of its own. `state` is what changes with the reader's interaction; `role` is the part the piece plays in the structure around it, such as a group that holds its cases.
 
 `editor.setContentControlPieces` says, per control, whether it is a named `frame` — its content stays as it is, and its chrome carries the names — or an `atom`, met as one unit, as a control showing its placeholder is: its plain text lays out as one piece with a chip's room around it, the caret steps over it in one step, a press selects it whole, and the next Backspace or Delete removes the control. `editor.setFieldFaces` makes a field an atom the same way, from its instruction. An atom under the pointer carries `data-hover`, and one the selection covers whole carries `data-selected`.
+
+An atom's tags belong to it. The caret meets the atom before or after it and never inside, a tag drawn on it included: the slot beside its tag stands outside the atom, so typing there lands before or after it, and an empty control drawn only by its tag is an atom the reader can still step over, select and remove. A key at an atom's outer edge selects it whole, with or without tags, and its tags carry its `data-piece-control`, `data-hover` and `data-selected`, so the stylesheet lights the whole unit.
 
 An atom or a chip may ask for a `mark`: the engine measures a slot before its text (`data-piece-mark`, 1.15 em of the text beside it) and hands it to `editor.setMarkPainter`, which draws in it. Without a painter the slot stays empty, and print leaves it blank.
 

@@ -15,6 +15,8 @@ export interface PieceNameRecord {
   readonly form?: string;
   /** `PieceName.state`, checked. */
   readonly state?: string;
+  /** `PieceName.role`, checked. */
+  readonly role?: string;
 }
 
 /** A piece laid out as one unit, as layout carries it to paint and to the hit test. @public */
@@ -36,11 +38,15 @@ export function pieceNameRecordOf(name: PieceName | undefined): PieceNameRecord 
   const tone = checkedPieceNameOf(name?.tone);
   const form = checkedPieceNameOf(name?.form);
   const state = checkedPieceNameOf(name?.state);
-  if (tone === undefined && form === undefined && state === undefined) return undefined;
+  const role = checkedPieceNameOf(name?.role);
+  if (tone === undefined && form === undefined && state === undefined && role === undefined) {
+    return undefined;
+  }
   return {
     ...(tone === undefined ? {} : { tone }),
     ...(form === undefined ? {} : { form }),
     ...(state === undefined ? {} : { state }),
+    ...(role === undefined ? {} : { role }),
   };
 }
 

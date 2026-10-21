@@ -208,7 +208,7 @@ function atomToken(atom: PieceAtom | undefined): string {
 }
 
 function nameToken(name: PieceName): string {
-  return framedTokenJoin([name.tone ?? '', name.form ?? '', name.state ?? '']);
+  return framedTokenJoin([name.tone ?? '', name.form ?? '', name.state ?? '', name.role ?? '']);
 }
 
 /** Which paragraphs every block control opens and closes at, once per edges index. */

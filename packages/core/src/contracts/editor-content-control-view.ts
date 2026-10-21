@@ -5,8 +5,9 @@
 
 /**
  * The host's names for a piece the engine draws, for the host's own stylesheet. Each lands on the
- * piece's painted elements as `data-piece-tone`, `data-piece-form` and `data-piece-state`. Letters,
- * digits and `-`, starting with a letter, at most 32; a name outside that is not published. @public
+ * piece's painted elements as `data-piece-tone`, `data-piece-form`, `data-piece-state` and
+ * `data-piece-role`. Letters, digits and `-`, starting with a letter, at most 32; a name outside
+ * that is not published. @public
  */
 export interface PieceName {
   /** What colours the piece, as `data-piece-tone`. */
@@ -15,6 +16,11 @@ export interface PieceName {
   readonly form?: string;
   /** A state the host knows of and the engine does not, as `data-piece-state`. */
   readonly state?: string;
+  /**
+   * The part the piece plays in the structure around it, as `data-piece-role`: what it is to its
+   * neighbours, which no interaction changes.
+   */
+  readonly role?: string;
 }
 
 /**

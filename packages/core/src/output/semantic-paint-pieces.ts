@@ -24,6 +24,7 @@ export function paintPieceName(element: HTMLElement, name: PieceNameRecord | und
   if (name?.tone !== undefined) element.dataset.pieceTone = name.tone;
   if (name?.form !== undefined) element.dataset.pieceForm = name.form;
   if (name?.state !== undefined) element.dataset.pieceState = name.state;
+  if (name?.role !== undefined) element.dataset.pieceRole = name.role;
 }
 
 /**
@@ -50,7 +51,8 @@ function paintPieceRoom(element: HTMLElement, width: number, room: PieceRoom, sc
  * A view-only content-control tag drawn as its own chip. Colour, fill and outline belong to the
  * stylesheet: `.docx-cc-tag` draws a neutral chip from the `--doc-*` tokens,
  * `data-cc-tag-variant="text"` draws no fill, and a host restyles it by the names it chose. The
- * data attributes are also the host's click target.
+ * data attributes are also the host's click target. A tag of an atom names its control, as the
+ * atom does, so the unit's state reaches it in place.
  */
 export function paintContentControlTagChip(
   element: HTMLElement,
@@ -62,6 +64,7 @@ export function paintContentControlTagChip(
   paintPieceRoom(element, span.box.width, contentControlTagRoomOf(span.style, tag), scale);
   element.dataset.ccTagControl = tag.controlId;
   element.dataset.ccTagEdge = tag.edge;
+  if (tag.atom) element.dataset.pieceControl = tag.controlId;
   paintPieceName(element, tag.name);
   if (tag.variant !== undefined) element.dataset.ccTagVariant = tag.variant;
 }

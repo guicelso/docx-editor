@@ -574,6 +574,7 @@ export type ContentControlTagLevel = 'inline' | 'block';
 
 // @public
 export interface ContentControlTagMark {
+    readonly atom?: true;
     // (undocumented)
     readonly controlId: string;
     // (undocumented)
@@ -2834,6 +2835,7 @@ export interface PieceAtomRecord {
 // @public
 export interface PieceNameRecord {
     readonly form?: string;
+    readonly role?: string;
     readonly state?: string;
     readonly tone?: string;
 }

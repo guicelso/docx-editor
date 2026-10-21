@@ -11,6 +11,9 @@ import type { PaginatedSurface } from '../paginated-surface.ts';
 import { mount } from './paginated-surface-fixtures.ts';
 import { slotOwnerOf, slotPlacementOf } from '../surface-caret-slots.ts';
 
+/** No control here is an atom: these slots follow the edges alone. */
+const NO_ATOMS: ReadonlySet<string> = new Set();
+
 const run = (text: string) => `<w:r><w:t xml:space="preserve">${text}</w:t></w:r>`;
 const paragraph = (inner: string) => `<w:p>${inner}</w:p>`;
 const control = (tag: string, inner: string) =>
@@ -125,17 +128,22 @@ describe('the slots beside a block tag', () => {
     const block = { controlId: 'B', edge: 'open', level: 'block' } as const;
     const inline = { controlId: 'I', edge: 'open', level: 'inline' } as const;
 
-    expect(slotPlacementOf({ left: block, right: null })).toBeNull();
-    expect(slotPlacementOf({ left: null, right: null })).toBeNull();
-    expect(slotPlacementOf({ left: null, right: block })).toEqual({ block: { before: 'B' } });
-    expect(slotPlacementOf({ left: { ...block, edge: 'close' }, right: null })).toEqual({
+    expect(slotPlacementOf({ left: block, right: null }, NO_ATOMS)).toBeNull();
+    expect(slotPlacementOf({ left: null, right: null }, NO_ATOMS)).toBeNull();
+    expect(slotPlacementOf({ left: null, right: block }, NO_ATOMS)).toEqual({
+      block: { before: 'B' },
+    });
+    expect(slotPlacementOf({ left: { ...block, edge: 'close' }, right: null }, NO_ATOMS)).toEqual({
       block: { after: 'B' },
     });
-    expect(slotPlacementOf({ left: block, right: inline })).toEqual({
+    expect(slotPlacementOf({ left: block, right: inline }, NO_ATOMS)).toEqual({
       beside: { controlId: 'I', side: 'before' },
     });
     expect(
-      slotPlacementOf({ left: { ...inline, edge: 'close' }, right: { ...block, edge: 'close' } })
+      slotPlacementOf(
+        { left: { ...inline, edge: 'close' }, right: { ...block, edge: 'close' } },
+        NO_ATOMS
+      )
     ).toEqual({
       beside: { controlId: 'I', side: 'after' },
     });
@@ -214,14 +222,14 @@ describe('the control the caret is in, where tags meet', () => {
     const close = (controlId: string, level: 'block' | 'inline') =>
       ({ controlId, edge: 'close', level }) as const;
 
-    expect(slotOwnerOf({ left: null, right: open('B', 'block') }, parentOf)).toBeNull();
-    expect(slotOwnerOf({ left: open('B', 'block'), right: open('I', 'inline') }, parentOf)).toBe(
-      'B'
-    );
-    expect(slotOwnerOf({ left: open('I', 'inline'), right: null }, parentOf)).toBe('I');
-    expect(slotOwnerOf({ left: close('I', 'inline'), right: null }, parentOf)).toBe('B');
-    expect(slotOwnerOf({ left: null, right: close('I', 'inline') }, parentOf)).toBe('I');
-    expect(slotOwnerOf({ left: close('B', 'block'), right: null }, parentOf)).toBeNull();
-    expect(slotOwnerOf({ left: null, right: null }, parentOf)).toBeNull();
+    expect(slotOwnerOf({ left: null, right: open('B', 'block') }, parentOf, NO_ATOMS)).toBeNull();
+    expect(
+      slotOwnerOf({ left: open('B', 'block'), right: open('I', 'inline') }, parentOf, NO_ATOMS)
+    ).toBe('B');
+    expect(slotOwnerOf({ left: open('I', 'inline'), right: null }, parentOf, NO_ATOMS)).toBe('I');
+    expect(slotOwnerOf({ left: close('I', 'inline'), right: null }, parentOf, NO_ATOMS)).toBe('B');
+    expect(slotOwnerOf({ left: null, right: close('I', 'inline') }, parentOf, NO_ATOMS)).toBe('I');
+    expect(slotOwnerOf({ left: close('B', 'block'), right: null }, parentOf, NO_ATOMS)).toBeNull();
+    expect(slotOwnerOf({ left: null, right: null }, parentOf, NO_ATOMS)).toBeNull();
   });
 });

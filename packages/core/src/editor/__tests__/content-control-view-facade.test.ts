@@ -151,10 +151,15 @@ describe('the host view on the editor', () => {
     });
     editor.load(SECOND);
     expect(
-      [...host.querySelectorAll<HTMLElement>('[data-piece-control]')].map(
+      [...host.querySelectorAll<HTMLElement>('[data-piece-control]:not(.docx-cc-tag)')].map(
         (atom) => atom.textContent
       )
     ).toEqual(['B']);
+    expect(
+      [...host.querySelectorAll<HTMLElement>('.docx-cc-tag[data-piece-control]')].map(
+        (tag) => tag.textContent
+      )
+    ).toEqual(['b\u00a0▸', '◂']);
     expect(
       [...host.querySelectorAll<HTMLElement>('[data-piece-mark]')].map(
         (slot) => slot.dataset.painted

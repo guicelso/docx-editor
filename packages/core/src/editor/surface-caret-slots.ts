@@ -5,6 +5,8 @@
 // because "the control the caret is in" is exactly what is ambiguous there. With view-only tags
 // drawn every slot is visible, and a press or an arrow chooses one. Without them an edit still
 // knows the slot it leaves the caret in, so the next keystroke continues where the last one went.
+// An atom is one unit, its tags with it: no slot stands inside it, and a slot beside one of its tags
+// stands outside it, before or after the whole atom.
 
 import {
   caretSlotsAt,
@@ -87,6 +89,8 @@ export function createCaretSlots(deps: {
   readonly layout: () => SemanticLayout;
   /** The control edges at a position, in reading order, from the document itself. */
   readonly edgesAt: (position: SemanticPosition) => readonly CaretSlotNeighbour[];
+  /** The controls the host made atoms, as layout published them. */
+  readonly atomIds: () => ReadonlySet<string>;
   /** The slot moved: the caret repaints and the state is published. */
   readonly changed: () => void;
 }): CaretSlots {
@@ -98,11 +102,16 @@ export function createCaretSlots(deps: {
   };
 
   const drawnAt = (position: SemanticPosition): readonly CaretSlot[] =>
-    deps.enabled() ? caretSlotsAt(deps.layout(), position) : [];
+    deps.enabled()
+      ? outsideAtoms(caretSlotsAt(deps.layout(), position), deps.edgesAt(position), deps.atomIds())
+      : [];
 
   /** Every slot at a position: the drawn ones, or the document's own edges with tags hidden. */
-  const slotsAt = (position: SemanticPosition): readonly SlotNeighbours[] =>
-    deps.enabled() ? drawnAt(position) : slotsBetween(deps.edgesAt(position));
+  const slotsAt = (position: SemanticPosition): readonly SlotNeighbours[] => {
+    if (deps.enabled()) return drawnAt(position);
+    const edges = deps.edgesAt(position);
+    return outsideAtoms(slotsBetween(edges), edges, deps.atomIds());
+  };
 
   const heldAmong = <Slot extends SlotNeighbours>(slots: readonly Slot[]): Slot | undefined => {
     const head = collapsedHead();
@@ -129,12 +138,25 @@ export function createCaretSlots(deps: {
 
   const current = (): CaretSlot | null => currentAmong(drawnHere());
 
+  /**
+   * Where no slot is drawn, an atom's edge still decides: the caret there stands outside the atom
+   * — in the slot an edit held, else the one touching the text on the right — and never in it.
+   */
+  const besideAtom = (head: SemanticPosition): SlotNeighbours | null => {
+    const edges = deps.edgesAt(head);
+    const atomIds = deps.atomIds();
+    if (!edges.some((edge) => atomIds.has(edge.controlId))) return null;
+    const slots = outsideAtoms(slotsBetween(edges), edges, atomIds);
+    return heldAmong(slots) ?? slots[slots.length - 1] ?? null;
+  };
+
   const place = (): SlotNeighbours | null => {
     const head = collapsedHead();
     if (!head) return null;
-    if (deps.enabled()) return current() ?? TEXT_BOTH_SIDES;
+    if (deps.enabled()) return current() ?? besideAtom(head) ?? TEXT_BOTH_SIDES;
     const slots = slotsAt(head);
-    return slots.length === 0 ? TEXT_BOTH_SIDES : (heldAmong(slots) ?? null);
+    if (slots.length === 0) return TEXT_BOTH_SIDES;
+    return heldAmong(slots) ?? besideAtom(head);
   };
 
   const choose = (slot: SlotNeighbours): void => {
@@ -148,7 +170,7 @@ export function createCaretSlots(deps: {
     current,
     placement() {
       const slot = place();
-      return slot && (slot.left || slot.right) ? slotPlacementOf(slot) : null;
+      return slot && (slot.left || slot.right) ? slotPlacementOf(slot, deps.atomIds()) : null;
     },
     keep(side) {
       const slot = place();
@@ -192,7 +214,7 @@ export function createCaretSlots(deps: {
     neighbours() {
       const slot = place();
       return slot && (slot.left || slot.right)
-        ? { left: slot.left, right: slot.right, placement: slotPlacementOf(slot) }
+        ? { left: slot.left, right: slot.right, placement: slotPlacementOf(slot, deps.atomIds()) }
         : null;
     },
   };
@@ -208,19 +230,65 @@ function slotsBetween(edges: readonly CaretSlotNeighbour[]): readonly SlotNeighb
 }
 
 /**
- * An opening edge on the right means in front of that control; a closing one on the left,
- * behind it; otherwise the start or the end of the control whose edge is beside the slot. The
- * start or end of a BLOCK control names no place: its first or last paragraph is already the
- * place, and the offset says where in it, as it does with text on both sides.
+ * The slots that stand outside every atom. A slot spans the edges between its two neighbours in
+ * the document's reading order; it stands inside an atom when that span lies between the atom's
+ * opening and closing edges — an edge not at this offset lies beyond the slot on its side, as the
+ * atom's content does.
  */
-export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
-  if (slot.right?.edge === 'open') {
+function outsideAtoms<Slot extends SlotNeighbours>(
+  slots: readonly Slot[],
+  edges: readonly CaretSlotNeighbour[],
+  atomIds: ReadonlySet<string>
+): readonly Slot[] {
+  const atoms = atomSpansIn(edges, atomIds);
+  if (atoms.length === 0) return slots;
+  return slots.filter((slot) => {
+    const left = slot.left === null ? -1 : edgeIndexOf(edges, slot.left);
+    const right = slot.right === null ? edges.length : edgeIndexOf(edges, slot.right);
+    if (left === undefined || right === undefined) return true;
+    return !atoms.some((atom) => left >= atom.open && right <= atom.close);
+  });
+}
+
+/** Where each atom with an edge at this offset opens and closes, among the offset's edges. */
+function atomSpansIn(
+  edges: readonly CaretSlotNeighbour[],
+  atomIds: ReadonlySet<string>
+): readonly { readonly open: number; readonly close: number }[] {
+  const ids = new Set(edges.map((edge) => edge.controlId).filter((id) => atomIds.has(id)));
+  return [...ids].map((controlId) => {
+    const open = edges.findIndex((edge) => edge.controlId === controlId && edge.edge === 'open');
+    const close = edges.findIndex((edge) => edge.controlId === controlId && edge.edge === 'close');
+    return { open, close: close === -1 ? edges.length : close };
+  });
+}
+
+function edgeIndexOf(
+  edges: readonly CaretSlotNeighbour[],
+  neighbour: CaretSlotNeighbour
+): number | undefined {
+  const index = edges.findIndex((edge) => sameCaretSlotNeighbour(edge, neighbour));
+  return index === -1 ? undefined : index;
+}
+
+/**
+ * A slot beside an atom's edge stands outside the atom: in front of it on the atom's left, behind
+ * it on its right. Otherwise an opening edge on the right means in front of that control; a
+ * closing one on the left, behind it; otherwise the start or the end of the control whose edge is
+ * beside the slot. The start or end of a BLOCK control names no place: its first or last paragraph
+ * is already the place, and the offset says where in it, as it does with text on both sides.
+ */
+export function slotPlacementOf(
+  slot: SlotNeighbours,
+  atomIds: ReadonlySet<string>
+): SlotPlacement | null {
+  if (slot.right && (slot.right.edge === 'open' || atomIds.has(slot.right.controlId))) {
     const controlId = slot.right.controlId;
     return slot.right.level === 'block'
       ? { block: { before: controlId } }
       : { beside: { controlId, side: 'before' } };
   }
-  if (slot.left?.edge === 'close') {
+  if (slot.left && (slot.left.edge === 'close' || atomIds.has(slot.left.controlId))) {
     const controlId = slot.left.controlId;
     return slot.left.level === 'block'
       ? { block: { after: controlId } }
@@ -231,17 +299,22 @@ export function slotPlacementOf(slot: SlotNeighbours): SlotPlacement | null {
 }
 
 /**
- * The control a slot stands in. In front of an opening edge or behind a closing one, the caret is
- * outside that control, in the control around it; past an opening edge or before a closing one,
- * it is inside. The same reading `slotPlacementOf` gives a write, so the active control is where
- * typing lands.
+ * The control a slot stands in. In front of an opening edge or behind a closing one — or beside
+ * any edge of an atom — the caret is outside that control, in the control around it; past an
+ * opening edge or before a closing one, it is inside. The same reading `slotPlacementOf` gives a
+ * write, so the active control is where typing lands.
  */
 export function slotOwnerOf(
   slot: SlotNeighbours,
-  parentOf: (controlId: string) => string | null
+  parentOf: (controlId: string) => string | null,
+  atomIds: ReadonlySet<string>
 ): string | null {
-  if (slot.right?.edge === 'open') return parentOf(slot.right.controlId);
-  if (slot.left?.edge === 'close') return parentOf(slot.left.controlId);
+  if (slot.right && (slot.right.edge === 'open' || atomIds.has(slot.right.controlId))) {
+    return parentOf(slot.right.controlId);
+  }
+  if (slot.left && (slot.left.edge === 'close' || atomIds.has(slot.left.controlId))) {
+    return parentOf(slot.left.controlId);
+  }
   return (slot.left ?? slot.right)?.controlId ?? null;
 }
 

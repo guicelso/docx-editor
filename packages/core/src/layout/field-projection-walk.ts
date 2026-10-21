@@ -958,10 +958,12 @@ export function unmergedPiecesOfParagraphForDisplay(
     controlId: string,
     edge: ContentControlTagEdge,
     label: ContentControlTagLabel,
-    level: ContentControlTagLevel
+    level: ContentControlTagLevel,
+    atom: boolean
   ): void => {
     const run = resolveRunStyle(inheritedRunProperties, themeFonts);
-    const piece = contentControlTagPiece({ controlId, edge, level }, label, run, offset);
+    const mark = { controlId, edge, level, ...(atom ? { atom: true as const } : {}) };
+    const piece = contentControlTagPiece(mark, label, run, offset);
     if (piece) pieces.push(piece);
   };
 
@@ -1002,16 +1004,19 @@ export function unmergedPiecesOfParagraphForDisplay(
         contentControlTags && !pending
           ? contentControlTags.labelsOf(contentControlSubjectOf(child))
           : null;
-      if (labels?.open) pushContentControlTag(child.id, 'open', labels.open, 'inline');
       const prompt = pending ? null : contentControlPromptOf(child, contentControlView?.prompts);
       const atom = pending ? null : contentControlAtomOf(child, contentControlView?.pieces);
+      if (labels?.open)
+        pushContentControlTag(child.id, 'open', labels.open, 'inline', atom !== null);
       const from = pieces.length;
       for (const inner of contentControlContentChildren(child)) {
         processInline(inner, depth + 1, namespaceScope, containerDepth + 1);
       }
       if (prompt !== null) projectContentControlPrompt(pieces, from, prompt);
       else if (atom !== null) projectContentControlAtom(pieces, from, child.id, atom);
-      if (labels?.close) pushContentControlTag(child.id, 'close', labels.close, 'inline');
+      if (labels?.close) {
+        pushContentControlTag(child.id, 'close', labels.close, 'inline', atom !== null);
+      }
       return;
     }
     if (depth > MAX_STORY_FIELD_SCAN_DEPTH) return;
@@ -1052,7 +1057,9 @@ export function unmergedPiecesOfParagraphForDisplay(
   const pushBlockTags = (controls: readonly OoxmlElement[], edge: ContentControlTagEdge): void => {
     for (const control of controls) {
       const label = contentControlTags?.labelsOf(contentControlSubjectOf(control))?.[edge];
-      if (label) pushContentControlTag(control.id, edge, label, 'block');
+      if (!label) continue;
+      const atom = contentControlAtomOf(control, contentControlView?.pieces) !== null;
+      pushContentControlTag(control.id, edge, label, 'block', atom);
     }
   };
   if (blockEdges) pushBlockTags(blockEdges.opens, 'open');

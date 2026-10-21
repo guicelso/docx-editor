@@ -257,3 +257,14 @@ export function atomControlIdsOf(layout: SemanticLayout): ReadonlySet<string> {
   }
   return ids;
 }
+
+/**
+ * The range a press selects an atom by, or null for a control that is no atom. The keys hold it
+ * whole by the control, not by the range: an empty atom's whole is no range at all, and it is still
+ * the one the next key removes.
+ */
+export function atomRangeOf(layout: SemanticLayout, controlId: string): PositionRange | null {
+  if (!atomControlIdsOf(layout).has(controlId)) return null;
+  const control = controlById(layout, controlId);
+  return control ? unitSelectionRange(layout, control) : null;
+}

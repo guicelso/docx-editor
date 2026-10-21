@@ -25,6 +25,8 @@ export interface ControlAtCaretDeps {
   readonly measurer: () => TextMeasurer;
   /** The slot the caret stands in where control edges meet, or null where the offset alone decides. */
   readonly slot: () => SlotNeighbours | null;
+  /** The controls the host made atoms: a slot beside one stands outside it. */
+  readonly atomIds: () => ReadonlySet<string>;
 }
 
 /**
@@ -54,13 +56,21 @@ export function createControlAtCaret(
     const part = deps.storyPart(scope);
     if (!part) return null;
     if (!slot) return contentControlHoldingParagraph(part, deps.selection().head.paragraphId);
-    return recordOf(contentControlRecordsInPart(part), slotOwnerOf(slot, parentIn(part)));
+    return recordOf(
+      contentControlRecordsInPart(part),
+      slotOwnerOf(slot, parentIn(part), deps.atomIds())
+    );
   };
 
   const inBody = (slot: SlotNeighbours | null) => {
     const layout = deps.layout();
     const part = deps.bodyPart();
-    if (slot) return recordOf(contentControlsInLayout(layout), slotOwnerOf(slot, parentIn(part)));
+    if (slot) {
+      return recordOf(
+        contentControlsInLayout(layout),
+        slotOwnerOf(slot, parentIn(part), deps.atomIds())
+      );
+    }
     const found = contentControlAtSelection(layout, deps.selection(), deps.measurer());
     // The records are the body's, so a match from another part is a bug in the index rather than
     // an answer, and must not become a write.
