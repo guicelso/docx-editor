@@ -24,6 +24,8 @@ export interface ZoomControllerHost {
   mode(): ZoomMode;
   /** One page's width at 100%, in CSS pixels, or null before the first layout. */
   pageWidthPx(): number | null;
+  /** Whether the surface lays out in Word's Web Layout, where the page is the scroller's width. */
+  inWebView(): boolean;
   /**
    * The authored page width in twips, or null with no document.
    *
@@ -71,6 +73,8 @@ export interface ZoomController {
  * bring the scrollbar back. With the quantum and `scrollbar-gutter: stable` on the viewport,
  * the second pass lands on the same percent and stops.
  */
+const WEB_VIEW_FIT = 1;
+
 export function createZoomController(host: ZoomControllerHost): ZoomController {
   let observer: ResizeObserver | null = null;
   let observed: HTMLElement | null = null;
@@ -88,22 +92,35 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
   function refit(): void {
     const mode = host.mode();
     if (!isFitMode(mode)) return;
+    // THE WEB VIEW HAS NO PAGE WIDTH TO FIT: its page is laid out at the scroller's width over
+    // the scale, so fitting it to that same width multiplied the scale by the gutter's share
+    // on every refit, and the text shrank with each font remount and resize. At 100% the page
+    // already fills the scroller, which is what fitting the page width means there.
+    const next = host.inWebView() ? webViewFit() : pageWidthFit(mode);
+    if (next === null || next === host.zoom()) return;
+    host.applyZoom(next);
+  }
+
+  function webViewFit(): number {
+    fittedPageWidthTwips = host.pageWidthTwips();
+    return WEB_VIEW_FIT;
+  }
+
+  function pageWidthFit(mode: Extract<ZoomMode, { type: 'fit' }>): number | null {
     const container = host.container();
-    if (!container) return;
+    if (!container) return null;
     const width = scrollerContentWidth(container);
-    if (width === null) return;
+    if (width === null) return null;
     const pageWidthPx = host.pageWidthPx();
-    if (pageWidthPx === null) return;
+    if (pageWidthPx === null) return null;
     fittedPageWidthTwips = host.pageWidthTwips();
 
-    const next = fitZoom({
+    return fitZoom({
       availableWidthPx: width,
       pageWidthPx,
       ...(mode.minZoom !== undefined ? { minZoom: mode.minZoom } : {}),
       ...(mode.maxZoom !== undefined ? { maxZoom: mode.maxZoom } : {}),
     });
-    if (next === null || next === host.zoom()) return;
-    host.applyZoom(next);
   }
 
   function schedule(): void {

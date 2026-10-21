@@ -530,6 +530,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     surface: () => surface,
     bump,
     emitSelectionChange,
+    viewChanged: () => zoomLane.refit(),
   });
   const highlights = createTextHighlights({
     surface: () => surface,

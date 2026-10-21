@@ -18,6 +18,8 @@ export interface ViewLaneHost {
   surface(): PaginatedSurface | null;
   bump(): void;
   emitSelectionChange(): void;
+  /** The surface moved between the views: a fit mode answers differently in each. */
+  viewChanged(): void;
 }
 
 export interface ViewLane {
@@ -71,6 +73,7 @@ export function createViewLane(
     answered = surface;
     surface.setLayoutView(next);
     if (surface.state().layoutView === before) return;
+    host.viewChanged();
     host.bump();
     host.emitSelectionChange();
   }
@@ -135,6 +138,7 @@ export function createViewLane(
     wanted = next;
     observe();
     const changed = viewInForce() !== before;
+    if (changed) host.viewChanged();
     host.bump();
     host.emitSelectionChange();
     return { ok: true, changed };

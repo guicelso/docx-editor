@@ -130,6 +130,7 @@ export function createZoomLane(config: ZoomLaneConfig, host: ZoomLaneHost): Zoom
     // Model state, not layout: this is the cheap guard the commit path compares, and reading
     // it must not flush a layout from inside the session's own notification.
     pageWidthTwips: () => host.surface()?.sectionProperties().pageSize.widthTwips ?? null,
+    inWebView: () => host.surface()?.state().layoutView === 'web',
     zoom: () => zoom,
     applyZoom: (next) => {
       applyZoom(next);

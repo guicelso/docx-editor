@@ -1,5 +1,5 @@
 // The editor's web layout view and the host's write admission, through the facade: the page
-// follows the viewport's content width, a document the view does not lay out is refused with
+// follows the viewport's content width, a fit mode holds it at 100%, a document the view does not lay out is refused with
 // the reason, a write that would bring such content in is refused the same way, and the host's
 // admission speaks for every write and survives a load.
 
@@ -129,6 +129,38 @@ describe('the web layout view', () => {
     );
     expect(editor.surface!.session.part().root.children.length).toBeGreaterThan(0);
     expect(JSON.stringify(editor.surface!.session.part().root)).not.toContain('noteReference');
+  });
+});
+
+describe('a fit mode in the web view', () => {
+  test('opens at 100%, and a resize keeps it there while the page follows the scroller', async () => {
+    const opened = mounted(LONG, { view: 'web', zoomMode: 'auto' });
+    expect(opened.editor.getView()).toBe('web');
+    expect(opened.editor.getZoom()).toBe(1);
+
+    await opened.resize(400);
+    await opened.resize(480);
+
+    expect(opened.editor.getZoom()).toBe(1);
+    expect(pageWidthPx(opened.editor)).toBeCloseTo(480, 6);
+  });
+
+  test('fitted on pages before the width came, lands at 100% when the web view takes over', async () => {
+    const opened = mounted(LONG, { view: 'web', zoomMode: 'auto' }, 0);
+
+    await opened.resize(320);
+
+    expect(opened.editor.getView()).toBe('web');
+    expect(opened.editor.getZoom()).toBe(1);
+  });
+
+  test('switching a fitted page view to the web view returns the fit to 100%', () => {
+    const opened = mounted(LONG, { zoomMode: 'auto' }, 1600);
+    expect(opened.editor.getZoom()).toBeGreaterThan(1);
+
+    expect(opened.editor.setView('web')).toEqual({ ok: true, changed: true });
+
+    expect(opened.editor.getZoom()).toBe(1);
   });
 });
 
