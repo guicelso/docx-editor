@@ -5,6 +5,7 @@
 import type {
   ContentControlBoundaryRecord,
   ContentControlMappedType,
+  LayoutBox,
   PageRecord,
 } from '@docx-editor.dev/core/layout';
 import type { PaintOptions } from './semantic-paint.ts';
@@ -146,6 +147,25 @@ export function contentControlWidgetBox(
   const left = outside + size <= sheetRight ? outside : Math.max(0, right - size);
   const top = (contentTop + fragment.y) * scale + Math.max(0, (fragment.height * scale - size) / 2);
   return { left, top, size };
+}
+
+/**
+ * Where a control's value widget is painted on a page, in page-content points, or null when it
+ * has none there. The same placement the painter draws, read without a scale.
+ */
+export function contentControlWidgetArea(
+  page: PageRecord,
+  control: ContentControlBoundaryRecord
+): LayoutBox | null {
+  const first = control.fragments.find((fragment) => fragment.pageIndex === page.index);
+  if (!first || !WIDGET_TYPES.has(control.controlType)) return null;
+  const box = contentControlWidgetBox(page, first.box, control.controlType, 1);
+  return {
+    x: box.left - (page.contentBox.x - page.box.x),
+    y: box.top - (page.contentBox.y - page.box.y),
+    width: box.size,
+    height: box.size,
+  };
 }
 
 function paintContentControlBoundary(

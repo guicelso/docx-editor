@@ -3657,6 +3657,7 @@ export interface SemanticHitDrawing {
 
 // @public
 export interface SemanticHitField {
+    readonly box: LayoutBox;
     // (undocumented)
     readonly end: number;
     // (undocumented)

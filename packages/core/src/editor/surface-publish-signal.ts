@@ -48,8 +48,6 @@ interface PublishKeys {
    * stays put — and where typing lands moves with it.
    */
   caretSlot: string;
-  /** The control under a resting pointer: a host shows its details while the caret is elsewhere. */
-  hoveredControl: string | null;
   /**
    * Why the last edit was refused. A refused edit moves no revision and no caret, so without this
    * key a host would never learn that the keystroke it just saw did nothing — the silence the
@@ -65,7 +63,6 @@ const EMPTY: PublishKeys = {
   drawingIntent: 'none',
   formatPainter: 'off/none',
   caretSlot: '',
-  hoveredControl: null,
   lastRejection: null,
 };
 
@@ -78,7 +75,6 @@ function keysOf(state: PaginatedSurfaceState, surface: PaginatedSurface): Publis
     drawingIntent: drawingSelectionIntentKey(surface.drawingSelectionIntent()),
     formatPainter: `${state.formatPainter.mode}/${state.formatPainter.level}`,
     caretSlot: caretSlotKeyOf(state.contentControls.caretSlot),
-    hoveredControl: state.contentControls.hoveredControlId,
     lastRejection: state.lastRejection,
   };
 }
@@ -119,7 +115,6 @@ export function createPublishSignal(): PublishSignal {
         next.drawingIntent === last.drawingIntent &&
         next.formatPainter === last.formatPainter &&
         next.caretSlot === last.caretSlot &&
-        next.hoveredControl === last.hoveredControl &&
         next.lastRejection === last.lastRejection;
       last = next;
       return !quiet;

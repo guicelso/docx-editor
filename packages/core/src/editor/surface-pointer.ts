@@ -40,7 +40,9 @@ import {
 } from './surface-pointer-units.ts';
 
 export { absorbPlaceholderControls, placeholderSelectionRange } from './surface-pointer-units.ts';
-import type { SemanticLayout, TextMeasurer } from '../layout/semantic-records.ts';
+import type { LayoutBox, SemanticLayout, TextMeasurer } from '../layout/semantic-records.ts';
+import type { EditorHover, EditorHoverBox } from '../contracts/editor.ts';
+import { hoverOnPage, NO_HOVER } from './surface-hover.ts';
 import {
   findEmptyFurnitureBandAtSheetPoint,
   findNoteAtSheetPoint,
@@ -70,8 +72,8 @@ export interface EnterHeaderFooterPointerRequest extends ActiveHeaderFooterPoint
 /** What the controller needs from the surface it drives. */
 export interface PointerHost {
   readonly pagesLayer: HTMLElement;
-  /** The innermost control under a resting pointer, from layout, or null; never mid-gesture. */
-  onHover?(controlId: string | null): void;
+  /** What a resting pointer is on, from layout; never mid-gesture, never inside an open story scope. */
+  onHover?(hover: EditorHover): void;
   readonly container: HTMLElement;
   /**
    * Points to CSS pixels, read per gesture rather than captured.
@@ -996,12 +998,41 @@ export function createPointerController(
     layerRect = null;
   };
 
+  /** A furniture or note scope answers in its own story's space: the body's pieces are not under the pointer then. */
+  function hoverAt(clientX: number, clientY: number): EditorHover {
+    if (host.activeNote?.() || host.activeHeaderFooter?.()) return NO_HOVER;
+    const hit = resolveBody(clientX, clientY);
+    const layout = host.layout();
+    const page = hit ? layout.pages[hit.pageIndex] : undefined;
+    if (!hit || !page) return NO_HOVER;
+    const sheet = sheetPoint(clientX, clientY);
+    const offsetX = page.contentBox.x + host.pageOffsetX(page.index);
+    const hover = hoverOnPage(
+      layout,
+      page,
+      { x: sheet.x - offsetX, y: sheet.y - page.contentBox.y },
+      hit
+    );
+    return { ...hover, box: hover.box ? clientBoxOf(hover.box, offsetX, page.contentBox.y) : null };
+  }
+
+  /** The inverse of {@link sheetPoint}, for a box in a page's content coordinates. */
+  function clientBoxOf(box: LayoutBox, offsetX: number, offsetY: number): EditorHoverBox {
+    const origin = sheetPoint(0, 0);
+    const scale = host.scale() || 1;
+    return {
+      x: (offsetX + box.x - origin.x) * scale,
+      y: (offsetY + box.y - origin.y) * scale,
+      width: box.width * scale,
+      height: box.height * scale,
+    };
+  }
+
   const onHoverMove = (event: PointerEvent): void => {
     if (gesture || !host.onHover) return;
-    const hit = resolve(event.clientX, event.clientY);
-    host.onHover(hit?.contentControlId ?? null);
+    host.onHover(hoverAt(event.clientX, event.clientY));
   };
-  const onHoverLeave = (): void => host.onHover?.(null);
+  const onHoverLeave = (): void => host.onHover?.(NO_HOVER);
 
   pagesLayer.addEventListener('pointerdown', onPointerDown);
   pagesLayer.addEventListener('pointermove', onHoverMove);

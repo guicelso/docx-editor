@@ -1898,6 +1898,7 @@ export interface EditorEvents {
     error: (error: EditorError) => void;
     // (undocumented)
     historyDiagnostic: (diagnostic: HistoryDiagnostic) => void;
+    hoverChange: (hover: EditorHover) => void;
     revisionMarkupChange: (settings: ResolvedRevisionMarkup) => void;
     selectionChange: (snapshot: EditorSnapshot) => void;
 }
@@ -1968,6 +1969,29 @@ export interface EditorHighlights {
 
 // @public
 export interface EditorHostPolicies extends EditorContentControlView, EditorEditPolicy, EditorWriteAdmission {
+}
+
+// @public
+export interface EditorHover {
+    readonly box: EditorHoverBox | null;
+    readonly controlId: string | null;
+    readonly field: EditorHoverField | null;
+}
+
+// @public
+export interface EditorHoverBox {
+    readonly height: number;
+    readonly width: number;
+    readonly x: number;
+    readonly y: number;
+}
+
+// @public
+export interface EditorHoverField {
+    readonly end: number;
+    readonly instruction: string;
+    readonly paragraphId: string;
+    readonly start: number;
 }
 
 // @public

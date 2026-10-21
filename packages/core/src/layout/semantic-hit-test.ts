@@ -121,6 +121,8 @@ export interface SemanticHitField {
   readonly start: number;
   readonly end: number;
   readonly instruction: string;
+  /** The span of the result under the point, in page-content coordinates. */
+  readonly box: LayoutBox;
 }
 
 /** A chip under the point, and the side of it the point is on. @public */
@@ -559,7 +561,7 @@ function fieldAtX(line: LineRecord, x: number): { field?: SemanticHitField } {
     const instruction = span.fieldAtom?.instruction;
     if (instruction === undefined || x < span.box.x || x > span.box.x + span.box.width) continue;
     const { paragraphId, start, end } = span.range;
-    return { field: { paragraphId, start, end, instruction } };
+    return { field: { paragraphId, start, end, instruction, box: span.box } };
   }
   return {};
 }

@@ -2,11 +2,13 @@ import type {
   DocumentChange,
   EditorError,
   EditorEvents,
+  EditorHover,
   EditorSnapshot,
   Unsubscribe,
 } from '../contracts/editor.ts';
 import type { HistoryDiagnostic } from '../contracts/editor-scope.ts';
 import type { ResolvedRevisionMarkup } from '../contracts/revision-markup.ts';
+import { NO_HOVER, sameHoveredPiece } from './surface-hover.ts';
 
 /** Per-instance notifications. Snapshot derivation stays lazy without subscribers. */
 export function createEditorEvents(snapshot: () => EditorSnapshot) {
@@ -16,6 +18,13 @@ export function createEditorEvents(snapshot: () => EditorSnapshot) {
     error: new Set(),
     historyDiagnostic: new Set(),
     revisionMarkupChange: new Set(),
+    hoverChange: new Set(),
+  };
+  let hover: EditorHover = NO_HOVER;
+  const emitHover = (next: EditorHover): void => {
+    if (sameHoveredPiece(hover, next)) return;
+    hover = next;
+    for (const handler of [...handlers.hoverChange]) handler(next);
   };
   return {
     emitError(error: EditorError) {
@@ -34,6 +43,11 @@ export function createEditorEvents(snapshot: () => EditorSnapshot) {
     },
     emitRevisionMarkupChange(value: ResolvedRevisionMarkup) {
       for (const handler of [...handlers.revisionMarkupChange]) handler(value);
+    },
+    emitHoverChange: emitHover,
+    /** A surface that goes takes its hover with it: no pointer will leave a page that is gone. */
+    endHover() {
+      emitHover(NO_HOVER);
     },
     hasErrorHandlers: () => handlers.error.size > 0,
     clear() {

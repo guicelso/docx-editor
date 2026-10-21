@@ -108,6 +108,8 @@ export interface PaginatedSurfaceOptions {
    */
   readonly pointer?: 'engine' | 'native';
   readonly onChange?: (state: PaginatedSurfaceState) => void;
+  /** What a resting pointer is on moved. Apart from `onChange`: a hover moves no selection. */
+  readonly onHoverChange?: (hover: import('../contracts/editor.ts').EditorHover) => void;
   /**
    * A plain click on an external (or inert) hyperlink, for a host to open its popover with.
    *

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The surface reported only the hovered control, through selectionChange, and a second DOM-based tracker also set data-hover on control chrome.",
+  "after": "One layout hit test gives the hovered control, the hovered field and the painted box of the innermost piece. The editor publishes it on hoverChange and the surface retints the chrome from the same answer.",
+  "reason": "Surface chrome and a host notification only; nothing reaches the document, an operation or shared updates.",
+  "tests": ["packages/core/src/editor/__tests__/surface-hover.test.ts"],
+  "changeset": "hover-change-event",
+  "migration": null
+}

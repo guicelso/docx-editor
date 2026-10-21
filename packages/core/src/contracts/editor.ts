@@ -26,7 +26,7 @@ import type { EditorHostPolicies } from './editor-host-policies.ts';
 export type * from './editor-host-policies.ts';
 import type { EditorLayoutView, EditorViewControl } from './editor-view.ts';
 export type * from './editor-view.ts';
-export type { DocumentChange, EditorEvents } from './editor-events.ts';
+export type * from './editor-events.ts';
 import type { DocumentEditingMode, ResolveReviewChangesOptions } from './editor-review.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
 export type { DocumentEditingMode, ResolveReviewChangesOptions } from './editor-review.ts';

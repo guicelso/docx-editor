@@ -2300,6 +2300,7 @@ export interface PaginatedSurfaceOptions {
     readonly onChange?: (state: PaginatedSurfaceState) => void;
     // (undocumented)
     readonly onEquationPopover?: (activation: EquationActivation) => void;
+    readonly onHoverChange?: (hover: EditorHover) => void;
     readonly onHyperlinkPopover?: (activation: HyperlinkActivation) => void;
     // (undocumented)
     readonly onRequestContentControlWidget?: (session: ContentControlWidgetSession) => boolean;

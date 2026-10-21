@@ -66,8 +66,6 @@ export interface ContentControlSurfaceState {
   readonly formFill: boolean;
   /** Innermost control containing the caret — where tags meet, the one its slot is in — or null. */
   readonly activeControlId: string | null;
-  /** Innermost control under a resting pointer, from layout (Word's hover), or null. */
-  readonly hoveredControlId: string | null;
   /**
    * The slot the caret stands in where content-control edges meet, named by the edge on each side
    * of it (`null` for text), and where a write at the caret lands there — `null` where the offset

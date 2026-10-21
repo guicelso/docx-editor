@@ -511,6 +511,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     unsubscribeSession = null;
     surface?.destroy();
     surface = null;
+    events.endHover();
     publishSignal.reset();
     mountGeneration += 1;
   }
@@ -629,6 +630,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         emitSelectionChange();
       },
       tocLabels: hostConfig.tocLabels(),
+      onHoverChange: events.emitHoverChange,
       ...hostPolicies.mountOptions(),
       ...viewLane.mountOptions(),
       onChange: (state) => {

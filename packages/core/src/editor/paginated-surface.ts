@@ -63,7 +63,7 @@ import {
   promptInsertionLanding,
   typedInsertText,
 } from './content-control-prompt-landing.ts';
-import { createContentControlHover } from './content-control-hover.ts';
+import { NO_HOVER, sameHoveredPiece } from './surface-hover.ts';
 import { createControlAtCaret } from './surface-control-at-caret.ts';
 import { collapseHorizontalSelection as collapseSelection } from './surface-selection-collapse.ts';
 import { createParagraphMarkVisibility } from './surface-paragraph-mark-visibility.ts';
@@ -212,7 +212,7 @@ import type {
   RemoteCaretLabelHost,
   SurfaceEditingMode,
 } from './paginated-surface-contract.ts';
-import type { ExecResult, SelectionPin, ViewScope } from '../contracts/editor.ts';
+import type { EditorHover, ExecResult, SelectionPin, ViewScope } from '../contracts/editor.ts';
 import type { TableCommandPlan } from './table-command-plan.ts';
 import {
   clampedToDocument,
@@ -1374,7 +1374,6 @@ export function mountPaginatedSurface(
   pagesLayer.addEventListener('click', onTocRowClick);
   pagesLayer.addEventListener('pointermove', onTocPointerMove);
   pagesLayer.addEventListener('pointerleave', onTocPointerLeave);
-  const controlHover = createContentControlHover(pagesLayer);
   let desiredX: number | null = null;
   function layoutDocument(
     revision: number,
@@ -1833,23 +1832,25 @@ export function mountPaginatedSurface(
   /** TOC chrome is hover-projected; never sticky from caret/click. */
   let hoveredTocControlId: string | null = null;
 
-  /** The innermost control under a resting pointer, as layout answers it (Word's hover). */
-  let hoveredControlId: string | null = null;
+  /** What a resting pointer is on, as layout answers it (Word's hover). */
+  let hover: EditorHover = NO_HOVER;
 
   /**
    * A control's hover retints the chrome already painted, as the TOC's does and for the same
-   * reason: a repaint on pointermove would replace the node a gesture started on.
+   * reason: a repaint on pointermove would replace the node a gesture started on. The host hears
+   * it on its own channel, never through `onChange`: a hover moves no selection.
    */
-  function setHoveredControlId(next: string | null): void {
-    if (hoveredControlId === next) return;
-    hoveredControlId = next;
+  function setHover(next: EditorHover): void {
+    if (sameHoveredPiece(hover, next)) return;
+    hover = next;
     for (const chrome of pagesLayer.querySelectorAll<HTMLElement>(
       '.docx-content-control-chrome:not([data-docx-toc])'
     )) {
-      if (chrome.getAttribute('data-docx-content-control') === next) chrome.dataset.hover = '';
+      if (chrome.getAttribute('data-docx-content-control') === next.controlId)
+        chrome.dataset.hover = '';
       else delete chrome.dataset.hover;
     }
-    options.onChange?.(currentState());
+    options.onHoverChange?.(next);
   }
 
   function tocControlIdOf(toc: ReturnType<typeof detectBodyTocs>[number]): string {
@@ -1955,7 +1956,7 @@ export function mountPaginatedSurface(
     }
     // TOC regions never project caret-active chrome — hoverIds own their visibility.
     const activeIds = active && !tocControlIds.has(active.id) ? new Set([active.id]) : undefined;
-    const hovered = [hoveredTocControlId, hoveredControlId].filter((id) => id !== null);
+    const hovered = [hoveredTocControlId, hover.controlId].filter((id) => id !== null);
     const hoverIds = hovered.length > 0 ? new Set(hovered) : undefined;
     const selectedId = controlKeys.selectedId();
     const checkedIds = new Set(
@@ -2523,7 +2524,6 @@ export function mountPaginatedSurface(
         formFill: formFillMode,
         activeControlId: contentControlAtCaret()?.id ?? null,
         caretSlot: caretSlots.neighbours(),
-        hoveredControlId,
       },
       contextTocId,
       formatPainter: formatPainter.state(),
@@ -5911,7 +5911,6 @@ export function mountPaginatedSurface(
         pagesLayer.removeEventListener('click', onTocRowClick);
         pagesLayer.removeEventListener('pointermove', onTocPointerMove);
         pagesLayer.removeEventListener('pointerleave', onTocPointerLeave);
-        controlHover.destroy();
         // Drop pending layout work and stop listening BEFORE the DOM goes, or a commit from
         // another editor sharing this store would paint into a detached container.
         scheduler.cancel();
@@ -6281,7 +6280,7 @@ export function mountPaginatedSurface(
       selection: () => hiddenMarks.shownSelection(selection),
       // `none`: a press lands where the reader LOOKS, and moving the paper under a double
       // click sent its second press elsewhere — a blank footer band never opened.
-      onHover: setHoveredControlId,
+      onHover: setHover,
       selectsField: (instruction) => fieldSelection?.(instruction) === true,
       takesTagPress: ({ controlId, edge }) => {
         if (!contentControlTagPress) return false;
