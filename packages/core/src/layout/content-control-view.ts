@@ -1,18 +1,25 @@
-// The host's view over content controls, as layout projects it, and its cache identity.
+// The host's view over content controls and fields, as layout projects it, and its cache identity.
 //
-// The host answers per control. A paragraph's identity is therefore the answers for the controls
-// it draws: the inline controls inside it, and the block controls that open or close at it. It
-// joins the paragraph's projection token, so a changed answer lays out only the paragraphs that
-// show it. Folded into the producer instead, one changed label re-measured and re-placed every
-// paragraph of the document — the cost the list-count producer once had (`semantic-layout.ts`).
+// The host answers per control and per field. A paragraph's identity is therefore the answers for
+// what it draws: the inline controls and the fields inside it, and the block controls that open or
+// close at it. It joins the paragraph's projection token, so a changed answer lays out only the
+// paragraphs that show it. Folded into the producer instead, one changed label re-measured and
+// re-placed every paragraph of the document — the cost the list-count producer once had
+// (`semantic-layout.ts`).
 
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '@docx-editor.dev/core/store';
 import type {
+  ContentControlPiece,
+  ContentControlPieceDisplay,
   ContentControlPromptDisplay,
   ContentControlTagDisplay,
   ContentControlTagLabel,
+  FieldFace,
+  PieceAtom,
+  PieceName,
 } from '../contracts/editor-content-control-view.ts';
 import { isContentControl } from '../store/package/content-control-walk.ts';
+import { parsedFieldSpansOf } from '../store/package/field-nodes.ts';
 import { blockControlEdgesOf, type BlockControlEdges } from '../store/store/block-control-edges.ts';
 import { contentControlSubjectOf } from './content-control-properties.ts';
 import { contentControlPromptOf } from './content-control-prompts.ts';
@@ -20,16 +27,21 @@ import { aggregateParagraphTokensForTableBlock, framedTokenJoin } from './layout
 import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
 
 /**
- * What a host shows over content controls, which layout projects and never writes. @public
+ * What a host shows over content controls and fields, which layout projects and never writes.
+ * @public
  *
- * A new object is a new view: layout asks every control again and lays out only the paragraphs
- * whose answers changed.
+ * A new object is a new view: layout asks every control and field again and lays out only the
+ * paragraphs whose answers changed.
  */
 export interface ContentControlView {
   /** The start and end tags at each control. */
   readonly tags?: ContentControlTagDisplay;
   /** The text each control shows while it holds its placeholder. */
   readonly prompts?: ContentControlPromptDisplay;
+  /** The piece each control is: an atom, or a frame with the host's names. */
+  readonly pieces?: ContentControlPieceDisplay;
+  /** The face of each field, which makes it an atom. */
+  readonly fieldFaces?: FieldFace;
 }
 
 /** What a lane forwards to project the view: the view, and the block edges of its part. */
@@ -75,7 +87,10 @@ export function contentControlViewLayoutOptions(
   const viewToken = (paragraph: OoxmlNode): string => {
     const inline = inlineToken(paragraph, view);
     const block = blockToken(edges.get(paragraph.id), view);
-    return inline === '' && block === '' ? '' : `cc-view:${framedTokenJoin([inline, block])}`;
+    const fields = fieldsToken(paragraph, view);
+    return inline === '' && block === '' && fields === ''
+      ? ''
+      : `cc-view:${framedTokenJoin([inline, block, fields])}`;
   };
   const own = options.projectionTokenForParagraph;
   const ownTable = options.projectionTokenForTable;
@@ -135,6 +150,22 @@ function inlineToken(paragraph: OoxmlNode, view: ContentControlView): string {
   return token;
 }
 
+/** The answers for the fields of one paragraph node, per view, in document order. */
+const fieldTokens = new WeakMap<OoxmlNode, WeakMap<ContentControlView, string>>();
+
+function fieldsToken(paragraph: OoxmlNode, view: ContentControlView): string {
+  const face = view.fieldFaces;
+  if (!face || paragraph.kind !== 'paragraph') return '';
+  let byView = fieldTokens.get(paragraph);
+  const cached = byView?.get(view);
+  if (cached !== undefined) return cached;
+  const parts = parsedFieldSpansOf(paragraph).map((span) => atomToken(face(span.instruction)));
+  const token = parts.every((part) => part === '') ? '' : framedTokenJoin(parts);
+  if (!byView) fieldTokens.set(paragraph, (byView = new WeakMap()));
+  byView.set(view, token);
+  return token;
+}
+
 /** The answers for the block controls that open and close at one paragraph. */
 function blockToken(edges: BlockControlEdges | undefined, view: ContentControlView): string {
   if (!edges) return '';
@@ -145,12 +176,14 @@ function blockToken(edges: BlockControlEdges | undefined, view: ContentControlVi
 }
 
 function controlToken(control: OoxmlElement, view: ContentControlView): string {
-  const labels = view.tags?.labelsOf(contentControlSubjectOf(control)) ?? null;
+  const subject = contentControlSubjectOf(control);
+  const labels = view.tags?.labelsOf(subject) ?? null;
   return framedTokenJoin([
     control.id,
     labelToken(labels?.open),
     labelToken(labels?.close),
     contentControlPromptOf(control, view.prompts) ?? '',
+    pieceToken(view.pieces?.pieceOf(subject) ?? null),
   ]);
 }
 
@@ -160,7 +193,22 @@ function labelToken(label: ContentControlTagLabel | undefined): string {
   if (label.variant === 'sequence') {
     return framedTokenJoin(['sequence', ...label.labels.map((each) => labelToken(each))]);
   }
-  return framedTokenJoin([label.text, label.tone ?? '', label.variant ?? 'chip']);
+  return framedTokenJoin([label.text, nameToken(label), label.mark ?? '', label.variant ?? 'chip']);
+}
+
+function pieceToken(piece: ContentControlPiece | null): string {
+  if (piece === null) return '';
+  return 'atom' in piece
+    ? framedTokenJoin(['atom', atomToken(piece.atom)])
+    : framedTokenJoin(['frame', nameToken(piece.frame)]);
+}
+
+function atomToken(atom: PieceAtom | undefined): string {
+  return atom === undefined ? '' : framedTokenJoin([nameToken(atom), atom.mark ?? '']);
+}
+
+function nameToken(name: PieceName): string {
+  return framedTokenJoin([name.tone ?? '', name.form ?? '', name.state ?? '']);
 }
 
 /** Which paragraphs every block control opens and closes at, once per edges index. */

@@ -1,5 +1,6 @@
 // The host's view lives on the editor: every surface the editor mounts takes it, so a load, a
-// detach and an attach keep the tags, the prompts, the field tones and the field selection.
+// detach and an attach keep the tags, the prompts, the pieces, the field faces, the mark painter and
+// the field selection.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
@@ -49,7 +50,7 @@ const paintedText = (host: HTMLElement) =>
 
 const tonesIn = (host: HTMLElement) =>
   [...host.querySelectorAll<HTMLElement>('[data-field-atom]')].map(
-    (atom) => atom.dataset.fieldTone
+    (atom) => atom.dataset.pieceTone
   );
 
 /** Press the middle of the painted field, as a reader would. */
@@ -94,12 +95,14 @@ function installView(editor: DocxEditorInstance): void {
   editor.setContentControlTags({
     labelsOf: ({ tag }) => ({ open: { text: `${tag} ▸` }, close: { text: '◂' } }),
   });
-  editor.setFieldTones((instruction) => (instruction.includes('"field:') ? 'variable' : undefined));
+  editor.setFieldFaces((instruction) =>
+    instruction.includes('"field:') ? { tone: 'variable', mark: 'variable' } : undefined
+  );
   editor.setFieldSelection((instruction) => instruction.includes('"field:'));
 }
 
 describe('the host view on the editor', () => {
-  test('a load paints the next document with the tags and the tones', () => {
+  test('a load paints the next document with the tags and the field faces', () => {
     const { editor, host } = mounted();
     installView(editor);
     expect(chipsIn(host)).toEqual(['a ▸', '◂']);
@@ -130,11 +133,35 @@ describe('the host view on the editor', () => {
     const { editor, host } = mounted();
     installView(editor);
     editor.setContentControlTags(null);
-    editor.setFieldTones(null);
+    editor.setFieldFaces(null);
     expect(chipsIn(host)).toEqual([]);
     editor.load(SECOND);
     expect(chipsIn(host)).toEqual([]);
     expect(tonesIn(host).every((tone) => tone === undefined)).toBe(true);
+  });
+
+  test('the pieces and the mark painter reach the next document, and paint only', () => {
+    const { editor, host } = mounted();
+    installView(editor);
+    editor.setContentControlPieces({
+      pieceOf: ({ tag }) => (tag === 'b' ? { atom: { tone: 'citation', form: 'atom' } } : null),
+    });
+    editor.setMarkPainter((mark, slot) => {
+      slot.dataset.painted = mark;
+    });
+    editor.load(SECOND);
+    expect(
+      [...host.querySelectorAll<HTMLElement>('[data-piece-control]')].map(
+        (atom) => atom.textContent
+      )
+    ).toEqual(['B']);
+    expect(
+      [...host.querySelectorAll<HTMLElement>('[data-piece-mark]')].map(
+        (slot) => slot.dataset.painted
+      )
+    ).toEqual(['variable']);
+    editor.setMarkPainter(null);
+    expect(host.querySelector<HTMLElement>('[data-piece-mark]')?.dataset.painted).toBeUndefined();
   });
 
   test('the prompts reach the next document and never the saved bytes', async () => {

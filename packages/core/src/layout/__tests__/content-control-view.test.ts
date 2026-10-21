@@ -3,7 +3,10 @@
 
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '../../store/package/ooxml-tree.ts';
-import type { ContentControlTagDisplay } from '../../contracts/editor-content-control-view.ts';
+import type {
+  ContentControlTagDisplay,
+  FieldFace,
+} from '../../contracts/editor-content-control-view.ts';
 import { createParagraphLayoutCache } from '../layout-cache.ts';
 import { createLayoutSession } from '../layout-session.ts';
 import type { PendingLine } from '../paragraph-flow.ts';
@@ -41,7 +44,7 @@ const tags = (labels: Readonly<Record<string, string>>): ContentControlView => (
 });
 
 /** A layout run that keeps its break cache and its session, as the surface does. */
-function passes() {
+function passes(part = PART) {
   const cache = createParagraphLayoutCache<readonly PendingLine[]>();
   const session = createLayoutSession();
   const measurer = createFixedMeasurer(6, 14);
@@ -49,7 +52,7 @@ function passes() {
     cache,
     session,
     layout: (view: ContentControlView | undefined) =>
-      layoutSemanticDocument(PART, 0, {
+      layoutSemanticDocument(part, 0, {
         measurer,
         cache,
         session,
@@ -90,5 +93,45 @@ describe('the view keys each paragraph by its own answers', () => {
     run.layout(tags({ a: 'A', b: 'B' }));
     // The two paragraphs with a control break again; the third keeps its key.
     expect(run.cache.stats.misses - before).toBe(2);
+  });
+});
+
+const field = (name: string, result: string) =>
+  `<w:r><w:fldChar w:fldCharType="begin"/></w:r>` +
+  `<w:r><w:instrText xml:space="preserve"> MERGEFIELD "${name}" </w:instrText></w:r>` +
+  `<w:r><w:fldChar w:fldCharType="separate"/></w:r>${run(result)}` +
+  `<w:r><w:fldChar w:fldCharType="end"/></w:r>`;
+
+describe('the pieces and the field faces are answers like the tags', () => {
+  test('a changed piece breaks only the paragraph whose control it answers', () => {
+    const pass = passes();
+    const atomFor = (tag: string): ContentControlView => ({
+      pieces: {
+        pieceOf: (control) => (control.tag === tag ? { atom: { tone: 'citation' } } : null),
+      },
+    });
+    pass.layout(atomFor('a'));
+    const before = pass.cache.stats.misses;
+    pass.layout(atomFor('b'));
+    expect(pass.cache.stats.misses - before).toBe(2);
+  });
+
+  test('a changed field face breaks only the paragraph that holds the field', () => {
+    const pass = passes(
+      documentOf(paragraph(run('um ') + field('v:1', '«x»')) + paragraph(run('dois')))
+    );
+    const face = (mark: string): ContentControlView => ({
+      fieldFaces: ((instruction) =>
+        instruction.includes('MERGEFIELD')
+          ? { tone: 'variable', mark }
+          : undefined) satisfies FieldFace,
+    });
+    pass.layout(face('variable'));
+    const before = pass.cache.stats.misses;
+    pass.layout(face('other'));
+    expect(pass.cache.stats.misses - before).toBe(1);
+    const unchanged = pass.cache.stats.misses;
+    pass.layout(face('other'));
+    expect(pass.cache.stats.misses).toBe(unchanged);
   });
 });

@@ -33,13 +33,13 @@ import {
 } from '../layout/semantic-interaction.ts';
 import { wordRangeAt } from './surface-selection-ops.ts';
 import {
-  absorbPlaceholderControls,
-  placeholderAtHit,
-  placeholderSelectionRange,
+  absorbUnitControls,
+  unitAtHit,
+  unitSelectionRange,
   type PositionRange,
 } from './surface-pointer-units.ts';
 
-export { absorbPlaceholderControls, placeholderSelectionRange } from './surface-pointer-units.ts';
+export { absorbUnitControls, unitSelectionRange } from './surface-pointer-units.ts';
 import type { LayoutBox, SemanticLayout, TextMeasurer } from '../layout/semantic-records.ts';
 import type { EditorHover, EditorHoverBox } from '../contracts/editor.ts';
 import { hoverOnPage, NO_HOVER } from './surface-hover.ts';
@@ -158,8 +158,8 @@ export interface PointerHost {
   /**
    * Select a content control's full addressable content atomically.
    *
-   * Preferred for `w:showingPlcHdr` presses when the host already owns
-   * `selectControlContent` (form-fill). When absent, the pointer expands from layout
+   * Preferred for a press on a unit — a control showing its prompt, or an atom — when the host
+   * already owns `selectControlContent` (form-fill). When absent, the pointer expands from layout
    * boundary geometry alone.
    */
   selectContentControl?(controlId: string): boolean;
@@ -430,14 +430,14 @@ export function createPointerController(
     granularity: Granularity,
     hit?: SemanticHit
   ): SemanticSelection {
-    const placeholder = hit ? placeholderAtHit(layout, hit) : null;
-    const headRange = placeholder
-      ? (placeholderSelectionRange(layout, placeholder) ?? rangeAt(layout, head, granularity))
+    const unit = hit ? unitAtHit(layout, hit) : null;
+    const headRange = unit
+      ? (unitSelectionRange(layout, unit) ?? rangeAt(layout, head, granularity))
       : rangeAt(layout, head, granularity);
     const raw = isBefore(layout, headRange.from, anchorRange.from)
       ? { anchor: anchorRange.to, head: headRange.from }
       : { anchor: anchorRange.from, head: headRange.to };
-    return absorbPlaceholderControls(layout, raw);
+    return absorbUnitControls(layout, raw);
   }
 
   // ---------------------------------------------------------------------------------
@@ -840,17 +840,17 @@ export function createPointerController(
       ? 'character'
       : GRANULARITIES[(count - 1) % GRANULARITIES.length]!;
 
-    const placeholder = placeholderAtHit(layout, hit);
-    if (placeholder && !event.shiftKey) {
+    const unit = unitAtHit(layout, hit);
+    if (unit && !event.shiftKey) {
       // Select before opening: selection repaints chrome and replaces the popup anchor.
       const openPromptWidget = () => {
-        if (count === 1 && LIST_PROMPT_TYPES.has(placeholder.controlType)) {
-          host.onContentControlWidget?.(placeholder.id, placeholder.controlType);
+        if (count === 1 && unit.placeholder && LIST_PROMPT_TYPES.has(unit.controlType)) {
+          host.onContentControlWidget?.(unit.id, unit.controlType);
         }
       };
       // Prefer the host's atomic select when wired (form-fill / selectContentControl); otherwise
-      // expand from layout boundary geometry so placeholder presses never land mid-prompt.
-      if (host.selectContentControl?.(placeholder.id)) {
+      // expand from layout boundary geometry so a press on a unit never lands inside it.
+      if (host.selectContentControl?.(unit.id)) {
         const selected = host.selection();
         const ordered =
           isBefore(layout, selected.anchor, selected.head) ||
@@ -862,10 +862,10 @@ export function createPointerController(
         openPromptWidget();
         return;
       }
-      const unit = placeholderSelectionRange(layout, placeholder);
-      if (unit) {
-        gesture = unitGesture(event, unit, hit);
-        publish(() => host.setSelection({ anchor: unit.from, head: unit.to }));
+      const range = unitSelectionRange(layout, unit);
+      if (range) {
+        gesture = unitGesture(event, range, hit);
+        publish(() => host.setSelection({ anchor: range.from, head: range.to }));
         openPromptWidget();
         return;
       }
@@ -918,7 +918,7 @@ export function createPointerController(
       };
       publish(() =>
         host.setSelection(
-          absorbPlaceholderControls(layout, { anchor: anchorRange.from, head: anchorRange.to }),
+          absorbUnitControls(layout, { anchor: anchorRange.from, head: anchorRange.to }),
           granularity === 'character' ? hit.contentControlTag : undefined
         )
       );

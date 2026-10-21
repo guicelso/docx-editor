@@ -509,6 +509,7 @@ export function contentControlBoundaries(part: OoxmlPart, layout: SemanticLayout
 export interface ContentControlBoundaryRecord {
     // (undocumented)
     readonly alias?: string;
+    readonly atom: boolean;
     readonly bound: boolean;
     // (undocumented)
     readonly controlType: ContentControlMappedType;
@@ -519,6 +520,7 @@ export interface ContentControlBoundaryRecord {
     // (undocumented)
     readonly level: ContentControlLevel;
     readonly lock: ContentControlLock;
+    readonly name?: PieceNameRecord;
     readonly nestingDepth: number;
     readonly placeholder: boolean;
     // (undocumented)
@@ -578,8 +580,9 @@ export interface ContentControlTagMark {
     readonly edge: ContentControlTagEdge;
     // (undocumented)
     readonly level: ContentControlTagLevel;
+    readonly mark?: string;
+    readonly name?: PieceNameRecord;
     readonly parts?: readonly ContentControlTagPart[];
-    readonly tone?: string;
     readonly variant?: 'text' | 'edge' | 'sequence';
 }
 
@@ -587,13 +590,15 @@ export interface ContentControlTagMark {
 export interface ContentControlTagPart {
     // (undocumented)
     readonly length: number;
-    // (undocumented)
-    readonly tone?: string;
+    readonly mark?: string;
+    readonly name?: PieceNameRecord;
     readonly variant?: 'text';
 }
 
 // @public
 export interface ContentControlView {
+    readonly fieldFaces?: FieldFace;
+    readonly pieces?: ContentControlPieceDisplay;
     readonly prompts?: ContentControlPromptDisplay;
     readonly tags?: ContentControlTagDisplay;
 }
@@ -2819,6 +2824,21 @@ export function parseRefInstruction(raw: string): RefFieldSpec | null;
 export function parseSectionProperties(sectPr: OoxmlNode | null | undefined): SectionProperties;
 
 // @public
+export interface PieceAtomRecord {
+    readonly controlId?: string;
+    readonly mark?: string;
+    // (undocumented)
+    readonly name: PieceNameRecord;
+}
+
+// @public
+export interface PieceNameRecord {
+    readonly form?: string;
+    readonly state?: string;
+    readonly tone?: string;
+}
+
+// @public
 export interface PlacedCell {
     // (undocumented)
     readonly cell: TableCellFragmentRecord;
@@ -4395,6 +4415,7 @@ export interface StyleSpanRecord {
     };
     readonly noteSeparator?: 'separator' | 'continuationSeparator';
     readonly optionalHyphenBreak?: true;
+    readonly pieceAtom?: PieceAtomRecord;
     readonly projected?: boolean;
     readonly props: readonly OoxmlProperty[];
     // (undocumented)

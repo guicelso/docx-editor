@@ -155,8 +155,8 @@ export interface PaginatedSurfaceOptions {
   readonly tocLabels?: { readonly title: string };
   /** The host's view over content controls, laid out from the first pass. */
   readonly contentControlView?: import('../layout/content-control-view.ts').ContentControlView;
-  /** The host's name for each field, published for its stylesheet. */
-  readonly fieldTone?: import('../contracts/editor-content-control-view.ts').FieldTone;
+  /** Draws each mark the host named, in the slot layout measured for it. */
+  readonly markPainter?: import('../output/semantic-paint-pieces.ts').MarkPainter;
   /** Which fields a plain press selects whole, by instruction. */
   readonly fieldSelection?: (instruction: string) => boolean;
   /** Which presses on a view-only content-control tag the host takes. */

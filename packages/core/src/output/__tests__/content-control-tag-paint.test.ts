@@ -1,5 +1,5 @@
 // A content-control tag is painted as a chip the HOST colours: the engine draws the shape,
-// publishes which control, which edge and which tone, and writes no colour of its own.
+// publishes which control, which edge and the host's names, and writes no colour of its own.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
@@ -7,7 +7,7 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '@docx-editor.dev/core/store';
-import { contentControlTagInsetsPt } from '../../layout/content-control-tags.ts';
+import { contentControlTagRoomOf } from '../../layout/content-control-tags.ts';
 import type { ContentControlTagDisplay } from '../../contracts/editor-content-control-view.ts';
 import { createFixedMeasurer, layoutSemanticDocument } from '../../layout/semantic-layout.ts';
 import type { StyleSpanRecord } from '../../layout/semantic-records.ts';
@@ -41,23 +41,60 @@ function chips(display: ContentControlTagDisplay): HTMLElement[] {
 }
 
 describe('painting a content-control tag', () => {
-  test('publishes the control, the edge and the host tone, and is a chip by class', () => {
+  test('publishes the control, the edge and the host’s names, and is a chip by class', () => {
     const [open, close] = chips({
-      labelsOf: () => ({ open: { text: 'Se', tone: 'optional' }, close: { text: '◂' } }),
+      labelsOf: () => ({
+        open: { text: 'Se', tone: 'optional', form: 'wrapper', state: 'pending' },
+        close: { text: '◂' },
+      }),
     });
     expect(open?.classList.contains('docx-cc-tag')).toBe(true);
     expect(open?.dataset.ccTagEdge).toBe('open');
-    expect(open?.dataset.ccTagTone).toBe('optional');
+    expect(open?.dataset.pieceTone).toBe('optional');
+    expect(open?.dataset.pieceForm).toBe('wrapper');
+    expect(open?.dataset.pieceState).toBe('pending');
     expect(close?.dataset.ccTagEdge).toBe('close');
-    expect(close?.dataset.ccTagTone).toBeUndefined();
+    expect(close?.dataset.pieceTone).toBeUndefined();
     expect(open?.dataset.ccTagControl).toBe(close?.dataset.ccTagControl);
   });
 
-  test('a tone that is not a plain name never reaches the attribute', () => {
+  test('a name that is not a plain token never reaches the attribute', () => {
     const [open] = chips({
-      labelsOf: () => ({ open: { text: 'Se', tone: 'x" onclick="alert(1)' } }),
+      labelsOf: () => ({ open: { text: 'Se', tone: 'x" onclick="alert(1)', state: '1x' } }),
     });
-    expect(open?.dataset.ccTagTone).toBeUndefined();
+    expect(open?.dataset.pieceTone).toBeUndefined();
+    expect(open?.dataset.pieceState).toBeUndefined();
+  });
+
+  test('a mark is a measured slot before the label, filled by the host’s painter', () => {
+    const layout = layoutSemanticDocument(load(BODY), 1, {
+      measurer,
+      contentControlView: {
+        tags: { labelsOf: () => ({ open: { text: 'Se', mark: 'optional' } }) },
+      },
+    });
+    const container = document.createElement('div');
+    paintSemanticLayout(container, layout, {
+      scale: 2,
+      ariaHidden: false,
+      markPainter: (mark, slot) => {
+        slot.dataset.painted = mark;
+      },
+    });
+    const chip = container.querySelector<HTMLElement>('[data-cc-tag-control]')!;
+    const slot = chip.firstElementChild as HTMLElement;
+    const record = tagRecordOf(layout);
+    expect(slot.dataset.pieceMark).toBe('optional');
+    expect(slot.dataset.painted).toBe('optional');
+    expect(slot.getAttribute('aria-hidden')).toBe('true');
+    expect(chip.textContent).toBe('Se');
+    const { markPt, padPt } = contentControlTagRoomOf(record.style, record.contentControlTag!);
+    expect(parseFloat(slot.style.width) + parseFloat(slot.style.marginRight)).toBeCloseTo(
+      markPt * 2,
+      4
+    );
+    const labelWidth = parseFloat(chip.style.width) - 2 * padPt * 2 - markPt * 2;
+    expect(labelWidth).toBeCloseTo(measurer.measure('Se', record.style) * 2, 4);
   });
 
   test('writes no colour, fill or shadow of its own: those are the stylesheet’s', () => {
@@ -87,7 +124,7 @@ describe('painting a content-control tag', () => {
 
   test('draws the room layout measured: the same gap and padding on both sides of the label', () => {
     const { chip, record } = paintedChip({ close: { text: '◂' } });
-    const { gapPt, padPt } = contentControlTagInsetsPt(record.style, record.contentControlTag!);
+    const { gapPt, padPt } = contentControlTagRoomOf(record.style, record.contentControlTag!);
     expect(chip.style.marginLeft).toBe(chip.style.marginRight);
     expect(chip.style.paddingLeft).toBe(chip.style.paddingRight);
     expect(parseFloat(chip.style.marginLeft)).toBeCloseTo(gapPt * 2, 4);
@@ -134,7 +171,7 @@ describe('painting a content-control tag', () => {
     const [previous, record] = [line.spans[index - 1]!, line.spans[index]!];
     const justifyGap = record.box.x - (previous.box.x + previous.box.width);
     expect(justifyGap).toBeGreaterThan(0.001);
-    const { gapPt } = contentControlTagInsetsPt(record.style, record.contentControlTag!);
+    const { gapPt } = contentControlTagRoomOf(record.style, record.contentControlTag!);
     expect(parseFloat(chip.style.marginLeft)).toBeCloseTo(justifyGap + gapPt, 4);
   });
 });

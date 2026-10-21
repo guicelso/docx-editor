@@ -10,6 +10,7 @@ export const paragraphSpanMetadata = (
   fieldAtom?: FieldAwarePiece['fieldAtom'];
   noteSeparator?: FieldAwarePiece['noteSeparator'];
   contentControlTag?: FieldAwarePiece['contentControlTag'];
+  pieceAtom?: FieldAwarePiece['pieceAtom'];
   modelText?: string;
 } => ({
   ...(piece.revisions === undefined ? {} : { revisions: piece.revisions }),
@@ -19,5 +20,6 @@ export const paragraphSpanMetadata = (
   ...(piece.fieldAtom === undefined ? {} : { fieldAtom: piece.fieldAtom }),
   ...(piece.noteSeparator ? { noteSeparator: piece.noteSeparator } : {}),
   ...(piece.contentControlTag ? { contentControlTag: piece.contentControlTag } : {}),
+  ...(piece.pieceAtom ? { pieceAtom: piece.pieceAtom } : {}),
   ...(piece.modelText === undefined ? {} : { modelText: piece.modelText }),
 });

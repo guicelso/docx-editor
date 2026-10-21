@@ -32,6 +32,7 @@ import type {
 } from '../output/revision-presentation.ts';
 import type { FontConfigurationFragment, FontResolver } from './font-composition.ts';
 import type { PaginatedSurface, RemoteCaretLabelHost } from './paginated-surface.ts';
+import type { MarkPainter } from '../output/semantic-paint-pieces.ts';
 import type { HyperlinkActivation } from './surface-navigation.ts';
 import type { EquationActivation } from './surface-equations.ts';
 
@@ -249,6 +250,15 @@ export interface DocxEditorInstance extends Editor {
    * mount, and it survives a document reload the way the hyperlink chrome does.
    */
   setRemoteCaretLabelHost(host: RemoteCaretLabelHost | null): void;
+  /**
+   * Draw each mark the host's pieces ask for (`PieceAtom.mark`, `ContentControlTagInk.mark`), in
+   * the slot the engine measured for it. Changing it repaints without laying anything out; without
+   * a painter the slots stay empty. Kept across documents like the host's other policies.
+   *
+   * Instance-only, like `setRemoteCaretLabelHost`: it is handed a painted element, which a host
+   * driving the editor without a page has none of.
+   */
+  setMarkPainter(painter: MarkPainter | null): void;
   /**
    * Monotonic version of the observable editor state. Bumps whenever anything
    * `snapshot()` reports could have moved — a committed change, a selection move, zoom,

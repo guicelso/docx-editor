@@ -632,8 +632,8 @@ export interface PaginatedSurface {
   setContentControlView(
     view: import('../layout/content-control-view.ts').ContentControlView | null
   ): void;
-  /** The facade's channel for field tones: repaints without laying anything out. */
-  setFieldTones(tone: import('../contracts/editor-content-control-view.ts').FieldTone | null): void;
+  /** The facade's channel for the mark painter: repaints without laying anything out. */
+  setMarkPainter(painter: import('../output/semantic-paint-pieces.ts').MarkPainter | null): void;
   /** The facade's channel for which fields a plain press selects whole. */
   setFieldSelection(select: ((instruction: string) => boolean) | null): void;
   /** The facade's channel for which presses on a view-only tag the host takes. */

@@ -286,6 +286,8 @@ export interface StyleSpanRecord {
   readonly noteSeparator?: 'separator' | 'continuationSeparator';
   /** A view-only content-control tag: which control, and which edge. Its range is zero-width. */
   readonly contentControlTag?: import('./content-control-tags.ts').ContentControlTagMark;
+  /** An atom the host named: a field with a face, or a content control met as one unit. */
+  readonly pieceAtom?: import('./piece-names.ts').PieceAtomRecord;
   /**
    * The model text of the range a projected span paints other text over, when the model spells
    * that range: a content control's stored placeholder under the host's prompt.
@@ -939,6 +941,10 @@ export interface ContentControlBoundaryRecord {
   readonly placeholder: boolean;
   /** `w:dataBinding` is present — content edits are refused as bound. */
   readonly bound: boolean;
+  /** The host made it an atom: met as one unit, as a control showing its placeholder is. */
+  readonly atom: boolean;
+  /** The host's names for the control, published on its chrome. */
+  readonly name?: import('./piece-names.ts').PieceNameRecord;
   /** 0 for a top-level control; increments through nested wrappers under the shared nesting bound. */
   readonly nestingDepth: number;
   readonly level: ContentControlLevel;

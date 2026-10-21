@@ -71,6 +71,7 @@ export function tocBoundaryForLayout(
       effectiveLock: 'unlocked',
       placeholder: false,
       bound: false,
+      atom: false,
       nestingDepth: 0,
       level: 'block',
       fragments,

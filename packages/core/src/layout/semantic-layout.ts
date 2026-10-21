@@ -369,7 +369,10 @@ export function layoutSemanticDocument(
         ...(controlContextToken !== undefined ? { controlContextToken } : {}),
       };
     }
-    const withBoundaries = attachContentControlBoundaries(projected, part, controlToken);
+    const pieces = options.contentControlView?.pieces;
+    const withBoundaries = attachContentControlBoundaries(projected, part, controlToken, {
+      ...(pieces ? { pieces } : {}),
+    });
     if (options.session) {
       options.session.previous = withBoundaries;
     }

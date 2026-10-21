@@ -17,6 +17,9 @@ export const DEFAULT_FIELD_SHADING: FieldShadingMode;
 export type FieldShadingMode = 'never' | 'when-selected' | 'always';
 
 // @public
+export type MarkPainter = (mark: string, slot: HTMLElement) => void;
+
+// @public
 export interface OverlayRect {
     readonly activeBackground?: string;
     readonly className?: string;
@@ -71,10 +74,10 @@ export interface PaintOptions {
     // (undocumented)
     readonly facingPages?: boolean;
     readonly fieldShading?: FieldShadingMode;
-    readonly fieldTone?: FieldTone;
     readonly fontAlias?: (family: string) => string | undefined;
     // (undocumented)
     readonly imageUrlPort?: PaintImageUrlPort;
+    readonly markPainter?: MarkPainter;
     readonly materialize?: ReadonlySet<number>;
     readonly readOnlyParagraphIds?: ReadonlySet<string>;
     // (undocumented)

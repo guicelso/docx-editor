@@ -12,11 +12,14 @@ import { DEFAULT_RUN_STYLE } from '../layout/run-style.ts';
 
 import { paintedSpanText } from '../layout/optional-hyphen-break.ts';
 import {
-  chipGapPt,
+  markOfSpan,
   mountContentControlTagParts,
+  mountPieceMark,
   paintContentControlTagChip,
-} from './semantic-paint-content-control-tags.ts';
-import type { FieldTone } from '../contracts/editor-content-control-view.ts';
+  paintPieceAtom,
+  pieceGapPt,
+  type MarkPainter,
+} from './semantic-paint-pieces.ts';
 import {
   paintParagraphMark,
   paintManualLineBreak,
@@ -160,11 +163,10 @@ export interface PaintContext {
    */
   readonly fieldShading?: FieldShadingMode;
   /**
-   * The host's name for a field, from its instruction, published as `data-field-tone` on the
-   * field's result so the host's stylesheet can tell its own fields apart. Paint only: a host
-   * that changes it repaints without laying anything out.
+   * Fills each mark slot layout measured — an atom's or a chip's — with what the host draws for
+   * it. Paint only: a host that changes it repaints without laying anything out.
    */
-  readonly fieldTone?: FieldTone;
+  readonly markPainter?: MarkPainter;
   /** Paint paragraph-end and manual-line-break furniture. Tracked marks also follow Show/Hide. */
   readonly showParagraphMarks?: boolean;
   /**
@@ -199,6 +201,18 @@ function aliasIdentity(alias: (family: string) => string | undefined): string {
     aliasTokens.set(alias, token);
   }
   return token;
+}
+
+/** A host's mark painter, numbered by identity: a new one repaints, the same one reuses pages. */
+const markPainterIdentities = new WeakMap<MarkPainter, number>();
+let nextMarkPainterIdentity = 0;
+function markPainterIdentity(painter: MarkPainter): number {
+  let identity = markPainterIdentities.get(painter);
+  if (identity === undefined) {
+    identity = ++nextMarkPainterIdentity;
+    markPainterIdentities.set(painter, identity);
+  }
+  return identity;
 }
 
 /**
@@ -237,8 +251,8 @@ export interface PaintOptions {
   readonly defaultFontFamily?: string;
   /** See {@link PaintContext.fieldShading}. */
   readonly fieldShading?: FieldShadingMode;
-  /** See {@link PaintContext.fieldTone}. */
-  readonly fieldTone?: FieldTone;
+  /** See {@link PaintContext.markPainter}. */
+  readonly markPainter?: MarkPainter;
   /** Paint paragraph-end and manual-line-break furniture. Tracked marks also follow Show/Hide. */
   readonly showParagraphMarks?: boolean;
   /** See {@link PaintContext.shadeFormFields}. */
@@ -765,20 +779,6 @@ function positioned(
  * id — comment and revision metadata are attacker-controlled.
  */
 
-const FIELD_TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-
-/** A host's tone function, numbered by identity: a new one repaints, the same one reuses pages. */
-const fieldToneIdentities = new WeakMap<FieldTone, number>();
-let nextFieldToneIdentity = 0;
-function fieldToneIdentity(tone: FieldTone): number {
-  let identity = fieldToneIdentities.get(tone);
-  if (identity === undefined) {
-    identity = ++nextFieldToneIdentity;
-    fieldToneIdentities.set(tone, identity);
-  }
-  return identity;
-}
-
 /**
  * The grey block Word draws behind a field's result.
  *
@@ -798,8 +798,6 @@ function applyFieldShading(element: HTMLElement, span: StyleSpanRecord, ctx: Pai
   // Marked whatever the mode, because the mode is a VIEW setting a host can flip without
   // relaying out, and because the review surface and tests want to find fields regardless.
   element.dataset.fieldAtom = field.formField ? 'form' : 'field';
-  const tone = field.instruction === undefined ? undefined : ctx.fieldTone?.(field.instruction);
-  if (tone !== undefined && FIELD_TONE.test(tone)) element.dataset.fieldTone = tone;
   const shaded = field.formField
     ? ctx.shadeFormFields !== false
     : (ctx.fieldShading ?? DEFAULT_FIELD_SHADING) !== 'never';
@@ -874,6 +872,7 @@ function paintSpan(
   applyFieldShading(element, span, ctx);
   applyRevisionPresentation(element, span, ctx);
   if (span.contentControlTag) paintContentControlTagChip(element, span, ctx.scale);
+  if (span.pieceAtom) paintPieceAtom(element, span, ctx.scale);
   const textHost = prepareTextPaintHost(document, element, span, ctx.scale);
   if (span.text === '\t') {
     // Keep the model character for range mapping, but clip any native tab ink that would
@@ -903,10 +902,11 @@ function paintSpan(
     }
   }
   if (span.contentControlTag?.parts) {
-    mountContentControlTagParts(document, textHost, span, ctx.scale);
+    mountContentControlTagParts(document, textHost, span, ctx.scale, ctx.markPainter);
   } else {
     mountRunText(document, textHost, paintedSpanText(span), span.style, ctx.scale);
   }
+  mountPieceMark(document, element, markOfSpan(span), span, ctx.scale, ctx.markPainter);
   paintLegacyCheckbox(element, span, ctx.scale);
   paintLegacyDropdown(element, span);
   if (span.projected) {
@@ -1214,8 +1214,8 @@ function paintLine(
       logicalAdvance += span.box.width;
     }
     const margin = pendingGap > 0 && !previousSpanAbsorbedGap ? pendingGap : slackAfterPicture;
-    // A chip's own gap stays: the line's gap comes on top of it, never instead of it.
-    if (margin > 0.001) painted.style.marginLeft = `${(margin + chipGapPt(span)) * scale}px`;
+    // A piece's own gap stays: the line's gap comes on top of it, never instead of it.
+    if (margin > 0.001) painted.style.marginLeft = `${(margin + pieceGapPt(span)) * scale}px`;
     // A justify gap is drawn INSIDE the span before it wherever that span can stretch its
     // trailing space: the browser highlights a space's advance but never a margin, so a
     // margin gap broke the selection band into one block per word on justified lines.
@@ -2309,7 +2309,7 @@ export function paintSemanticLayoutWithAuthorSlots(
       : {}),
     ...(options.defaultFontFamily ? { defaultFontFamily: options.defaultFontFamily } : {}),
     ...(options.fieldShading ? { fieldShading: options.fieldShading } : {}),
-    ...(options.fieldTone ? { fieldTone: options.fieldTone } : {}),
+    ...(options.markPainter ? { markPainter: options.markPainter } : {}),
     showParagraphMarks: options.showParagraphMarks ?? false,
     changeBars: options.changeBars ?? 'all-markup',
     changeBarsToggle: options.changeBarsToggle ?? false,
@@ -2352,7 +2352,7 @@ export function paintSemanticLayoutWithAuthorSlots(
     // attached surface supplies its stable session map. The key must move when that map moves.
     `markup:${JSON.stringify(options.revisionMarkup)}|facing:${options.facingPages}|rev:${revisionStyleContextKey(revisionStyles)}|cells:${revisionStyleContextKey(revisionCellStyles)}|marks:${options.showParagraphMarks ?? false}|` +
     `bars:${resolved.changeBars}:${resolved.changeBarsToggle}|` +
-    `tone:${resolved.fieldTone ? fieldToneIdentity(resolved.fieldTone) : ''}`;
+    `marks:${resolved.markPainter ? markPainterIdentity(resolved.markPainter) : ''}`;
   const previous = retainedPaints.get(container);
   const parametersUnchanged = previous?.parameters === parameters;
   const reusable = parametersUnchanged

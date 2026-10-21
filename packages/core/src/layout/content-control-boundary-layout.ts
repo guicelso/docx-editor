@@ -25,13 +25,10 @@ import {
 import {
   contentControlPropertiesOf,
   controlLevelOf,
-  mapContentControlType,
   parseContentControlLock,
-  propertyChild,
   propertyVal,
 } from './content-control-properties.ts';
 import {
-  effectiveContentControlLock,
   unionLayoutBoxes,
   type BlockFragmentRecord,
   type ContentControlBoundaryRecord,
@@ -44,6 +41,8 @@ import {
 } from './semantic-records.ts';
 
 import { contentControlContextToken } from './content-control-context-token.ts';
+import type { ContentControlPieceDisplay } from '../contracts/editor-content-control-view.ts';
+import { recordWithoutGeometry, samePieceNames } from './content-control-record.ts';
 
 export { contentControlContextToken };
 
@@ -651,43 +650,12 @@ function fragmentsForInlineControl(
     });
 }
 
-/**
- * Wrapper chrome (alias/tag/type/placeholder/binding), memoized per immutable control node:
- * one settle builds a record per control per pass, and re-reading `w:sdtPr` for hundreds of
- * unchanged controls was a measurable share of the boundary attach.
- */
-interface ControlChromeMetadata {
-  readonly alias?: string;
-  readonly tag?: string;
-  readonly controlType: ContentControlBoundaryRecord['controlType'];
-  readonly placeholder: boolean;
-  readonly bound: boolean;
-}
-
-const controlChromeMemos = new WeakMap<OoxmlElement, ControlChromeMetadata>();
-
-function controlChromeOf(control: OoxmlElement): ControlChromeMetadata {
-  const cached = controlChromeMemos.get(control);
-  if (cached !== undefined) return cached;
-  const properties = contentControlPropertiesOf(control);
-  const alias = propertyVal(properties, 'alias');
-  const tag = propertyVal(properties, 'tag');
-  const chrome: ControlChromeMetadata = {
-    ...(alias !== undefined ? { alias } : {}),
-    ...(tag !== undefined ? { tag } : {}),
-    controlType: mapContentControlType(properties),
-    placeholder: propertyChild(properties, 'showingPlcHdr') !== undefined,
-    bound: propertyChild(properties, 'dataBinding') !== undefined,
-  };
-  controlChromeMemos.set(control, chrome);
-  return chrome;
-}
-
 function boundaryRecordOf(
   collected: CollectedControl,
   geometry: PlacedGeometryIndex,
-  work?: ContentControlBoundaryWork
+  extras: BoundaryExtras
 ): ContentControlBoundaryRecord {
+  const { work } = extras;
   const fragments =
     collected.level === 'inline' && collected.paragraphId && collected.range
       ? fragmentsForInlineControl(
@@ -700,7 +668,15 @@ function boundaryRecordOf(
       : fragmentsForBlockControl(collected.blockIds, geometry, work);
   // One source for the chrome fields: a field added to the record has one place to be
   // forgotten, not two, and the no-geometry path can never drift from this one.
-  return { ...recordWithoutGeometry(collected), fragments };
+  return { ...recordWithoutGeometry(collected, extras.pieces), fragments };
+}
+
+/** What a boundary pass may carry beyond the layout and its part. */
+interface BoundaryExtras {
+  /** Deterministic work accounting, for tests. */
+  readonly work?: ContentControlBoundaryWork;
+  /** The host's piece for each control: whether it is an atom, and its names. */
+  readonly pieces?: ContentControlPieceDisplay;
 }
 
 function sameGeometryFragments(
@@ -738,6 +714,8 @@ function sameBoundaryRecord(
     left.effectiveLock === right.effectiveLock &&
     left.placeholder === right.placeholder &&
     left.bound === right.bound &&
+    left.atom === right.atom &&
+    samePieceNames(left.name, right.name) &&
     left.nestingDepth === right.nestingDepth &&
     left.level === right.level &&
     sameGeometryFragments(left.fragments, right.fragments)
@@ -792,8 +770,9 @@ export function attachContentControlBoundaries(
   layout: SemanticLayout,
   part: OoxmlPart,
   token = contentControlContextToken(part),
-  work?: ContentControlBoundaryWork
+  extras: BoundaryExtras = {}
 ): SemanticLayout {
+  const { work } = extras;
   // The token the CALLER passes is the body part's. A control in a header lives in a different
   // part, whose token the body's does not move with — so the authority is derived here, over
   // every story part the layout draws. Each part's own token is memoized, so the extra parts
@@ -837,7 +816,7 @@ export function attachContentControlBoundaries(
 
   const index = collectedControlIndexOverParts(parts);
   const geometry = placedGeometryOf(layout, index, work);
-  const contentControls = index.controls.map((entry) => boundaryRecordOf(entry, geometry, work));
+  const contentControls = index.controls.map((entry) => boundaryRecordOf(entry, geometry, extras));
   const byPage = new Map<number, ContentControlBoundaryRecord[]>();
   for (const record of contentControls) {
     for (const fragment of record.fragments) {
@@ -922,7 +901,7 @@ export function contentControlRecordsInPart(
     // wrapping a table matched nothing and dropped out of the roster entirely.
     return paragraphsUnder(collected.control).some((id) => withinParagraphs.has(id));
   });
-  return controls.map(recordWithoutGeometry);
+  return controls.map((collected) => recordWithoutGeometry(collected));
 }
 
 /** Every paragraph id anywhere under a control, tables and nested controls included. */
@@ -971,21 +950,4 @@ export function contentControlHoldingParagraph(
     if (!found || collected.nestingDepth >= found.nestingDepth) found = collected;
   }
   return found ? recordWithoutGeometry(found) : null;
-}
-
-function recordWithoutGeometry(collected: CollectedControl): ContentControlBoundaryRecord {
-  const chrome = controlChromeOf(collected.control);
-  return {
-    id: collected.control.id,
-    ...(chrome.alias !== undefined ? { alias: chrome.alias } : {}),
-    ...(chrome.tag !== undefined ? { tag: chrome.tag } : {}),
-    controlType: chrome.controlType,
-    lock: collected.lockStack[collected.lockStack.length - 1] ?? 'unlocked',
-    effectiveLock: effectiveContentControlLock(collected.lockStack),
-    placeholder: chrome.placeholder,
-    bound: chrome.bound,
-    nestingDepth: collected.nestingDepth,
-    level: collected.level,
-    fragments: [],
-  };
 }

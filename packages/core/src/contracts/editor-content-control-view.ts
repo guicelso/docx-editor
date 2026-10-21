@@ -4,6 +4,33 @@
  */
 
 /**
+ * The host's names for a piece the engine draws, for the host's own stylesheet. Each lands on the
+ * piece's painted elements as `data-piece-tone`, `data-piece-form` and `data-piece-state`. Letters,
+ * digits and `-`, starting with a letter, at most 32; a name outside that is not published. @public
+ */
+export interface PieceName {
+  /** What colours the piece, as `data-piece-tone`. */
+  readonly tone?: string;
+  /** How the piece takes its place in the text, as `data-piece-form`. */
+  readonly form?: string;
+  /** A state the host knows of and the engine does not, as `data-piece-state`. */
+  readonly state?: string;
+}
+
+/**
+ * A piece the engine lays out as one unit: the room a chip keeps on each side and, when there is a
+ * mark, a measured slot before its text that the host's {@link MarkPainter} fills. The line never
+ * breaks inside it, and the caret stops only at its two edges. @public
+ */
+export interface PieceAtom extends PieceName {
+  /**
+   * The host's name for the mark, published as `data-piece-mark`, with the same pattern as a name.
+   * The host's `MarkPainter` draws in its slot.
+   */
+  readonly mark?: string;
+}
+
+/**
  * What a host draws at one edge of a content control: a label, an edge that draws nothing, or
  * labels one after the other. Each is a tag, with a caret slot on each side of it. @public
  */
@@ -12,22 +39,18 @@ export type ContentControlTagLabel =
   | ContentControlTagEdgeOnly
   | ContentControlTagSequence;
 
-/** A label drawn at a control's edge. @public */
-export interface ContentControlTagInk {
+/** A label drawn at a control's edge, with the host's names for it. @public */
+export interface ContentControlTagInk extends PieceName {
   /** What the tag shows, laid out as one unbreakable unit. */
   readonly text: string;
   /**
-   * An opaque name the chip publishes as `data-cc-tag-tone`, so the host's stylesheet colours it
-   * with its own theme. Letters, digits and `-`, starting with a letter, at most 32; anything else
-   * draws the neutral chip.
-   */
-  readonly tone?: string;
-  /**
    * `chip` (the default) draws the label in a neutral pill with room on each side. `text` draws
    * it as text in the line, with no room around it and no fill: punctuation that reads as the
-   * document's own, styled by the tone.
+   * document's own, styled by its names.
    */
   readonly variant?: 'chip' | 'text';
+  /** A chip's mark, measured before its text as a {@link PieceAtom}'s is. A `text` label has none. */
+  readonly mark?: string;
 }
 
 /**
@@ -90,6 +113,28 @@ export interface ContentControlPromptDisplay {
   readonly promptOf: (control: ContentControlSubject) => string | null;
 }
 
+/**
+ * What a host makes of one content control. @public
+ *
+ * An `atom` is met as one unit, as a control showing its prompt is: its content, when it is text
+ * in one face, lays out as one {@link PieceAtom}; the caret steps over it in one step, a press
+ * selects it whole, a drag takes it whole, and a key with it selected removes the control. A `frame` keeps its content as
+ * it is and publishes the names on the control's chrome. Either way the chrome carries the names.
+ */
+export type ContentControlPiece = { readonly atom: PieceAtom } | { readonly frame: PieceName };
+
+/**
+ * The host's piece for every content control. @public
+ *
+ * `pieceOf` must be pure and cheap, like {@link ContentControlTagDisplay.labelsOf}, and the engine
+ * lays out only the paragraphs whose answers changed. A control showing its prompt shows the
+ * prompt, whatever the answer.
+ */
+export interface ContentControlPieceDisplay {
+  /** The piece one control is, or null for a control the host does not draw as one. */
+  readonly pieceOf: (control: ContentControlSubject) => ContentControlPiece | null;
+}
+
 /** A press on a content control's view-only tag: the control the tag labels and its edge. @public */
 export interface ContentControlTagPress {
   /** The control the pressed tag labels. */
@@ -109,11 +154,14 @@ export interface ContentControlTagPress {
 export type ContentControlTagPressPolicy = (press: ContentControlTagPress) => boolean;
 
 /**
- * The host's name for a field, from its instruction (untrusted file text), or undefined for
- * none. Letters, digits and `-`, starting with a letter, at most 32: it lands in an attribute.
- * @public
+ * The host's face for a field, from its instruction (untrusted file text), or undefined to leave
+ * the field as the engine draws it. A field with a face is a {@link PieceAtom}. @public
+ *
+ * Pure and cheap, like {@link ContentControlTagDisplay.labelsOf}: the engine asks it for every
+ * field of every paragraph a layout pass prepares, and lays out only the paragraphs whose answers
+ * changed.
  */
-export type FieldTone = (instruction: string) => string | undefined;
+export type FieldFace = (instruction: string) => PieceAtom | undefined;
 
 /**
  * The host's view over content controls and fields. @public
@@ -128,11 +176,10 @@ export interface EditorContentControlView {
   setContentControlTags(display: ContentControlTagDisplay | null): void;
   /** Show the host's text in each content control that holds its placeholder. */
   setContentControlPrompts(display: ContentControlPromptDisplay | null): void;
-  /**
-   * Name each field for the host's stylesheet: the name lands on the field's painted result as
-   * `data-field-tone`. Changing it repaints without laying anything out.
-   */
-  setFieldTones(tone: FieldTone | null): void;
+  /** Make each content control an atom or a named frame, as the host answers. */
+  setContentControlPieces(display: ContentControlPieceDisplay | null): void;
+  /** Give each field the host's face: its names and its mark, laid out as one unit. */
+  setFieldFaces(face: FieldFace | null): void;
   /**
    * Which fields a plain press selects whole, from their instruction. The selected field's
    * painted result carries `data-selected`. Without a rule, a press places the caret at the

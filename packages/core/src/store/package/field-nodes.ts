@@ -415,9 +415,11 @@ export interface AtomicFieldSpan {
   readonly formatRunIds: readonly string[];
 }
 
-/** A closed field and the addressing policy its instruction gives its result. */
+/** A closed field, its effective instruction, and the addressing policy it gives its result. */
 export interface ParsedFieldSpan extends AtomicFieldSpan {
   readonly addressing: 'atomic' | 'editable-result';
+  /** The live instruction, else the deleted one — untrusted file text, never executed. */
+  readonly instruction: string;
 }
 
 /** One field-machine entry from the shared paragraph-inline flatten. @internal */
@@ -575,6 +577,7 @@ export function parsedFieldSpansOf(
         removeNodeIds: [child.id],
         formatRunIds: formatRunIdsOfSimple(child),
         addressing: 'atomic',
+        instruction: fldSimpleInstr(child) ?? '',
       });
     }
   }
@@ -736,6 +739,7 @@ export function parsedFieldSpansOf(
       addressing: isEditableFormTextInstruction(effectiveInstruction, maxInstructionChars)
         ? 'editable-result'
         : 'atomic',
+      instruction: effectiveInstruction,
     });
     i = endIndex + 1;
   }

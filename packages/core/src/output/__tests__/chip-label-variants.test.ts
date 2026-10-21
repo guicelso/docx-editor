@@ -71,7 +71,7 @@ describe('the variants of a tag label', () => {
   test('a text tag paints with no room around its label and says so to the stylesheet', () => {
     const [text] = paintedTags(CLOSE_ONLY);
     expect(text!.dataset.ccTagVariant).toBe('text');
-    expect(text!.dataset.ccTagTone).toBe('list');
+    expect(text!.dataset.pieceTone).toBe('list');
     expect(parseFloat(text!.style.marginLeft)).toBe(0);
     expect(parseFloat(text!.style.paddingLeft)).toBe(0);
     const [chip] = paintedTags({ labelsOf: () => ({ close: { text: ', ' } }) });

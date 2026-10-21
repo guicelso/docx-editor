@@ -70,7 +70,7 @@ export interface FieldAtomMarker {
   readonly formField: boolean;
   /**
    * The field's instruction as the file states it — untrusted text, never executed. It is what
-   * lets a host tell its own fields apart when it styles them (see `PaintOptions.fieldTone`).
+   * the host's field face is asked with (`ContentControlView.fieldFaces`).
    */
   readonly instruction?: string;
   /**
@@ -198,6 +198,11 @@ export interface FieldAwarePiece {
    * control's edge, as a `w:ptab`'s is: it advances the line without moving a model offset.
    */
   readonly contentControlTag?: import('./content-control-tags.ts').ContentControlTagMark;
+  /**
+   * Set when this piece is an ATOM the host named: a field with a face, or a content control's
+   * content laid out as one unit. It never breaks, and it takes a chip's room around its text.
+   */
+  readonly pieceAtom?: import('./piece-names.ts').PieceAtomRecord;
   /**
    * The model text of a projected piece that paints other text over a range the model spells:
    * a content control's stored placeholder under the host's prompt. Read back in its place.
@@ -371,6 +376,8 @@ export interface PieceEmitExtras {
   readonly linkOverride?: SpanLinkRecord;
   /** Marks this piece as a field's displayed result, for the shading Word draws under one. */
   readonly fieldAtom?: FieldAtomMarker;
+  /** The host's face for that field, which makes it an atom. */
+  readonly pieceAtom?: import('./piece-names.ts').PieceAtomRecord;
 }
 
 /**

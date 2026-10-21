@@ -30,6 +30,7 @@ export type {
   RevisionAuthorStyle,
   RevisionStyles,
 } from './revision-presentation.ts';
+export type { MarkPainter } from './semantic-paint-pieces.ts';
 export {
   paintSelectionOverlay,
   type OverlayRect,

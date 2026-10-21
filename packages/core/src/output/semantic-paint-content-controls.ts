@@ -9,6 +9,7 @@ import type {
   PageRecord,
 } from '@docx-editor.dev/core/layout';
 import type { PaintOptions } from './semantic-paint.ts';
+import { paintPieceName } from './semantic-paint-pieces.ts';
 
 /**
  * Height of the control label tab, in SCREEN pixels: `.docx-content-control-label` is 14px of
@@ -200,6 +201,7 @@ function paintContentControlBoundary(
   // Alias and tag are document-authored control metadata.
   if (control.alias) layer.dataset.alias = control.alias;
   if (control.tag) layer.dataset.tag = control.tag;
+  paintPieceName(layer, control.name);
   if (control.alias) layer.setAttribute('aria-label', control.alias);
   layer.style.position = 'absolute';
   layer.style.inset = '0';

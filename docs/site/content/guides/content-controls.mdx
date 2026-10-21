@@ -167,6 +167,27 @@ editor.setContentControlTagPress(({ control, edge }) => {
 
 The press stays visible to the page's own listeners, so a host that closes a popover on a press elsewhere still sees it.
 
+## Pieces the host names
+
+A host that styles the document's controls and fields as pieces of its own names them for its stylesheet. A tag label carries `tone`, `form` and `state`; the engine publishes them as `data-piece-tone`, `data-piece-form` and `data-piece-state` on what it paints, and writes no colour of its own.
+
+`editor.setContentControlPieces` says, per control, whether it is a named `frame` — its content stays as it is, and its chrome carries the names — or an `atom`, met as one unit, as a control showing its placeholder is: its plain text lays out as one piece with a chip's room around it, the caret steps over it in one step, a press selects it whole, and the next Backspace or Delete removes the control. `editor.setFieldFaces` makes a field an atom the same way, from its instruction. An atom under the pointer carries `data-hover`, and one the selection covers whole carries `data-selected`.
+
+An atom or a chip may ask for a `mark`: the engine measures a slot before its text (`data-piece-mark`, 1.15 em of the text beside it) and hands it to `editor.setMarkPainter`, which draws in it. Without a painter the slot stays empty, and print leaves it blank.
+
+```ts
+editor.setContentControlPieces({
+  pieceOf: ({ tag }) =>
+    tag?.startsWith('person:') ? { atom: { tone: 'person', form: 'atom', mark: 'person' } } : null,
+});
+editor.setFieldFaces((instruction) =>
+  instruction.includes('MERGEFIELD') ? { tone: 'data', form: 'atom', mark: 'data' } : undefined
+);
+editor.setMarkPainter((mark, slot) => {
+  slot.replaceChildren(iconFor(mark).cloneNode(true));
+});
+```
+
 ## Creating a control in the editor
 
 `insertContentControl` authors a new control in the open document, as one undoable step. Select text to wrap it in a control, or leave the caret where it is to insert an empty control that shows Word's prompt for its type:

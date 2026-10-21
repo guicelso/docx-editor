@@ -57,7 +57,7 @@ function indexedAgain(
 } {
   const work = emptyWork();
   return {
-    result: attachContentControlBoundaries(layout, part, layout.controlContextToken, work),
+    result: attachContentControlBoundaries(layout, part, layout.controlContextToken, { work }),
     work,
   };
 }

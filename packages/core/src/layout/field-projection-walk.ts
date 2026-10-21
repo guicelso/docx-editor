@@ -116,6 +116,12 @@ import {
   contentControlPromptOf,
   projectContentControlPrompt,
 } from './content-control-prompts.ts';
+import {
+  blockContentControlAtomOf,
+  contentControlAtomOf,
+  projectContentControlAtom,
+} from './content-control-atoms.ts';
+import { pieceAtomRecordOf, type PieceAtomRecord } from './piece-names.ts';
 import type { ContentControlTagLabel } from '../contracts/editor-content-control-view.ts';
 import type { ContentControlView } from './content-control-view.ts';
 import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
@@ -148,6 +154,12 @@ export function unmergedPiecesOfParagraphForDisplay(
   if (paragraph.kind !== 'paragraph') return [];
   const recordRemoved = removedSiteRecorder(changeSites, displayMode, authorFilter);
   const contentControlTags = contentControlView?.tags;
+  /** The host's face for a field: an atom, or nothing to leave the field as the engine draws it. */
+  const fieldFaceOf = (instruction: string | undefined): { pieceAtom?: PieceAtomRecord } => {
+    const face =
+      instruction === undefined ? undefined : contentControlView?.fieldFaces?.(instruction);
+    return face === undefined ? {} : { pieceAtom: pieceAtomRecordOf(face) };
+  };
   /** The formatting change the view resolved into the run being walked, if any. */
   let runFormatSite: RevisionAttribution | null = null;
 
@@ -224,6 +236,7 @@ export function unmergedPiecesOfParagraphForDisplay(
         ...(extras?.anchoredAtom ? { anchoredAtom: true as const } : {}),
         ...(extras?.equation ? { equation: extras.equation } : {}),
         ...(extras?.fieldAtom ? { fieldAtom: extras.fieldAtom } : {}),
+        ...(extras?.pieceAtom ? { pieceAtom: extras.pieceAtom } : {}),
         ...link,
       });
       return;
@@ -295,6 +308,7 @@ export function unmergedPiecesOfParagraphForDisplay(
           ...(instruction !== undefined ? { instruction } : {}),
           ...(formControl ? { formControl } : {}),
         },
+        ...fieldFaceOf(instruction),
       };
       return carriedMemo;
     };
@@ -922,14 +936,16 @@ export function unmergedPiecesOfParagraphForDisplay(
     if (!projected) return;
     // `w:ffData` is a `w:fldChar` payload, so a simple field is never a legacy form field. A body
     // page field carries its kind so document finalize substitutes the page's value.
+    const instruction =
+      simple.attributes.find((attribute) => attribute.localName === 'instr')?.value ?? '';
     push(projected.text, projected.props, projected.style, true, start, start + 1, {
       fieldAtom: {
         formField: false,
-        instruction:
-          simple.attributes.find((attribute) => attribute.localName === 'instr')?.value ?? '',
+        instruction,
         ...(projected.pageField ? { pageField: projected.pageField } : {}),
         ...(projected.pageRef ? { pageRef: projected.pageRef } : {}),
       },
+      ...fieldFaceOf(instruction),
       ...(projected.link ? { linkOverride: projected.link } : {}),
     });
   };
@@ -988,11 +1004,13 @@ export function unmergedPiecesOfParagraphForDisplay(
           : null;
       if (labels?.open) pushContentControlTag(child.id, 'open', labels.open, 'inline');
       const prompt = pending ? null : contentControlPromptOf(child, contentControlView?.prompts);
+      const atom = pending ? null : contentControlAtomOf(child, contentControlView?.pieces);
       const from = pieces.length;
       for (const inner of contentControlContentChildren(child)) {
         processInline(inner, depth + 1, namespaceScope, containerDepth + 1);
       }
       if (prompt !== null) projectContentControlPrompt(pieces, from, prompt);
+      else if (atom !== null) projectContentControlAtom(pieces, from, child.id, atom);
       if (labels?.close) pushContentControlTag(child.id, 'close', labels.close, 'inline');
       return;
     }
@@ -1041,12 +1059,18 @@ export function unmergedPiecesOfParagraphForDisplay(
   const blockPrompt = blockEdges
     ? blockContentControlPromptOf(blockEdges, contentControlView?.prompts)
     : null;
+  const blockAtom =
+    blockEdges && blockPrompt === null
+      ? blockContentControlAtomOf(blockEdges, contentControlView?.pieces)
+      : null;
   const paragraphFrom = pieces.length;
   // Paragraph root counts as depth 0; run children sit at depth 1.
   for (const child of paragraph.children) processInline(child, 1, paragraphScope, 0);
   // Malformed field missing end: demote — surface cached/buffered text, no live projection.
   abandonPending();
   if (blockPrompt !== null) projectContentControlPrompt(pieces, paragraphFrom, blockPrompt);
+  if (blockAtom !== null)
+    projectContentControlAtom(pieces, paragraphFrom, blockAtom.controlId, blockAtom.atom);
   if (blockEdges) pushBlockTags(blockEdges.closes, 'close');
   if (contentControlTags) fitContentControlTagsToText(pieces);
 

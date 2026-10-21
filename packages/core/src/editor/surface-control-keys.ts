@@ -6,8 +6,9 @@
 // from its boundary (`surface-text-form-fields.ts`); this is the same rule for a control, whose
 // boundary the tags make visible. A control showing its prompt holds nothing to lose, so with
 // the tags drawn a key in it removes it at once. Without drawn tags a key at an edge keeps Word's
-// rule and takes one character. A wrapper locked against deletion is refused by the store, as
-// every removal is.
+// rule and takes one character. A control the host made an atom is selected whole by a press, as a
+// field is, and the next key removes it. A wrapper locked against deletion is refused by the store,
+// as every removal is.
 
 import type {
   CaretSlot,
@@ -44,6 +45,8 @@ export interface ControlKeyDeps {
   readonly placement: () => SlotPlacement | null;
   /** The control edges at a position, in reading order, from the document itself. */
   readonly edgesAt: (position: SemanticPosition) => readonly CaretSlotNeighbour[];
+  /** The controls the host made atoms, as layout published them. */
+  readonly atomIds: () => ReadonlySet<string>;
   readonly select: (selection: SemanticSelection) => void;
   /** Remove a control and its content, leaving the caret where it stood, in the slot kept. */
   readonly remove: (controlId: string, caret: SemanticPosition, keep: SlotKeep) => void;
@@ -58,6 +61,20 @@ export interface ControlKeys {
   selectedId(): string | null;
   /** A selection move forgets the selected control unless it still selects it. */
   forgetUnlessAt(next: SemanticSelection): void;
+}
+
+/** Whether a selection, either way round, runs from exactly one end of a control to the other. */
+function coversExactly(
+  control: PlacedControl,
+  anchor: SemanticPosition,
+  head: SemanticPosition
+): boolean {
+  const same = (a: SemanticPosition, b: SemanticPosition): boolean =>
+    a.paragraphId === b.paragraphId && a.offset === b.offset;
+  return (
+    (same(anchor, control.from) && same(head, control.to)) ||
+    (same(anchor, control.to) && same(head, control.from))
+  );
 }
 
 /** One control, with the positions its content spans: inside one paragraph, or across several. */
@@ -119,8 +136,21 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
   };
 
   const selectedNow = (): PlacedControl | null => {
-    if (!selected || !selectionsEqual(deps.selection(), selected.selection)) return null;
+    if (!selected || !selectionsEqual(deps.selection(), selected.selection)) return atomSelected();
     return placedById(deps.selection().head.paragraphId, selected.controlId) ?? null;
+  };
+
+  /** The atom whose content the selection is exactly: a press on an atom selects it so. */
+  const atomSelected = (): PlacedControl | null => {
+    const atoms = deps.atomIds();
+    if (atoms.size === 0) return null;
+    if (isCollapsedSelection(deps.selection())) return null;
+    const { anchor, head } = deps.selection();
+    for (const controlId of atoms) {
+      const control = placedById(head.paragraphId, controlId);
+      if (control && coversExactly(control, anchor, head)) return control;
+    }
+    return null;
   };
 
   /** The caret stays where the control stood, in the slot touching the edge before its opening. */

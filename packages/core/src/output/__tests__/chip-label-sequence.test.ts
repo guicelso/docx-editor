@@ -1,6 +1,6 @@
 // A sequence of labels at one edge is one tag: it lays out as a single unit with the room each of
 // its labels keeps, stands between the edge's two slots like any tag, and paints each label as a
-// part of its own, with that label's tone and variant.
+// part of its own, with that label's names, mark and variant.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
@@ -100,14 +100,14 @@ describe('a sequence of labels at one edge', () => {
     ]);
   });
 
-  test('paints one tag per edge with a part per label, each with its own tone and variant', () => {
+  test('paints one tag per edge with a part per label, each with its own names and variant', () => {
     const container = document.createElement('div');
     paintSemanticLayout(container, layoutOf(SEQUENCES), { scale: 1, ariaHidden: false });
     const tags = [...container.querySelectorAll<HTMLElement>('[data-cc-tag-control]')];
     const parts = (tag: HTMLElement) =>
       [...tag.querySelectorAll<HTMLElement>('.docx-cc-tag')].map((part) => [
         part.textContent,
-        part.dataset.ccTagTone ?? null,
+        part.dataset.pieceTone ?? null,
         part.dataset.ccTagVariant ?? null,
       ]);
 
@@ -124,6 +124,28 @@ describe('a sequence of labels at one edge', () => {
         ['; e', 'item', 'text'],
         ['◂', 'optional', null],
       ],
+    ]);
+  });
+
+  test('a chip part draws its mark in its own room; a text part takes no mark', () => {
+    const marked = { ...CONDITION, mark: 'optional' } as const;
+    const display: ContentControlTagDisplay = {
+      labelsOf: () => ({
+        open: { variant: 'sequence', labels: [marked, { ...NUMBER, mark: 'ignored' }] },
+      }),
+    };
+    const [open] = tagSpansOf(layoutOf(display));
+    expect(open!.contentControlTag!.parts!.map((part) => part.mark ?? null)).toEqual([
+      'optional',
+      null,
+    ]);
+    expect(open!.box.width).toBeCloseTo(widthAlone(marked) + widthAlone(NUMBER), 6);
+    const container = document.createElement('div');
+    paintSemanticLayout(container, layoutOf(display), { scale: 1, ariaHidden: false });
+    const slots = [...container.querySelectorAll<HTMLElement>('[data-piece-mark]')];
+    const labelOf = (slot: HTMLElement) => slot.parentElement?.textContent?.replace(/\u00A0/g, ' ');
+    expect(slots.map((slot) => [slot.dataset.pieceMark, labelOf(slot)])).toEqual([
+      ['optional', 'há locação ▸'],
     ]);
   });
 

@@ -10,6 +10,7 @@ import type { BlockControlEdges } from '../store/store/block-control-edges.ts';
 import { contentControlPropertiesOf as storedPropertiesOf } from '../store/package/content-control-nodes.ts';
 import { contentControlSubjectOf } from './content-control-properties.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
+import { plainTextFrom } from './plain-text-pieces.ts';
 
 /** The host's text for a control showing its placeholder, or null to show the stored one. */
 export function contentControlPromptOf(
@@ -39,39 +40,27 @@ export function blockContentControlPromptOf(
   return null;
 }
 
-/** What a stored placeholder piece may carry to be shown as the host's text. */
-const PLAIN_PIECE_KEYS: ReadonlySet<string> = new Set(['text', 'props', 'style', 'start', 'end']);
-
 /**
  * Lay the stored placeholder, `pieces` from `from` on, out as one piece showing `prompt`.
  *
- * Only contiguous plain text qualifies. A placeholder that is tracked, linked, holds a field, a
- * drawing, a break or another control's tag keeps its stored pieces: the view never hides what
- * the file marks.
+ * Only contiguous plain text qualifies (`plainTextFrom`): a placeholder that is tracked, linked,
+ * holds a field, a drawing, a break or another control's tag keeps its stored pieces: the view
+ * never hides what the file marks.
  */
 export function projectContentControlPrompt(
   pieces: FieldAwarePiece[],
   from: number,
   prompt: string
 ): void {
-  const first = pieces[from];
-  if (!first) return;
-  let modelText = '';
-  let end = first.start;
-  for (let index = from; index < pieces.length; index += 1) {
-    const piece = pieces[index]!;
-    if (piece.start !== end || piece.end - piece.start !== piece.text.length) return;
-    if (!Object.keys(piece).every((key) => PLAIN_PIECE_KEYS.has(key))) return;
-    modelText += piece.text;
-    end = piece.end;
-  }
+  const plain = plainTextFrom(pieces, from);
+  if (!plain) return;
   pieces.splice(from, pieces.length - from, {
     text: prompt,
-    props: first.props,
-    style: first.style,
-    start: first.start,
-    end,
+    props: plain.first.props,
+    style: plain.first.style,
+    start: plain.first.start,
+    end: plain.end,
     projected: true,
-    modelText,
+    modelText: plain.text,
   });
 }

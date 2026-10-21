@@ -1333,6 +1333,7 @@ export interface DocxEditorInstance extends Editor {
     setHyperlinkChrome(handlers: HyperlinkChromeHandlers): Unsubscribe;
     setInvalidTextFormFieldChrome(handlers: InvalidTextFormFieldChromeHandlers, options?: PopupChromeRegistrationOptions): Unsubscribe;
     setLocale(locale: string | undefined): void;
+    setMarkPainter(painter: MarkPainter | null): void;
     setMode(mode: 'edit' | 'view' | 'suggesting' | undefined): void;
     setRemoteCaretLabelHost(host: RemoteCaretLabelHost | null): void;
     setReviewAuthorVisible(author: string, visible: boolean): void;
@@ -2206,7 +2207,6 @@ export interface PaginatedSurface {
     setEditingMode(mode: SurfaceEditingMode): void;
     setEditPolicy(policy: EditPolicy | null): void;
     setFieldSelection(select: ((instruction: string) => boolean) | null): void;
-    setFieldTones(tone: FieldTone | null): void;
     setHighlightPainter(painter: SurfaceOverlayPainter | null): void;
     setIndent(update: {
         readonly firstLine?: number | null;
@@ -2215,6 +2215,7 @@ export interface PaginatedSurface {
     }): boolean;
     setLayoutView(view: SurfaceLayoutView): boolean;
     setLocale(locale: string | undefined): void;
+    setMarkPainter(painter: MarkPainter | null): void;
     // (undocumented)
     setNoteProperties(args: {
         readonly endnote?: {
@@ -2288,12 +2289,12 @@ export interface PaginatedSurfaceOptions {
     readonly editPolicy?: EditPolicy;
     readonly fieldSelection?: (instruction: string) => boolean;
     readonly fieldShading?: FieldShadingMode;
-    readonly fieldTone?: FieldTone;
     readonly fontAlias?: (family: string) => string | undefined;
     readonly hiddenRevisionAuthors?: readonly string[];
     readonly imageDecodePort?: ImageDecodePort;
     readonly layoutView?: SurfaceLayoutView;
     readonly locale?: string;
+    readonly markPainter?: MarkPainter;
     // (undocumented)
     readonly measurer?: TextMeasurer;
     // (undocumented)

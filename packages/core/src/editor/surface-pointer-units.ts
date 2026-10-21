@@ -1,5 +1,6 @@
-// What one press selects as a UNIT: a content control showing its prompt, from the boundary
-// geometry layout publishes. Split out of `surface-pointer.ts`, which owns the gesture.
+// What one press selects as a UNIT: a content control showing its prompt, or one the host made an
+// atom, from the boundary geometry layout publishes. Split out of `surface-pointer.ts`, which owns
+// the gesture.
 
 import { contentControlAtPoint, type SemanticHit } from '../layout/semantic-hit-test.ts';
 import {
@@ -82,18 +83,23 @@ function visitParagraphBlocks(
   }
 }
 
+/** Whether the reader meets a control as one unit: it shows its prompt, or the host made it an atom. */
+export function isUnitControl(control: ContentControlBoundaryRecord): boolean {
+  return control.placeholder || control.atom;
+}
+
 /**
- * Full addressable range of a placeholder control from layout-published boundary geometry.
+ * Full addressable range of a unit control from layout-published boundary geometry.
  *
  * Block / row / cell controls cover whole paragraphs whose boxes touch a fragment (including
  * paragraphs nested under tables and nested block-control content that flattened into the
  * flow). Inline controls take the UTF-16 span of every painted span that touches a fragment.
  */
-export function placeholderSelectionRange(
+export function unitSelectionRange(
   layout: SemanticLayout,
   control: ContentControlBoundaryRecord
 ): PositionRange | null {
-  if (!control.placeholder || control.fragments.length === 0) return null;
+  if (!isUnitControl(control) || control.fragments.length === 0) return null;
 
   let from: SemanticPosition | null = null;
   let to: SemanticPosition | null = null;
@@ -103,7 +109,7 @@ export function placeholderSelectionRange(
     if (!to || comparePositions(layout, end, to) > 0) to = end;
   };
 
-  // Non-inline placeholders select whole paragraphs — row/cell wrappers are structural units
+  // Non-inline units select whole paragraphs — row/cell wrappers are structural units
   // the same way block wrappers are, so a mid-cell partial range must still absorb.
   const wholeParagraphs = control.level !== 'inline';
 
@@ -145,29 +151,30 @@ function controlById(
   return (layout.contentControls ?? []).find((control) => control.id === controlId) ?? null;
 }
 
-export function placeholderAtHit(
+export function unitAtHit(
   layout: SemanticLayout,
   hit: SemanticHit
 ): ContentControlBoundaryRecord | null {
   const id = hit.contentControlId;
   if (!id) {
     // Hit records may omit the id when resolved through a scoped story path — fall back to
-    // geometry so placeholder expansion still works inside headers/notes.
+    // geometry so unit expansion still works inside headers/notes.
     const point = { x: hit.caret.x, y: hit.caret.y + hit.caret.height / 2 };
     const control = contentControlAtPoint(layout, hit.pageIndex, point);
-    return control?.placeholder ? control : null;
+    return control && isUnitControl(control) ? control : null;
   }
   const control = controlById(layout, id);
-  return control?.placeholder ? control : null;
+  return control && isUnitControl(control) ? control : null;
 }
 
 /**
- * Expand a selection so every `w:showingPlcHdr` control it touches is selected as a unit.
+ * Expand a selection so every unit control it touches is selected whole: a range over any unit,
+ * and a caret inside a prompt.
  *
  * Used by pointer drag / shift-click, and exported so keyboard extend paths can share the
  * same atomic rule without duplicating geometry walks.
  */
-export function absorbPlaceholderControls(
+export function absorbUnitControls(
   layout: SemanticLayout,
   selection: SemanticSelection
 ): SemanticSelection {
@@ -187,10 +194,12 @@ export function absorbPlaceholderControls(
   while (changed) {
     changed = false;
     for (const control of controls) {
-      if (!control.placeholder) continue;
-      const range = placeholderSelectionRange(layout, control);
+      if (!isUnitControl(control)) continue;
+      const range = unitSelectionRange(layout, control);
       if (!range) continue;
       const collapsed = comparePositions(layout, from, to) === 0;
+      // A caret at an atom's edge stands beside it: only a prompt takes a caret in whole.
+      if (collapsed && !control.placeholder) continue;
       const intersects = collapsed
         ? comparePositions(layout, from, range.from) >= 0 &&
           comparePositions(layout, from, range.to) < 0
@@ -211,4 +220,40 @@ export function absorbPlaceholderControls(
   // Preserve which end the user is dragging (head) relative to the original orientation.
   const headIsEnd = comparePositions(layout, selection.anchor, selection.head) <= 0;
   return headIsEnd ? { anchor: from, head: to } : { anchor: to, head: from };
+}
+
+/**
+ * Where a caret move that lands INSIDE an atom goes: to the atom's edge on the side it was moving
+ * to, so the caret steps over it in one step, as it does over a field. A prompt is absorbed
+ * instead ({@link absorbUnitControls}): its text is replaced by the first key.
+ */
+export function stepOverAtoms(
+  layout: SemanticLayout,
+  position: SemanticPosition,
+  backward: boolean
+): SemanticPosition {
+  for (const control of layout.contentControls ?? []) {
+    if (!control.atom) continue;
+    const range = unitSelectionRange(layout, control);
+    if (!range) continue;
+    const inside =
+      comparePositions(layout, position, range.from) > 0 &&
+      comparePositions(layout, position, range.to) < 0;
+    if (inside) return backward ? range.from : range.to;
+  }
+  return position;
+}
+
+const atomIdsByLayout = new WeakMap<SemanticLayout, ReadonlySet<string>>();
+
+/** The controls the host made atoms, once per layout. */
+export function atomControlIdsOf(layout: SemanticLayout): ReadonlySet<string> {
+  let ids = atomIdsByLayout.get(layout);
+  if (!ids) {
+    ids = new Set(
+      (layout.contentControls ?? []).filter((each) => each.atom).map((each) => each.id)
+    );
+    atomIdsByLayout.set(layout, ids);
+  }
+  return ids;
 }

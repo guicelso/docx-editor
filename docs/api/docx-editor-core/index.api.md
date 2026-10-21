@@ -910,6 +910,18 @@ export interface ContentControlFilter {
 }
 
 // @public
+export type ContentControlPiece = {
+    readonly atom: PieceAtom;
+} | {
+    readonly frame: PieceName;
+};
+
+// @public
+export interface ContentControlPieceDisplay {
+    readonly pieceOf: (control: ContentControlSubject) => ContentControlPiece | null;
+}
+
+// @public
 export interface ContentControlPromptDisplay {
     readonly promptOf: (control: ContentControlSubject) => string | null;
 }
@@ -949,9 +961,9 @@ export interface ContentControlTagEdgeOnly {
 }
 
 // @public
-export interface ContentControlTagInk {
+export interface ContentControlTagInk extends PieceName {
+    readonly mark?: string;
     readonly text: string;
-    readonly tone?: string;
     readonly variant?: 'chip' | 'text';
 }
 
@@ -1384,6 +1396,7 @@ export interface DocxEditorInstance extends Editor {
     setHyperlinkChrome(handlers: HyperlinkChromeHandlers): Unsubscribe;
     setInvalidTextFormFieldChrome(handlers: InvalidTextFormFieldChromeHandlers, options?: PopupChromeRegistrationOptions): Unsubscribe;
     setLocale(locale: string | undefined): void;
+    setMarkPainter(painter: MarkPainter | null): void;
     setMode(mode: 'edit' | 'view' | 'suggesting' | undefined): void;
     setRemoteCaretLabelHost(host: RemoteCaretLabelHost | null): void;
     setReviewAuthorVisible(author: string, visible: boolean): void;
@@ -1873,11 +1886,12 @@ export type EditorCommandShape<T> = {
 
 // @public
 export interface EditorContentControlView {
+    setContentControlPieces(display: ContentControlPieceDisplay | null): void;
     setContentControlPrompts(display: ContentControlPromptDisplay | null): void;
     setContentControlTagPress(press: ContentControlTagPressPolicy | null): void;
     setContentControlTags(display: ContentControlTagDisplay | null): void;
+    setFieldFaces(face: FieldFace | null): void;
     setFieldSelection(select: ((instruction: string) => boolean) | null): void;
-    setFieldTones(tone: FieldTone | null): void;
 }
 
 // @public
@@ -2237,7 +2251,7 @@ export interface Extent {
 }
 
 // @public
-export type FieldTone = (instruction: string) => string | undefined;
+export type FieldFace = (instruction: string) => PieceAtom | undefined;
 
 // @public
 export const FONT_RESOLVER_BRAND: unique symbol;
@@ -2872,6 +2886,18 @@ export interface ParagraphTabStop {
     readonly leader?: 'none' | 'dot' | 'hyphen' | 'underscore' | 'heavy' | 'middleDot';
     // (undocumented)
     readonly positionTwips: number;
+}
+
+// @public
+export interface PieceAtom extends PieceName {
+    readonly mark?: string;
+}
+
+// @public
+export interface PieceName {
+    readonly form?: string;
+    readonly state?: string;
+    readonly tone?: string;
 }
 
 // @public

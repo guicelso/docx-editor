@@ -9,48 +9,44 @@ import type {
   ContentControlTagLabel,
 } from '../contracts/editor-content-control-view.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
+import {
+  checkedPieceNameOf,
+  NO_PIECE_ROOM,
+  pieceNameRecordOf,
+  pieceRoomOf,
+  pieceRoomWidthPt,
+  type PieceNameRecord,
+  type PieceRoom,
+} from './piece-names.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
 /** The text a tag measures and paints: one unbreakable unit, its spaces made non-breaking. */
 export function contentControlTagText(label: ContentControlTagInk): string {
-  return label.text.replace(/ /g, '\u00A0');
+  return label.text.replace(/ /g, ' ');
 }
-
-/** The transparent gap that keeps two neighbouring chips apart, inside each chip's advance. */
-const CHIP_GAP_PT = 1.2;
-/** The padding between the chip's fill and its label, in ems of the chip's own size. */
-const CHIP_PAD_EM = 0.35;
 
 /**
- * The room a tag, or one part of a sequence, keeps on EACH side of its label, in points: the gap
- * between neighbours and the padding inside the fill, none for a `text`, an `edge` or a `sequence`
- * tag, whose parts keep their own. Geometry, not characters — layout adds it to the measured label
- * and paint draws exactly it, so the label is centred in the space reserved for it whatever font
- * paints it.
+ * The room a tag, or one part of a sequence, keeps around its label: a chip's (with its mark), and
+ * none for a `text`, an `edge` or a `sequence` tag, whose parts keep their own.
  */
-export function contentControlTagInsetsPt(
+export function contentControlTagRoomOf(
   style: Pick<ResolvedRunStyle, 'fontSizePt'>,
-  mark: Pick<ContentControlTagMark, 'variant'>
-): {
-  readonly gapPt: number;
-  readonly padPt: number;
-} {
-  if (mark.variant !== undefined) return { gapPt: 0, padPt: 0 };
-  return { gapPt: CHIP_GAP_PT, padPt: style.fontSizePt * CHIP_PAD_EM };
+  mark: Pick<ContentControlTagMark, 'variant' | 'mark'>
+): PieceRoom {
+  if (mark.variant !== undefined) return NO_PIECE_ROOM;
+  return pieceRoomOf(style, mark.mark);
 }
 
-/** What a tag adds to its label's measured width: the room on both sides, of each part of a sequence. */
+/** What a tag adds to its label's measured width: the room of each part of a sequence. */
 export function contentControlTagChromePt(
   style: Pick<ResolvedRunStyle, 'fontSizePt'>,
-  mark: Pick<ContentControlTagMark, 'variant' | 'parts'>
+  mark: Pick<ContentControlTagMark, 'variant' | 'mark' | 'parts'>
 ): number {
-  const room = (variant: ContentControlTagMark['variant']): number => {
-    const { gapPt, padPt } = contentControlTagInsetsPt(style, { variant });
-    return 2 * (gapPt + padPt);
-  };
-  return mark.parts === undefined
-    ? room(mark.variant)
-    : mark.parts.reduce((sum, part) => sum + room(part.variant), 0);
+  const parts = mark.parts ?? [mark];
+  return parts.reduce(
+    (sum, part) => sum + pieceRoomWidthPt(contentControlTagRoomOf(style, part)),
+    0
+  );
 }
 
 /** Which edge of the control a tag stands at. @public */
@@ -64,8 +60,10 @@ export interface ContentControlTagMark {
   readonly controlId: string;
   readonly edge: ContentControlTagEdge;
   readonly level: ContentControlTagLevel;
-  /** The host's tone, already checked against {@link contentControlTagToneOf}. */
-  readonly tone?: string;
+  /** The host's names, already checked. */
+  readonly name?: PieceNameRecord;
+  /** A chip's mark, already checked. */
+  readonly mark?: string;
   /**
    * Present for a tag drawn as text in the line, one that draws nothing, or a sequence of labels;
    * absent for a chip.
@@ -75,20 +73,15 @@ export interface ContentControlTagMark {
   readonly parts?: readonly ContentControlTagPart[];
 }
 
-/** One label of a sequence: how much of the tag's text it paints, its tone and its variant. @public */
+/** One label of a sequence: how much of the tag's text it paints, its names, mark and variant. @public */
 export interface ContentControlTagPart {
   readonly length: number;
-  readonly tone?: string;
+  /** The label's names, already checked. */
+  readonly name?: PieceNameRecord;
+  /** A chip label's mark, already checked. */
+  readonly mark?: string;
   /** Present for a label drawn as text in the line; absent for a chip. */
   readonly variant?: 'text';
-}
-
-const TONE = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-
-/** The tone a chip may publish, or undefined: the host's string lands in an attribute. */
-export function contentControlTagToneOf(label: ContentControlTagLabel): string | undefined {
-  if (label.variant === 'edge' || label.variant === 'sequence') return undefined;
-  return label.tone !== undefined && TONE.test(label.tone) ? label.tone : undefined;
 }
 
 /**
@@ -97,7 +90,7 @@ export function contentControlTagToneOf(label: ContentControlTagLabel): string |
  * is a piece with no text, which takes no room and still stands between its two slots.
  */
 export function contentControlTagPiece(
-  mark: Omit<ContentControlTagMark, 'tone' | 'variant' | 'parts'>,
+  mark: Omit<ContentControlTagMark, 'name' | 'mark' | 'variant' | 'parts'>,
   label: ContentControlTagLabel,
   run: ResolvedRunStyle,
   offset: number
@@ -116,37 +109,41 @@ export function contentControlTagPiece(
   };
 }
 
+type DrawnInk = Pick<ContentControlTagMark, 'name' | 'mark'> & { readonly variant?: 'text' };
+
 /** The text a label paints and what its mark says of it, or null for a label with nothing to draw. */
 function drawnTagOf(label: ContentControlTagLabel): Readonly<{
   text: string;
-  mark: Pick<ContentControlTagMark, 'tone' | 'variant' | 'parts'>;
+  mark: Pick<ContentControlTagMark, 'name' | 'mark' | 'variant' | 'parts'>;
 }> | null {
   if (label.variant === 'edge') return { text: '', mark: { variant: 'edge' } };
   if (label.variant === 'sequence') return drawnSequenceOf(label.labels);
   if (label.text.length === 0) return null;
-  const tone = contentControlTagToneOf(label);
-  return {
-    text: contentControlTagText(label),
-    mark: {
-      ...(tone === undefined ? {} : { tone }),
-      ...(label.variant === 'text' ? { variant: label.variant } : {}),
-    },
-  };
+  return { text: contentControlTagText(label), mark: drawnInkOf(label) };
 }
 
 function drawnSequenceOf(labels: readonly ContentControlTagInk[]): ReturnType<typeof drawnTagOf> {
   const drawn = labels.filter((label) => label.text.length > 0);
   if (drawn.length === 0) return null;
   const texts = drawn.map(contentControlTagText);
-  const parts = drawn.map((label, index): ContentControlTagPart => {
-    const tone = contentControlTagToneOf(label);
-    return {
+  const parts = drawn.map(
+    (label, index): ContentControlTagPart => ({
       length: texts[index]!.length,
-      ...(tone === undefined ? {} : { tone }),
-      ...(label.variant === 'text' ? { variant: label.variant } : {}),
-    };
-  });
+      ...drawnInkOf(label),
+    })
+  );
   return { text: texts.join(''), mark: { variant: 'sequence', parts } };
+}
+
+/** A label's checked names and mark; a mark only on a chip, which has the room for it. */
+function drawnInkOf(label: ContentControlTagInk): DrawnInk {
+  const name = pieceNameRecordOf(label);
+  const mark = label.variant === 'text' ? undefined : checkedPieceNameOf(label.mark);
+  return {
+    ...(name === undefined ? {} : { name }),
+    ...(mark === undefined ? {} : { mark }),
+    ...(label.variant === 'text' ? { variant: label.variant } : {}),
+  };
 }
 
 /**
@@ -192,7 +189,7 @@ function isText(piece: FieldAwarePiece): boolean {
  * a selection or a control's boundary drawn over the line covers the chip exactly. Everything
  * else that would change the glyphs of the surrounding prose is reset — a tag inside a bold,
  * struck-through, all-caps run must not inherit any of it. Colour and fill are not run
- * formatting: the chip is painted by `semantic-paint` from the stylesheet, by tone.
+ * formatting: the chip is painted by `semantic-paint` from the stylesheet, by its names.
  */
 export function contentControlTagStyle(base: ResolvedRunStyle): ResolvedRunStyle {
   return {

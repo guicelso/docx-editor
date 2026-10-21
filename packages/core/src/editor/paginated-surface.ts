@@ -118,7 +118,8 @@ import {
 import { resolveSelectedDrawingRecord } from './docx-editor-images.ts';
 import { createHiddenMarkEditing, type RevisionView } from './hidden-mark-joins.ts';
 import { drawingSelectionPosition } from './surface-drawing-selection.ts';
-import { syncActiveFieldShading, syncSelectedField } from './surface-field-shading.ts';
+import { syncActiveFieldShading } from './surface-field-shading.ts';
+import { syncHoveredPieces, syncSelectedPiece } from './surface-piece-state.ts';
 import {
   createLayoutScheduler,
   createLayoutSession,
@@ -259,10 +260,11 @@ import { authoredRunPropertiesAt, type SurfaceProperty } from './surface-formatt
 import { mergedRunWrite } from '../store/store/direct-properties.ts';
 import { bindDirectionChord, createDirectionChordHandler } from './surface-direction-chord.ts';
 import {
-  absorbPlaceholderControls,
+  absorbUnitControls,
   createPointerController,
   type PointerController,
 } from './surface-pointer.ts';
+import { atomControlIdsOf, stepOverAtoms } from './surface-pointer-units.ts';
 import { createReviewViewState } from './surface-review-view.ts';
 import { selectionsEqual } from './dom-selection.ts';
 import { createSurfaceSelectionSync } from './surface-selection-sync.ts';
@@ -350,6 +352,15 @@ type ScaleMutableSurface = PaginatedSurface & {
     scope?: StoryScope
   ): TreeApplyResult;
 };
+
+/** The moves that travel toward the start of the document. */
+const BACKWARD_MOVES: ReadonlySet<NavigationCommand> = new Set([
+  'left',
+  'wordLeft',
+  'lineStart',
+  'up',
+  'pageUp',
+]);
 
 /**
  * Mount a paginated surface over DOCX bytes.
@@ -919,7 +930,7 @@ export function mountPaginatedSurface(
   let showFieldCodes = false;
   // The host's view, as the facade hands it to every surface it mounts.
   let contentControlView = options.contentControlView;
-  let fieldTone = options.fieldTone;
+  let markPainter = options.markPainter;
   let fieldSelection = options.fieldSelection;
   let contentControlTagPress = options.contentControlTagPress;
   let editPolicy = options.editPolicy;
@@ -960,6 +971,7 @@ export function mountPaginatedSurface(
     drawnSlot: () => caretSlots.current(),
     placement: () => caretSlots.placement(),
     edgesAt: controlEdgesAt,
+    atomIds: () => atomControlIdsOf(currentLayout),
     select: (next) => setSelection(next),
     remove: (controlId, at, slot) =>
       commit(
@@ -1850,6 +1862,7 @@ export function mountPaginatedSurface(
         chrome.dataset.hover = '';
       else delete chrome.dataset.hover;
     }
+    syncHoveredPieces(pagesLayer, next);
     options.onHoverChange?.(next);
   }
 
@@ -2606,7 +2619,7 @@ export function mountPaginatedSurface(
         ariaHidden: false,
         drawingStrings,
         ...(options.fieldShading ? { fieldShading: options.fieldShading } : {}),
-        ...(fieldTone ? { fieldTone } : {}),
+        ...(markPainter ? { markPainter } : {}),
         ...(revisionStyles !== undefined ? { revisionStyles } : {}),
         revisionMarkup: markupSettings.current(),
         facingPages: revisionFacingPages(settingsPartOf(session.currentPackage())),
@@ -2628,7 +2641,8 @@ export function mountPaginatedSurface(
     // Paint just rebuilt every span, so the caret's field lost its mark with the old DOM.
     textboxEditing?.syncDom();
     syncActiveFieldShading(pagesLayer, collapsedCaretPosition(), { domReplaced: true });
-    syncSelectedField(pagesLayer, selection, { domReplaced: true });
+    syncSelectedPiece(pagesLayer, selection, { domReplaced: true });
+    syncHoveredPieces(pagesLayer, hover, { domReplaced: true });
     setHeaderFooterEditingChrome(container, pagesLayer, activeHf != null);
     // Viewing mode hides write affordances the painter cannot know about — today the
     // blank header/footer "double-click to add" band.
@@ -3386,7 +3400,7 @@ export function mountPaginatedSurface(
     updateCaret: () => {
       caret.update();
       syncActiveFieldShading(pagesLayer, collapsedCaretPosition());
-      syncSelectedField(pagesLayer, selection);
+      syncSelectedPiece(pagesLayer, selection);
     },
     textOf: (paragraphId) => textOf(paragraphId),
     pendingFormatOps: (paragraphId, offset, length, replacing) =>
@@ -4874,18 +4888,12 @@ export function mountPaginatedSurface(
       const outside = tocEscapePosition(
         session.part(),
         moved.position,
-        ['left', 'wordLeft', 'lineStart', 'up', 'pageUp'].includes(command)
+        BACKWARD_MOVES.has(command)
       );
       if (outside) moved = { ...moved, position: outside };
       if (tocAtPosition(session.part(), moved.position)) {
         if (extend) return;
-        const backwards = new Set<NavigationCommand>([
-          'left',
-          'wordLeft',
-          'lineStart',
-          'up',
-          'pageUp',
-        ]);
+        const backwards = BACKWARD_MOVES;
         // The escape steps by LINE, never by character. A character step inside a row that
         // has any text at all lands in the same paragraph, and the loop's own "we did not
         // change paragraph" bail then fired on the first iteration: the caret could neither
@@ -4919,6 +4927,12 @@ export function mountPaginatedSurface(
         }
         if (tocAtPosition(session.part(), moved.position)) return;
       }
+      if (!extend) {
+        moved = {
+          ...moved,
+          position: stepOverAtoms(editingLayout(), moved.position, BACKWARD_MOVES.has(command)),
+        };
+      }
       desiredX = moved.desiredX;
       // Note continuations share one EditorScope across pages: retarget the visual
       // occurrence before selection/caret paint so the DOM host follows geometry.
@@ -4931,16 +4945,16 @@ export function mountPaginatedSurface(
       }
       const anchor = extend ? hiddenMarks.shown(selection.anchor) : moved.position;
       const target = { anchor, head: moved.position };
-      // A prompt is one unit for the caret, as in Word: arrowing into it selects the whole
-      // prompt rather than parking the caret inside text the first keystroke replaces, which
+      // A prompt or an atom is one unit for the caret, as in Word: arrowing into it selects the
+      // whole unit rather than parking the caret inside text the first keystroke replaces, which
       // left the buffered keystrokes after it aimed past the end of the shortened paragraph.
       // `head` for EVERY navigation, extending or not. The end the reader is moving has to
       // stay visible, and the mirror cannot paint a selection whose head sits on a page
       // virtualization never built — a shift-extended jump showed nothing selected at all
       // until the view followed it. A plain move is collapsed, where `head` and `caret` mean
-      // the same thing, EXCEPT when it lands on a prompt and ABSORBS it: that is a range the
+      // the same thing, EXCEPT when it lands on a unit and ABSORBS it: that is a range the
       // reader never dragged, so it is revealed by its start, where the next keystroke goes.
-      const next = extend ? target : absorbPlaceholderControls(currentLayout, target);
+      const next = extend ? target : absorbUnitControls(currentLayout, target);
       const absorbed = !extend && !selectionsEqual(next, target);
       const before = selection;
       setSelection(next, true, absorbed ? 'none' : 'head');
@@ -5495,10 +5509,10 @@ export function mountPaginatedSurface(
       scheduler.flush();
       return true;
     },
-    setFieldTones(tone) {
-      if (destroyed || fieldTone === (tone ?? undefined)) return;
-      fieldTone = tone ?? undefined;
-      // Paint only: the tone never changes what a line measures.
+    setMarkPainter(painter) {
+      if (destroyed || markPainter === (painter ?? undefined)) return;
+      markPainter = painter ?? undefined;
+      // Paint only: the slots are measured, whatever fills them.
       render();
     },
     setContentControlView(view) {

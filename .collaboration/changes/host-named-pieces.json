@@ -1,0 +1,18 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tag label had one opaque tone, published as data-cc-tag-tone; a field had one, as data-field-tone, asked at paint; a control's content was always laid out as its own text and words.",
+  "after": "A tag label, a control and a field carry the host's names, published as data-piece-*. A control the host makes an atom lays out its plain text as one piece and is met as one unit; a field with a face is an atom too. An atom or a chip may carry a measured mark slot the host's painter fills, and an atom carries its own hover and selection.",
+  "reason": "Layout and paint of the host's view only; nothing reaches the document, an operation or shared updates.",
+  "tests": [
+    "packages/core/src/layout/__tests__/piece-atom.test.ts",
+    "packages/core/src/layout/__tests__/content-control-view.test.ts",
+    "packages/core/src/output/__tests__/field-face-paint.test.ts",
+    "packages/core/src/output/__tests__/content-control-tag-paint.test.ts",
+    "packages/core/src/output/__tests__/chip-label-sequence.test.ts",
+    "packages/core/src/editor/__tests__/piece-atom-surface.test.ts",
+    "packages/core/src/editor/__tests__/content-control-view-facade.test.ts"
+  ],
+  "changeset": "host-named-pieces",
+  "migration": null
+}

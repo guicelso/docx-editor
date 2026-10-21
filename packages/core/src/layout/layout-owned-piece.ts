@@ -3,6 +3,7 @@
 import { wordBoundaries } from './cjk-line-break.ts';
 import { contentControlTagChromePt } from './content-control-tags.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
+import { pieceRoomOf, pieceRoomWidthPt } from './piece-names.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
 /**
@@ -28,10 +29,10 @@ export function isLayoutOwnedPiece(piece: FieldAwarePiece): boolean {
  * A layout-owned field result (a URL in a HYPERLINK field, a REF result) is cut too, with
  * every fragment publishing the whole piece range. Text that a later pass rewrites, or a
  * width that stands in for other text, stays whole: `measureText`, positional tabs, page
- * numbers, form controls, navigable note marks, note separators, and content-control tags.
+ * numbers, form controls, navigable note marks, note separators, content-control tags and atoms.
  */
 export function canChopPiece(piece: FieldAwarePiece): boolean {
-  if (piece.measureText !== undefined || piece.contentControlTag) return false;
+  if (piece.measureText !== undefined || piece.contentControlTag || piece.pieceAtom) return false;
   if (!isLayoutOwnedPiece(piece)) return true;
   const atom = piece.fieldAtom;
   return (
@@ -45,18 +46,21 @@ export function canChopPiece(piece: FieldAwarePiece): boolean {
 }
 
 /**
- * Line-break points inside a piece. A content-control tag is one unit, so its only point is its
- * end: a dash or a tab in the host's label never opens a line inside the chip.
+ * Line-break points inside a piece. A content-control tag and an atom are one unit each, so their
+ * only point is their end: a space or a dash in them never opens a line inside the piece.
  */
 export function pieceBoundaries(piece: FieldAwarePiece, ideographic: boolean): number[] {
-  return piece.contentControlTag ? [piece.text.length] : wordBoundaries(piece.text, ideographic);
+  return piece.contentControlTag || piece.pieceAtom
+    ? [piece.text.length]
+    : wordBoundaries(piece.text, ideographic);
 }
 
 /**
- * The advance a piece takes beyond its measured text: a content-control tag's room. Every
- * place that measures a piece adds it, so a line, an anchor probe and an autofit column agree on
- * the chip's width with paint.
+ * The advance a piece takes beyond its measured text: a content-control tag's room, or an atom's.
+ * Every place that measures a piece adds it, so a line, an anchor probe and an autofit column agree
+ * on the piece's width with paint.
  */
 export function pieceChromePt(piece: FieldAwarePiece, style: ResolvedRunStyle): number {
-  return piece.contentControlTag ? contentControlTagChromePt(style, piece.contentControlTag) : 0;
+  if (piece.contentControlTag) return contentControlTagChromePt(style, piece.contentControlTag);
+  return piece.pieceAtom ? pieceRoomWidthPt(pieceRoomOf(style, piece.pieceAtom.mark)) : 0;
 }

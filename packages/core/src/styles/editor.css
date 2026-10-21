@@ -987,7 +987,7 @@ a.docx-hyperlink:focus-visible {
 /*
  * View-only content-control tags (Design Mode): a chip at each edge of an inline control,
  * painted by the engine with the advance layout reserved. This is the neutral look; a host
- * colours a chip by the `data-cc-tag-tone` its labels chose. The gap between chips is a
+ * colours a chip by the names its labels chose (`data-piece-*`). The gap between chips is a
  * margin, outside the fill.
  */
 .docx-cc-tag {
@@ -1025,6 +1025,30 @@ a.docx-hyperlink:focus-visible {
 @media print {
   .docx-cc-tag {
     display: none;
+  }
+}
+
+/*
+ * The slot of a piece's mark: layout measures it, paint sizes it, and the host's mark painter fills
+ * it. Neutral — the host colours it by the piece's names. It is decoration beside the piece's name,
+ * so print keeps the room it takes and shows nothing in it.
+ */
+.docx-piece-mark {
+  display: inline-block;
+  vertical-align: -0.1em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.docx-piece-mark > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media print {
+  .docx-piece-mark {
+    visibility: hidden;
   }
 }
 

@@ -512,6 +512,7 @@ export type {
   ContentControlTagMark,
   ContentControlTagPart,
 } from './content-control-tags.ts';
+export type { PieceAtomRecord, PieceNameRecord } from './piece-names.ts';
 export type { ContentControlView } from './content-control-view.ts';
 export {
   caretSlotsAt,

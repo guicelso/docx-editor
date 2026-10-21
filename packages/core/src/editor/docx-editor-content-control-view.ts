@@ -1,18 +1,21 @@
 /** The host's view over content controls and fields, kept by the facade across surfaces. */
 
 import type {
+  ContentControlPieceDisplay,
   ContentControlPromptDisplay,
   ContentControlTagDisplay,
   ContentControlTagPressPolicy,
   EditorContentControlView,
-  FieldTone,
+  FieldFace,
 } from '../contracts/editor-content-control-view.ts';
+import type { MarkPainter } from '../output/semantic-paint-pieces.ts';
+import type { DocxEditorInstance } from './docx-editor-types.ts';
 import type { ContentControlView } from '../layout/content-control-view.ts';
 import type { PaginatedSurface, PaginatedSurfaceOptions } from './paginated-surface.ts';
 
 type ViewMountOptions = Pick<
   PaginatedSurfaceOptions,
-  'contentControlView' | 'fieldTone' | 'fieldSelection' | 'contentControlTagPress'
+  'contentControlView' | 'markPainter' | 'fieldSelection' | 'contentControlTagPress'
 >;
 
 /**
@@ -24,23 +27,32 @@ type ViewMountOptions = Pick<
  */
 export function createEditorContentControlView(host: { surface(): PaginatedSurface | null }): {
   readonly mountOptions: () => ViewMountOptions;
-  readonly members: EditorContentControlView;
+  readonly members: EditorContentControlView & Pick<DocxEditorInstance, 'setMarkPainter'>;
 } {
   let tags: ContentControlTagDisplay | null = null;
   let prompts: ContentControlPromptDisplay | null = null;
+  let pieces: ContentControlPieceDisplay | null = null;
+  let fieldFaces: FieldFace | null = null;
   let view: ContentControlView | null = null;
-  let tone: FieldTone | null = null;
+  let markPainter: MarkPainter | null = null;
   let selection: ((instruction: string) => boolean) | null = null;
   let tagPress: ContentControlTagPressPolicy | null = null;
-  // Each change is a new view object: layout asks every control again and keeps what is unchanged.
+  // Each change is a new view object: layout asks every control and field again and keeps what is
+  // unchanged.
   const install = (): void => {
-    view = tags || prompts ? { ...(tags ? { tags } : {}), ...(prompts ? { prompts } : {}) } : null;
+    const answers: ContentControlView = {
+      ...(tags ? { tags } : {}),
+      ...(prompts ? { prompts } : {}),
+      ...(pieces ? { pieces } : {}),
+      ...(fieldFaces ? { fieldFaces } : {}),
+    };
+    view = Object.keys(answers).length > 0 ? answers : null;
     host.surface()?.setContentControlView(view);
   };
   return {
     mountOptions: () => ({
       ...(view ? { contentControlView: view } : {}),
-      ...(tone ? { fieldTone: tone } : {}),
+      ...(markPainter ? { markPainter } : {}),
       ...(selection ? { fieldSelection: selection } : {}),
       ...(tagPress ? { contentControlTagPress: tagPress } : {}),
     }),
@@ -53,9 +65,17 @@ export function createEditorContentControlView(host: { surface(): PaginatedSurfa
         prompts = display;
         install();
       },
-      setFieldTones(next) {
-        tone = next;
-        host.surface()?.setFieldTones(next);
+      setContentControlPieces(display) {
+        pieces = display;
+        install();
+      },
+      setFieldFaces(face) {
+        fieldFaces = face;
+        install();
+      },
+      setMarkPainter(next) {
+        markPainter = next;
+        host.surface()?.setMarkPainter(next);
       },
       setFieldSelection(next) {
         selection = next;
