@@ -176,7 +176,7 @@ describe('field faces and the mark painter on the surface', () => {
     '<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>«cpf»</w:t></w:r>' +
     '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>';
   const FACES: ContentControlView = {
-    fieldFaces: (instruction) =>
+    fieldFaces: ({ instruction }) =>
       instruction.includes('"field:')
         ? { tone: 'variable', form: 'atom', mark: 'variable' }
         : undefined,

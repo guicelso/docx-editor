@@ -87,6 +87,17 @@ function fieldSpanOf(layout: SemanticLayout): LayoutBox {
   throw new Error('no field painted');
 }
 
+function fieldIdOf(layout: SemanticLayout): string | undefined {
+  for (const fragment of layout.pages[0]!.fragments) {
+    if (fragment.kind !== 'paragraph') continue;
+    const span = fragment.lines
+      .flatMap((line) => line.spans)
+      .find((candidate) => candidate.fieldAtom);
+    if (span) return span.fieldAtom?.field?.fieldId;
+  }
+  return undefined;
+}
+
 describe('the hover on the surface', () => {
   test('the control under a resting pointer is published apart from the selection, with its box', () => {
     const { surface, container, hovers } = surfaceOf(CONTROL);
@@ -137,6 +148,7 @@ describe('the hover on the surface', () => {
     const hover = hovers.at(-1)!;
     expect(hover.controlId).toBe(contentControlsInLayout(layout)[0]!.id);
     expect(hover.field?.instruction).toContain('"field:a"');
+    expect(hover.field?.fieldId).toBe(fieldIdOf(layout));
     expect(hover.box).toEqual(onScreen(page, span));
   });
 

@@ -42,6 +42,7 @@ import {
 export { absorbUnitControls, unitSelectionRange } from './surface-pointer-units.ts';
 import type { LayoutBox, SemanticLayout, TextMeasurer } from '../layout/semantic-records.ts';
 import type { EditorHover, EditorHoverBox } from '../contracts/editor.ts';
+import type { FieldSubject } from '../contracts/editor-content-control-view.ts';
 import { hoverOnPage, NO_HOVER } from './surface-hover.ts';
 import {
   findEmptyFurnitureBandAtSheetPoint,
@@ -163,8 +164,8 @@ export interface PointerHost {
    * boundary geometry alone.
    */
   selectContentControl?(controlId: string): boolean;
-  /** Whether a plain press on a field with this instruction selects it whole; else the caret. */
-  selectsField?(instruction: string): boolean;
+  /** Whether a plain press on this field selects it whole; else the caret. */
+  selectsField?(field: FieldSubject): boolean;
   /** Whether the host takes a plain press on this view-only tag; else the caret goes beside it. */
   takesTagPress?(tag: SemanticHitTag): boolean;
 }
@@ -872,7 +873,7 @@ export function createPointerController(
     }
 
     const field = hit.field;
-    if (field && !event.shiftKey && count === 1 && host.selectsField?.(field.instruction)) {
+    if (field && !event.shiftKey && count === 1 && host.selectsField?.(field)) {
       // The field is one unit: the press selects it, and a drag from here extends from it whole.
       const from = { paragraphId: field.paragraphId, offset: field.start };
       const to = { paragraphId: field.paragraphId, offset: field.end };

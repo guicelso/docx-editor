@@ -31,6 +31,7 @@ import { graphemeBoundaryEpoch, segmentGraphemes } from './grapheme.ts';
 import { isCjk } from './cjk-paragraph-breaks.ts';
 import { lastCodePointOf } from './cjk-line-break.ts';
 import { lineForSegment, lineSegments, type LineSegment } from './line-segments.ts';
+import type { FieldSubject } from '../contracts/editor-content-control-view.ts';
 import { baselineShiftPtOf, measureDisplayText } from './run-style.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import type { CaretGeometry, SemanticPosition } from './semantic-interaction.ts';
@@ -111,16 +112,15 @@ export interface SemanticHit {
    * half asks for the caret slot in front of the chip, the right half for the one behind it.
    */
   readonly contentControlTag?: SemanticHitTag;
-  /** The field atom under the point: its model range and its instruction, untrusted text. */
+  /** The field atom under the point: the field and its model range. */
   readonly field?: SemanticHitField;
 }
 
-/** A field atom under the point. @public */
-export interface SemanticHitField {
+/** A field atom under the point: the field and its model range. @public */
+export interface SemanticHitField extends FieldSubject {
   readonly paragraphId: string;
   readonly start: number;
   readonly end: number;
-  readonly instruction: string;
   /** The span of the result under the point, in page-content coordinates. */
   readonly box: LayoutBox;
 }
@@ -558,10 +558,10 @@ function resolveParagraph(
  */
 function fieldAtX(line: LineRecord, x: number): { field?: SemanticHitField } {
   for (const span of line.spans) {
-    const instruction = span.fieldAtom?.instruction;
-    if (instruction === undefined || x < span.box.x || x > span.box.x + span.box.width) continue;
+    const field = span.fieldAtom?.field;
+    if (field === undefined || x < span.box.x || x > span.box.x + span.box.width) continue;
     const { paragraphId, start, end } = span.range;
-    return { field: { paragraphId, start, end, instruction, box: span.box } };
+    return { field: { ...field, paragraphId, start, end, box: span.box } };
   }
   return {};
 }

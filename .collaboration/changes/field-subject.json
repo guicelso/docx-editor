@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A field's face and press selection were asked by the field's instruction alone, so two fields with the same instruction always answered alike, and the hover named a field by its range and instruction only.",
+  "after": "A field's face and press selection are asked by its subject: the node id of its start, which names the occurrence, and its instruction. The hover and the hit test carry the same subject.",
+  "reason": "Paint, press selection and the hover of the host's view only; nothing reaches the document, an operation or shared updates.",
+  "tests": [
+    "packages/core/src/editor/__tests__/field-subject.test.ts",
+    "packages/core/src/editor/__tests__/field-press-selection.test.ts",
+    "packages/core/src/editor/__tests__/surface-hover.test.ts",
+    "packages/core/src/editor/__tests__/content-control-view-facade.test.ts"
+  ],
+  "changeset": "field-subject",
+  "migration": null
+}

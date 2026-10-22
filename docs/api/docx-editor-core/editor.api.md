@@ -2206,7 +2206,7 @@ export interface PaginatedSurface {
     // (undocumented)
     setEditingMode(mode: SurfaceEditingMode): void;
     setEditPolicy(policy: EditPolicy | null): void;
-    setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+    setFieldSelection(select: FieldSelectionPolicy | null): void;
     setHighlightPainter(painter: SurfaceOverlayPainter | null): void;
     setIndent(update: {
         readonly firstLine?: number | null;
@@ -2287,7 +2287,7 @@ export interface PaginatedSurfaceOptions {
     readonly drawingStrings?: DrawingPaintStrings;
     readonly editingMode?: SurfaceEditingMode;
     readonly editPolicy?: EditPolicy;
-    readonly fieldSelection?: (instruction: string) => boolean;
+    readonly fieldSelection?: FieldSelectionPolicy;
     readonly fieldShading?: FieldShadingMode;
     readonly fontAlias?: (family: string) => string | undefined;
     readonly hiddenRevisionAuthors?: readonly string[];

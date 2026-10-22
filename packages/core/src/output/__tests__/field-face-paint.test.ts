@@ -37,7 +37,7 @@ const BODY =
   `${complex('MERGEFIELD "block:b@SELF"', '⟦bloco⟧')}` +
   `<w:fldSimple w:instr=" MERGEFIELD &quot;mark&quot; "><w:r><w:t>◆</w:t></w:r></w:fldSimple></w:p>`;
 
-const FACES: FieldFace = (instruction) =>
+const FACES: FieldFace = ({ instruction }) =>
   instruction.includes('"field:')
     ? { tone: 'variable', form: 'atom', mark: 'variable' }
     : instruction.includes('"block:')

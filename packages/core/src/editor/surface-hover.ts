@@ -49,8 +49,12 @@ export function hoverOnPage(
     contentControlAtPoint(layout, page.index, point) ?? controlByWidgetReach(page, point);
   const field = hit.onGlyphs && hit.field ? hit.field : null;
   if (field) {
-    const { paragraphId, start, end, instruction, box } = field;
-    return { controlId: control?.id ?? null, field: { paragraphId, start, end, instruction }, box };
+    const { fieldId, instruction, paragraphId, start, end, box } = field;
+    return {
+      controlId: control?.id ?? null,
+      field: { fieldId, instruction, paragraphId, start, end },
+      box,
+    };
   }
   return {
     controlId: control?.id ?? null,
@@ -100,6 +104,7 @@ function contains(box: LayoutBox, point: HitPoint): boolean {
 function sameField(a: EditorHoverField | null, b: EditorHoverField | null): boolean {
   if (a === null || b === null) return a === b;
   return (
+    a.fieldId === b.fieldId &&
     a.paragraphId === b.paragraphId &&
     a.start === b.start &&
     a.end === b.end &&

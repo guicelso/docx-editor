@@ -1081,6 +1081,7 @@ export function exportSourceRangeOf(span: StyleSpanRecord): SourceRange | null;
 
 // @public
 export interface FieldAtomMarker {
+    readonly field?: FieldSubject;
     readonly formControl?: {
         readonly accessibleName?: string;
         readonly checked: boolean;
@@ -1092,7 +1093,6 @@ export interface FieldAtomMarker {
         readonly selectedIndex: number;
     };
     readonly formField: boolean;
-    readonly instruction?: string;
     readonly pageField?: {
         readonly kind: AllowlistedPageField;
         readonly numberFormat?: PageFieldNumberFormat;
@@ -3678,12 +3678,10 @@ export interface SemanticHitDrawing {
 }
 
 // @public
-export interface SemanticHitField {
+export interface SemanticHitField extends FieldSubject {
     readonly box: LayoutBox;
     // (undocumented)
     readonly end: number;
-    // (undocumented)
-    readonly instruction: string;
     // (undocumented)
     readonly paragraphId: string;
     // (undocumented)

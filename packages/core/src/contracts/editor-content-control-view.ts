@@ -160,14 +160,34 @@ export interface ContentControlTagPress {
 export type ContentControlTagPressPolicy = (press: ContentControlTagPress) => boolean;
 
 /**
- * The host's face for a field, from its instruction (untrusted file text), or undefined to leave
- * the field as the engine draws it. A field with a face is a {@link PieceAtom}. @public
+ * A field as the file states it: one occurrence, and what it says. `instruction` is untrusted file
+ * text, never executed. @public
+ */
+export interface FieldSubject {
+  /**
+   * The node id of the field's start: its begin `w:fldChar`, or its `w:fldSimple`. It names this
+   * occurrence, and edits elsewhere in its paragraph keep it.
+   */
+  readonly fieldId: string;
+  /** The field's instruction: the live one, else the deleted one. */
+  readonly instruction: string;
+}
+
+/**
+ * The host's face for one field, or undefined to leave it as the engine draws it. A field with a
+ * face is a {@link PieceAtom}. @public
  *
  * Pure and cheap, like {@link ContentControlTagDisplay.labelsOf}: the engine asks it for every
  * field of every paragraph a layout pass prepares, and lays out only the paragraphs whose answers
  * changed.
  */
-export type FieldFace = (instruction: string) => PieceAtom | undefined;
+export type FieldFace = (field: FieldSubject) => PieceAtom | undefined;
+
+/**
+ * Whether a plain press on one field selects it whole. False leaves the press to place the caret
+ * at the nearer edge of the field. @public
+ */
+export type FieldSelectionPolicy = (field: FieldSubject) => boolean;
 
 /**
  * The host's view over content controls and fields. @public
@@ -187,11 +207,10 @@ export interface EditorContentControlView {
   /** Give each field the host's face: its names and its mark, laid out as one unit. */
   setFieldFaces(face: FieldFace | null): void;
   /**
-   * Which fields a plain press selects whole, from their instruction. The selected field's
-   * painted result carries `data-selected`. Without a rule, a press places the caret at the
-   * nearer edge of a field.
+   * Which fields a plain press selects whole. The selected field's painted result carries
+   * `data-selected`. Without a rule, a press places the caret at the nearer edge of a field.
    */
-  setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+  setFieldSelection(select: FieldSelectionPolicy | null): void;
   /** Take presses on the view-only tags the host draws, as it decides per tag. */
   setContentControlTagPress(press: ContentControlTagPressPolicy | null): void;
 }

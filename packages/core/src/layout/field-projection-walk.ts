@@ -58,6 +58,7 @@ import {
   applyEastAsiaFontSlots,
   positionalTabOf,
   fieldAtomOf,
+  type FieldAtomMarker,
   type FieldAwarePiece,
   type FieldLinkProjector,
   type HyperlinkProjector,
@@ -155,9 +156,8 @@ export function unmergedPiecesOfParagraphForDisplay(
   const recordRemoved = removedSiteRecorder(changeSites, displayMode, authorFilter);
   const contentControlTags = contentControlView?.tags;
   /** The host's face for a field: an atom, or nothing to leave the field as the engine draws it. */
-  const fieldFaceOf = (instruction: string | undefined): { pieceAtom?: PieceAtomRecord } => {
-    const face =
-      instruction === undefined ? undefined : contentControlView?.fieldFaces?.(instruction);
+  const fieldFaceOf = (field: FieldAtomMarker['field']): { pieceAtom?: PieceAtomRecord } => {
+    const face = field === undefined ? undefined : contentControlView?.fieldFaces?.(field);
     return face === undefined ? {} : { pieceAtom: pieceAtomRecordOf(face) };
   };
   /** The formatting change the view resolved into the run being walked, if any. */
@@ -289,7 +289,8 @@ export function unmergedPiecesOfParagraphForDisplay(
     // `w:hyperlink` captured into `resultLink` wins, exactly as it does for every other field.
     // Resolved LAZILY (and memoized): a field that paints nothing — empty result, no synthesized
     // glyph — must never reach `projectFieldLink`, or it mints a registry id no piece ever uses.
-    const { resultLink, linkSpec, formField, instruction } = pending;
+    const { resultLink, linkSpec } = pending;
+    const fieldAtom = fieldAtomOf(pending);
     const captured = capturedResultAttribution(pending);
     const formControl = formControlMarkerOf(pending);
     let carriedMemo: PieceEmitExtras | undefined;
@@ -303,12 +304,8 @@ export function unmergedPiecesOfParagraphForDisplay(
       carriedMemo = {
         ...captured,
         ...(carriedLink ? { linkOverride: carriedLink } : {}),
-        fieldAtom: {
-          formField,
-          ...(instruction !== undefined ? { instruction } : {}),
-          ...(formControl ? { formControl } : {}),
-        },
-        ...fieldFaceOf(instruction),
+        fieldAtom: { ...fieldAtom, ...(formControl ? { formControl } : {}) },
+        ...fieldFaceOf(fieldAtom.field),
       };
       return carriedMemo;
     };
@@ -938,14 +935,15 @@ export function unmergedPiecesOfParagraphForDisplay(
     // page field carries its kind so document finalize substitutes the page's value.
     const instruction =
       simple.attributes.find((attribute) => attribute.localName === 'instr')?.value ?? '';
+    const subject = { fieldId: simple.id, instruction };
     push(projected.text, projected.props, projected.style, true, start, start + 1, {
       fieldAtom: {
         formField: false,
-        instruction,
+        field: subject,
         ...(projected.pageField ? { pageField: projected.pageField } : {}),
         ...(projected.pageRef ? { pageRef: projected.pageRef } : {}),
       },
-      ...fieldFaceOf(instruction),
+      ...fieldFaceOf(subject),
       ...(projected.link ? { linkOverride: projected.link } : {}),
     });
   };

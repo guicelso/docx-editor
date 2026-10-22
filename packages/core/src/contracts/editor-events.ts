@@ -1,6 +1,7 @@
 import type { ResolvedRevisionMarkup } from './revision-markup.ts';
 import type { EditorError, EditorSnapshot } from './editor.ts';
 import type { HistoryDiagnostic } from './editor-scope.ts';
+import type { FieldSubject } from './editor-content-control-view.ts';
 
 /**
  * What `editor.on(...)` can be subscribed to, and what each handler receives.
@@ -39,16 +40,14 @@ export interface EditorHover {
   readonly box: EditorHoverBox | null;
 }
 
-/** A field atom a pointer rests on, by its model range. */
-export interface EditorHoverField {
+/** A field atom a pointer rests on: the field, and its model range. */
+export interface EditorHoverField extends FieldSubject {
   /** Canonical node id of the paragraph the field is in. */
   readonly paragraphId: string;
   /** UTF-16 offset where the field starts in its paragraph. */
   readonly start: number;
   /** UTF-16 offset where the field ends in its paragraph. */
   readonly end: number;
-  /** The field's instruction, untrusted document text. */
-  readonly instruction: string;
 }
 
 /** A rectangle in viewport pixels, the space of `getBoundingClientRect`. */

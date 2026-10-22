@@ -7,6 +7,7 @@ import type {
   ContentControlTagPressPolicy,
   EditorContentControlView,
   FieldFace,
+  FieldSelectionPolicy,
 } from '../contracts/editor-content-control-view.ts';
 import type { MarkPainter } from '../output/semantic-paint-pieces.ts';
 import type { DocxEditorInstance } from './docx-editor-types.ts';
@@ -35,7 +36,7 @@ export function createEditorContentControlView(host: { surface(): PaginatedSurfa
   let fieldFaces: FieldFace | null = null;
   let view: ContentControlView | null = null;
   let markPainter: MarkPainter | null = null;
-  let selection: ((instruction: string) => boolean) | null = null;
+  let selection: FieldSelectionPolicy | null = null;
   let tagPress: ContentControlTagPressPolicy | null = null;
   // Each change is a new view object: layout asks every control and field again and keeps what is
   // unchanged.

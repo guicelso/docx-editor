@@ -95,10 +95,10 @@ function installView(editor: DocxEditorInstance): void {
   editor.setContentControlTags({
     labelsOf: ({ tag }) => ({ open: { text: `${tag} ▸` }, close: { text: '◂' } }),
   });
-  editor.setFieldFaces((instruction) =>
+  editor.setFieldFaces(({ instruction }) =>
     instruction.includes('"field:') ? { tone: 'variable', mark: 'variable' } : undefined
   );
-  editor.setFieldSelection((instruction) => instruction.includes('"field:'));
+  editor.setFieldSelection(({ instruction }) => instruction.includes('"field:'));
 }
 
 describe('the host view on the editor', () => {

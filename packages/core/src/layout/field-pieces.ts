@@ -11,6 +11,7 @@
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlProperty } from '@docx-editor.dev/core/store';
 import type { HardBreakKind } from '@docx-editor.dev/core/store';
 import type { LegacyFormFieldData } from '../store/package/field-nodes.ts';
+import type { FieldSubject } from '../contracts/editor-content-control-view.ts';
 import type { InlineDrawingLayoutInput } from './drawing-layout.ts';
 import { eastAsiaRunsOfSegments, type FontSlot } from './script-itemization.ts';
 import {
@@ -69,10 +70,10 @@ export interface FieldAtomMarker {
    */
   readonly formField: boolean;
   /**
-   * The field's instruction as the file states it — untrusted text, never executed. It is what
-   * the host's field face is asked with (`ContentControlView.fieldFaces`).
+   * The field the result belongs to: its start node and its instruction, untrusted text never
+   * executed. It is what the host's field face is asked with (`ContentControlView.fieldFaces`).
    */
-  readonly instruction?: string;
+  readonly field?: FieldSubject;
   /**
    * A legacy form CONTROL the reader can operate, with the state it paints.
    *
@@ -683,13 +684,16 @@ export function applyEastAsiaFontSlots(
   return out;
 }
 
-/** The marker a field's displayed result carries: form or not, and the field's instruction. */
+/** The marker a field's displayed result carries: form or not, and the field it belongs to. */
 export function fieldAtomOf(pending: {
   readonly formField: boolean;
+  readonly beginId: string;
   readonly instruction?: string;
 }): FieldAtomMarker {
   return {
     formField: pending.formField,
-    ...(pending.instruction !== undefined ? { instruction: pending.instruction } : {}),
+    ...(pending.instruction !== undefined
+      ? { field: { fieldId: pending.beginId, instruction: pending.instruction } }
+      : {}),
   };
 }

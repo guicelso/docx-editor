@@ -6297,7 +6297,7 @@ export function mountPaginatedSurface(
       // `none`: a press lands where the reader LOOKS, and moving the paper under a double
       // click sent its second press elsewhere — a blank footer band never opened.
       onHover: setHover,
-      selectsField: (instruction) => fieldSelection?.(instruction) === true,
+      selectsField: (field) => fieldSelection?.(field) === true,
       selectContentControl: (controlId) => {
         const range = atomRangeOf(editingLayout(), controlId);
         if (range) controlKeys.selectWhole(controlId, { anchor: range.from, head: range.to });

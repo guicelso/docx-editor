@@ -989,7 +989,7 @@ export interface EditorContentControlView {
     setContentControlTagPress(press: ContentControlTagPressPolicy | null): void;
     setContentControlTags(display: ContentControlTagDisplay | null): void;
     setFieldFaces(face: FieldFace | null): void;
-    setFieldSelection(select: ((instruction: string) => boolean) | null): void;
+    setFieldSelection(select: FieldSelectionPolicy | null): void;
 }
 
 // @public
@@ -1099,9 +1099,8 @@ export interface EditorHoverBox {
 }
 
 // @public
-export interface EditorHoverField {
+export interface EditorHoverField extends FieldSubject {
     readonly end: number;
-    readonly instruction: string;
     readonly paragraphId: string;
     readonly start: number;
 }
@@ -1339,7 +1338,16 @@ export interface Extent {
 }
 
 // @public
-export type FieldFace = (instruction: string) => PieceAtom | undefined;
+export type FieldFace = (field: FieldSubject) => PieceAtom | undefined;
+
+// @public
+export type FieldSelectionPolicy = (field: FieldSubject) => boolean;
+
+// @public
+export interface FieldSubject {
+    readonly fieldId: string;
+    readonly instruction: string;
+}
 
 // @public
 export interface FontConfiguration {

@@ -121,7 +121,7 @@ describe('the pieces and the field faces are answers like the tags', () => {
       documentOf(paragraph(run('um ') + field('v:1', '«x»')) + paragraph(run('dois')))
     );
     const face = (mark: string): ContentControlView => ({
-      fieldFaces: ((instruction) =>
+      fieldFaces: (({ instruction }) =>
         instruction.includes('MERGEFIELD')
           ? { tone: 'variable', mark }
           : undefined) satisfies FieldFace,

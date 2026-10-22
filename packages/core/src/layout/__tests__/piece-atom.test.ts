@@ -56,7 +56,7 @@ const textOf = (layout: SemanticLayout): string =>
     .map((span) => span.text)
     .join('');
 
-const VARIABLE: FieldFace = (instruction) =>
+const VARIABLE: FieldFace = ({ instruction }) =>
   instruction.includes('MERGEFIELD')
     ? { tone: 'variable', form: 'atom', mark: 'variable' }
     : undefined;

@@ -157,8 +157,8 @@ export interface PaginatedSurfaceOptions {
   readonly contentControlView?: import('../layout/content-control-view.ts').ContentControlView;
   /** Draws each mark the host named, in the slot layout measured for it. */
   readonly markPainter?: import('../output/semantic-paint-pieces.ts').MarkPainter;
-  /** Which fields a plain press selects whole, by instruction. */
-  readonly fieldSelection?: (instruction: string) => boolean;
+  /** Which fields a plain press selects whole. */
+  readonly fieldSelection?: import('../contracts/editor-content-control-view.ts').FieldSelectionPolicy;
   /** Which presses on a view-only content-control tag the host takes. */
   readonly contentControlTagPress?: import('../contracts/editor-content-control-view.ts').ContentControlTagPressPolicy;
   /** The host's policy over paragraph breaks and deletions, asked before the engine writes. */

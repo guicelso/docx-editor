@@ -1,5 +1,6 @@
 // A press on a field the host names selects the field whole, as a press on an equation does,
-// and the painted result says so; a field the host does not name keeps the caret at its edge.
+// and the painted result says so; a field the host does not name keeps the caret at its edge. The
+// host names one occurrence, not every field with its instruction.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
@@ -132,15 +133,36 @@ function fieldPoint(surface: PaginatedSurface): [number, number] {
   throw new Error('no field painted');
 }
 
+/** The middle of every field's painted result, in document order. */
+function fieldPointsOf(surface: PaginatedSurface): [number, number][] {
+  return fieldSpansOf(surface).map((span) => [
+    span.box.x + span.box.width / 2,
+    span.box.y + span.box.height / 2,
+  ]);
+}
+
+const fieldIdAt = (surface: PaginatedSurface, index: number): string | undefined =>
+  fieldSpansOf(surface)[index]?.fieldAtom?.field?.fieldId;
+
+function fieldSpansOf(surface: PaginatedSurface) {
+  return surface
+    .layout()
+    .pages[0]!.fragments.flatMap((fragment) =>
+      fragment.kind === 'paragraph' ? fragment.lines : []
+    )
+    .flatMap((line) => line.spans)
+    .filter((span) => span.fieldAtom !== undefined);
+}
+
 const offsets = (surface: PaginatedSurface): [number, number] => {
   const { anchor, head } = surface.state().selection;
   return [anchor.offset, head.offset];
 };
 
 describe('a press on a field', () => {
-  test('selects the field whole when the host names its instruction', () => {
+  test('selects the field whole when the host names it', () => {
     const mounted = mount(BODY);
-    mounted.surface.setFieldSelection((instruction) => instruction.includes('"field:'));
+    mounted.surface.setFieldSelection(({ instruction }) => instruction.includes('"field:'));
     const [x, y] = fieldPoint(mounted.surface);
 
     press(mounted, x, y);
@@ -154,7 +176,7 @@ describe('a press on a field', () => {
 
   test('keeps the caret at an edge for a field the host does not name', () => {
     const mounted = mount(BODY);
-    mounted.surface.setFieldSelection((instruction) => instruction.includes('"other:'));
+    mounted.surface.setFieldSelection(({ instruction }) => instruction.includes('"other:'));
     const [x, y] = fieldPoint(mounted.surface);
 
     press(mounted, x, y);
@@ -163,6 +185,25 @@ describe('a press on a field', () => {
     const [anchor, head] = offsets(mounted.surface);
     expect(anchor).toBe(head);
     expect(mounted.pages.querySelectorAll('[data-selected="true"]').length).toBe(0);
+    mounted.surface.destroy();
+  });
+
+  test('names one occurrence: of two fields with the same instruction, only the named one', () => {
+    const twins = `<w:p>${text('Nome ')}${mergeField('field:a', '«nome»')}${text(' e ')}${mergeField('field:a', '«nome»')}</w:p>`;
+    const mounted = mount(twins);
+    const [first, second] = fieldPointsOf(mounted.surface);
+    const secondId = fieldIdAt(mounted.surface, 1);
+    mounted.surface.setFieldSelection(({ fieldId }) => fieldId === secondId);
+
+    press(mounted, first![0], first![1]);
+    release(first![0], first![1]);
+    const [anchor, head] = offsets(mounted.surface);
+    expect(anchor).toBe(head);
+
+    press(mounted, second![0], second![1]);
+    release(second![0], second![1]);
+    const [from, to] = offsets(mounted.surface);
+    expect(to - from).toBe(1);
     mounted.surface.destroy();
   });
 

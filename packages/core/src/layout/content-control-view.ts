@@ -159,7 +159,9 @@ function fieldsToken(paragraph: OoxmlNode, view: ContentControlView): string {
   let byView = fieldTokens.get(paragraph);
   const cached = byView?.get(view);
   if (cached !== undefined) return cached;
-  const parts = parsedFieldSpansOf(paragraph).map((span) => atomToken(face(span.instruction)));
+  const parts = parsedFieldSpansOf(paragraph).map((span) =>
+    atomToken(face({ fieldId: span.node.id, instruction: span.instruction }))
+  );
   const token = parts.every((part) => part === '') ? '' : framedTokenJoin(parts);
   if (!byView) fieldTokens.set(paragraph, (byView = new WeakMap()));
   byView.set(view, token);

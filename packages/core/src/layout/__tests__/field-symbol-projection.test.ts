@@ -341,9 +341,9 @@ describe('a simple SYMBOL field', () => {
   });
 });
 
-test('a field’s result carries the instruction it was computed from', () => {
+test('a field’s result carries the field it was computed from', () => {
   const pieces = project(
     '<w:p><w:r><w:t>A</w:t></w:r>' + complexField(' SYMBOL 0xF0FC \\f "Wingdings" ') + '</w:p>'
   );
-  expect(pieces[1]!.fieldAtom?.instruction?.trim()).toBe('SYMBOL 0xF0FC \\f "Wingdings"');
+  expect(pieces[1]!.fieldAtom?.field?.instruction.trim()).toBe('SYMBOL 0xF0FC \\f "Wingdings"');
 });
