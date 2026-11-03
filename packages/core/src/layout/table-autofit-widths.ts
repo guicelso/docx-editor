@@ -25,7 +25,7 @@ import {
   ENDS_WITH_BREAKING_SPACE,
   STARTS_WITH_BREAKING_SPACE,
 } from './cjk-line-break.ts';
-import { pieceBoundaries, pieceChromePt } from './layout-owned-piece.ts';
+import { pieceBoundaries, pieceChromePt, pieceTextWidthPt } from './layout-owned-piece.ts';
 import { measureInlineDrawing, type InlineDrawingLayoutContext } from './drawing-layout.ts';
 import { createEquationLayouter } from './equation-layout.ts';
 import type { DocumentProperties } from '@docx-editor.dev/core/store';
@@ -469,7 +469,10 @@ export function paragraphContentWidthsPt(
       // Measured as line breaking measures it, so the advance comes from the same cache;
       // the trailing spaces it hangs are priced on their own.
       const ink = withoutTrailingSpaces(candidate);
-      const full = measure(candidate) + pieceChromePt(piece, style);
+      const full =
+        pieceTextWidthPt(piece, candidate, style, (text, face) =>
+          measureDisplayText(text, face, measurer)
+        ) + pieceChromePt(piece, style);
       advance(full, ink.length === candidate.length ? 0 : full - (ink ? measure(ink) : 0));
       if (lineStart && ink.length === 0) {
         lead += measure(candidate);

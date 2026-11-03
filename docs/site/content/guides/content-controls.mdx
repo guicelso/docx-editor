@@ -152,6 +152,8 @@ A data-bound control rejects a direct write: its content comes from the Custom X
 
 `editor.setContentControlTags` draws a label at each edge of a control, as the host names it from the control's `tag`. The labels are view only: they never reach the document, the saved bytes, the clipboard or a collaborator.
 
+A label with `variant: 'text'` reads as the line's own text, such as the number a host prints before a list item; `bold: true` draws it in bold, measured and painted so, alone or as a part of a `sequence`. A chip keeps the engine's weight.
+
 A label can also be a link. `editor.setContentControlTagPress` is asked for a plain press on a label, in viewing too, with the control and the edge the layout's hit test found under the pointer. Returning `true` takes the press, and the caret does not move; returning `false` leaves the caret to land beside the label, as it does without a policy.
 
 ```ts

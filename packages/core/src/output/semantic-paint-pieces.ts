@@ -94,6 +94,7 @@ export function mountContentControlTagParts(
     element.style.paddingRight = `${room.padPt * scale}px`;
     paintPieceName(element, part.name);
     if (part.variant !== undefined) element.dataset.ccTagVariant = part.variant;
+    if (part.bold) element.style.fontWeight = 'bold';
     element.textContent = span.text.slice(from, from + part.length); // SAFE: textContent, never innerHTML
     mountPieceMark(document, element, part.mark, span, scale, painter);
     from += part.length;

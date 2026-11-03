@@ -127,6 +127,22 @@ describe('a sequence of labels at one edge', () => {
     ]);
   });
 
+  test('a bold text part paints in bold, and the chip beside it does not', () => {
+    const display: ContentControlTagDisplay = {
+      labelsOf: () => ({
+        open: { variant: 'sequence', labels: [CONDITION, { ...NUMBER, bold: true }] },
+      }),
+    };
+    const container = document.createElement('div');
+    paintSemanticLayout(container, layoutOf(display), { scale: 1, ariaHidden: false });
+    const [tag] = [...container.querySelectorAll<HTMLElement>('[data-cc-tag-control]')];
+    const weights = [...tag!.querySelectorAll<HTMLElement>('.docx-cc-tag')].map(
+      (part) => part.style.fontWeight
+    );
+
+    expect(weights).toEqual(['', 'bold']);
+  });
+
   test('a chip part draws its mark in its own room; a text part takes no mark', () => {
     const marked = { ...CONDITION, mark: 'optional' } as const;
     const display: ContentControlTagDisplay = {

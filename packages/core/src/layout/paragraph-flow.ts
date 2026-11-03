@@ -103,6 +103,7 @@ import {
   isLayoutOwnedPiece,
   pieceBoundaries,
   pieceChromePt,
+  pieceTextWidthPt,
 } from './layout-owned-piece.ts';
 import type { WordCarryContext } from './word-carry.ts';
 import { carryWordAtOptionalHyphens } from './optional-hyphen-break.ts';
@@ -1263,8 +1264,9 @@ export function breakParagraph(
         ? Math.min(piece.noteSeparator === 'separator' ? 144 : lineAvailable(), lineAvailable())
         : piece.fieldAtom?.formControl?.kind === 'checkbox'
           ? faceStyle.fontSizePt
-          : measurer.measure(displayText(measureSource, faceStyle), faceStyle) +
-            pieceChromePt(piece, faceStyle);
+          : pieceTextWidthPt(piece, measureSource, faceStyle, (text, style) =>
+              measurer.measure(displayText(text, style), style)
+            ) + pieceChromePt(piece, faceStyle);
       exclusionProbe.setWidth(width);
       // A candidate may open a line only at a real break opportunity — the shared
       // decision in `lineOpenDecisionAt`, which the anchor-line probe above consumes too.

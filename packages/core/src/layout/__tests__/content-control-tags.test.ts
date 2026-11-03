@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPart, type OoxmlPart } from '../../store/package/ooxml-tree.ts';
 import { createFixedMeasurer, layoutSemanticDocument } from '../semantic-layout.ts';
-import type { StyleSpanRecord } from '../semantic-records.ts';
+import type { StyleSpanRecord, TextMeasurer } from '../semantic-records.ts';
 import { forEachSemanticSpan } from '../export-traversal.ts';
 import { hitTestPage } from '../semantic-hit-test.ts';
 import { anchorLineStartsByModelOffset } from '../anchor-line-probe.ts';
@@ -367,5 +367,64 @@ describe('an anchored drawing beside a tag', () => {
       equationLayoutOf: () => null,
     });
     expect(starts.get(4)).toBe(4);
+  });
+});
+
+describe('a text tag drawn in bold', () => {
+  const fixed = createFixedMeasurer(6, 14);
+  /** Bold glyphs are wider, as in every face: a measurer that would hide the difference proves nothing. */
+  const weighted: TextMeasurer = {
+    ...fixed,
+    measure: (text, style) => fixed.measure(text, style) * (style.bold ? 1.5 : 1),
+  };
+  const tagged = (labelsOf: ContentControlTagDisplay['labelsOf']) =>
+    spansOf(
+      layoutSemanticDocument(documentOf(BODY), 0, {
+        measurer: weighted,
+        contentControlView: { tags: { labelsOf } },
+      })
+    ).filter((span) => span.contentControlTag);
+
+  test('is measured and styled in bold, and only the label is', () => {
+    const [label] = tagged(({ tag }) =>
+      tag === 'span:branch:b1' ? { open: { text: 'a) ', variant: 'text', bold: true } } : null
+    );
+
+    expect(label?.style.bold).toBe(true);
+    expect(label?.contentControlTag?.bold).toBe(true);
+    expect(label?.box.width).toBeCloseTo(weighted.measure(label!.text, label!.style), 6);
+  });
+
+  test('a bold part of a sequence is measured in bold, and the chip beside it in the engine’s weight', () => {
+    const [sequence] = tagged(({ tag }) =>
+      tag === 'span:branch:b1'
+        ? {
+            open: {
+              variant: 'sequence',
+              labels: [{ text: 'Se ▸' }, { text: 'a) ', variant: 'text', bold: true }],
+            },
+          }
+        : null
+    );
+    const tag = sequence!.contentControlTag!;
+    const [chipText, labelText] = [sequence!.text.slice(0, 4), sequence!.text.slice(4)];
+
+    expect(sequence?.style.bold).toBe(false);
+    expect(tag.parts?.map((part) => part.bold === true)).toEqual([false, true]);
+    expect(sequence?.box.width).toBeCloseTo(
+      weighted.measure(chipText, sequence!.style) +
+        weighted.measure(labelText, { ...sequence!.style, bold: true }) +
+        contentControlTagChromePt(sequence!.style, tag),
+      6
+    );
+  });
+
+  test('a chip keeps the engine’s weight even when asked for bold', () => {
+    const [chip] = tagged(({ tag }) =>
+      tag === 'span:branch:b1' ? { open: { text: 'Ramo', bold: true } } : null
+    );
+
+    expect(chip?.style.bold).toBe(false);
+    expect(chip?.contentControlTag?.bold).toBeUndefined();
   });
 });

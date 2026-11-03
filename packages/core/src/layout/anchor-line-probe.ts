@@ -18,7 +18,12 @@ import type { CjkParagraphBreaks } from './cjk-paragraph-breaks.ts';
 import { canHangCjkPunctuation } from './cjk-spacing.ts';
 import type { CjkParagraphTypography } from './cjk-typography.ts';
 import { measureInlineDrawing } from './drawing-layout.ts';
-import { isLayoutOwnedPiece, pieceBoundaries, pieceChromePt } from './layout-owned-piece.ts';
+import {
+  isLayoutOwnedPiece,
+  pieceBoundaries,
+  pieceChromePt,
+  pieceTextWidthPt,
+} from './layout-owned-piece.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import type { EquationSpanRecord } from './equation-layout.ts';
 import type { TextMeasurer } from './semantic-records.ts';
@@ -96,7 +101,9 @@ export function anchorLineStartsByModelOffset(input: {
       let width =
         piece.fieldAtom?.formControl?.kind === 'checkbox'
           ? style.fontSizePt
-          : measure(piece.measureText ?? candidate) + pieceChromePt(piece, style);
+          : pieceTextWidthPt(piece, piece.measureText ?? candidate, style, (text, face) =>
+              measurer.measure(displayText(text, face), face)
+            ) + pieceChromePt(piece, style);
       if (!probePieceLayoutOwned && piece.measureText === undefined) {
         const remaining = probeLineAvail() - probeWidth;
         width = clipWordEnd(candidate, width, remaining, measure, 0.001)?.width ?? width;

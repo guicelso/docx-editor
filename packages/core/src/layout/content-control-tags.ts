@@ -37,6 +37,26 @@ export function contentControlTagRoomOf(
   return pieceRoomOf(style, mark.mark);
 }
 
+/**
+ * The advance a tag's drawn text measures: each part of a sequence in its own weight, so the
+ * advance layout reserves is the one paint fills when one part is bold.
+ */
+export function contentControlTagTextWidthPt(
+  mark: Pick<ContentControlTagMark, 'parts'>,
+  text: string,
+  style: ResolvedRunStyle,
+  measure: (text: string, style: ResolvedRunStyle) => number
+): number {
+  const { parts } = mark;
+  if (parts === undefined || !parts.some((part) => part.bold)) return measure(text, style);
+  let from = 0;
+  return parts.reduce((sum, part) => {
+    const slice = text.slice(from, from + part.length);
+    from += part.length;
+    return sum + measure(slice, part.bold ? { ...style, bold: true } : style);
+  }, 0);
+}
+
 /** What a tag adds to its label's measured width: the room of each part of a sequence. */
 export function contentControlTagChromePt(
   style: Pick<ResolvedRunStyle, 'fontSizePt'>,
@@ -74,6 +94,8 @@ export interface ContentControlTagMark {
    * absent for a chip.
    */
   readonly variant?: 'text' | 'edge' | 'sequence';
+  /** Present for a `text` tag drawn in bold. */
+  readonly bold?: true;
   /** The labels of a sequence, in order, as many characters of the tag's text as each one paints. */
   readonly parts?: readonly ContentControlTagPart[];
 }
@@ -87,6 +109,8 @@ export interface ContentControlTagPart {
   readonly mark?: string;
   /** Present for a label drawn as text in the line; absent for a chip. */
   readonly variant?: 'text';
+  /** Present for a `text` label drawn in bold. */
+  readonly bold?: true;
 }
 
 /**
@@ -106,7 +130,7 @@ export function contentControlTagPiece(
     // A tag is one unit: line breaking must never open a line inside it.
     text: drawn.text,
     props: [],
-    style: contentControlTagStyle(run),
+    style: contentControlTagStyle(run, drawn.mark),
     start: offset,
     end: offset,
     projected: true,
@@ -114,12 +138,14 @@ export function contentControlTagPiece(
   };
 }
 
-type DrawnInk = Pick<ContentControlTagMark, 'name' | 'mark'> & { readonly variant?: 'text' };
+type DrawnInk = Pick<ContentControlTagMark, 'name' | 'mark' | 'bold'> & {
+  readonly variant?: 'text';
+};
 
 /** The text a label paints and what its mark says of it, or null for a label with nothing to draw. */
 function drawnTagOf(label: ContentControlTagLabel): Readonly<{
   text: string;
-  mark: Pick<ContentControlTagMark, 'name' | 'mark' | 'variant' | 'parts'>;
+  mark: Pick<ContentControlTagMark, 'name' | 'mark' | 'variant' | 'bold' | 'parts'>;
 }> | null {
   if (label.variant === 'edge') return { text: '', mark: { variant: 'edge' } };
   if (label.variant === 'sequence') return drawnSequenceOf(label.labels);
@@ -140,7 +166,7 @@ function drawnSequenceOf(labels: readonly ContentControlTagInk[]): ReturnType<ty
   return { text: texts.join(''), mark: { variant: 'sequence', parts } };
 }
 
-/** A label's checked names and mark; a mark only on a chip, which has the room for it. */
+/** A label's checked names and mark: a mark only on a chip, with room for it; bold only on text. */
 function drawnInkOf(label: ContentControlTagInk): DrawnInk {
   const name = pieceNameRecordOf(label);
   const mark = label.variant === 'text' ? undefined : checkedPieceNameOf(label.mark);
@@ -148,6 +174,7 @@ function drawnInkOf(label: ContentControlTagInk): DrawnInk {
     ...(name === undefined ? {} : { name }),
     ...(mark === undefined ? {} : { mark }),
     ...(label.variant === 'text' ? { variant: label.variant } : {}),
+    ...(label.variant === 'text' && label.bold === true ? { bold: true as const } : {}),
   };
 }
 
@@ -172,7 +199,11 @@ export function fitContentControlTagsToText(pieces: FieldAwarePiece[]): void {
     if (!piece.contentControlTag) continue;
     const inward = piece.contentControlTag.edge === 'open' ? next : before[index];
     const text = inward ?? (piece.contentControlTag.edge === 'open' ? before[index] : next);
-    if (text) pieces[index] = { ...piece, style: contentControlTagStyle(text.style) };
+    if (text)
+      pieces[index] = {
+        ...piece,
+        style: contentControlTagStyle(text.style, piece.contentControlTag),
+      };
   }
 }
 
@@ -193,14 +224,18 @@ function isText(piece: FieldAwarePiece): boolean {
  * The tag keeps the run's face and size, so its chip has the same band as the text beside it:
  * a selection or a control's boundary drawn over the line covers the chip exactly. Everything
  * else that would change the glyphs of the surrounding prose is reset — a tag inside a bold,
- * struck-through, all-caps run must not inherit any of it. Colour and fill are not run
- * formatting: the chip is painted by `semantic-paint` from the stylesheet, by its names.
+ * struck-through, all-caps run must not inherit any of it, unless a `text` tag asks for bold.
+ * Colour and fill are not run formatting: the chip is painted by `semantic-paint` from the
+ * stylesheet, by its names.
  */
-export function contentControlTagStyle(base: ResolvedRunStyle): ResolvedRunStyle {
+export function contentControlTagStyle(
+  base: ResolvedRunStyle,
+  mark?: Pick<ContentControlTagMark, 'bold'>
+): ResolvedRunStyle {
   return {
     ...base,
     color: null,
-    bold: false,
+    bold: mark?.bold === true,
     italic: false,
     underline: null,
     strike: false,

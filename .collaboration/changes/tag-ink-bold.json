@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tag label was measured and painted in the engine's weight, so a host could not show in bold the text the document prints in bold, such as a list item's number.",
+  "after": "A text tag label can ask for bold: layout measures it in bold and paint keeps it, alone or as a part of a sequence. A chip keeps the engine's weight.",
+  "reason": "Layout and paint of the host's view only; nothing reaches the document, an operation or shared updates.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-tags.test.ts",
+    "packages/core/src/output/__tests__/chip-label-sequence.test.ts"
+  ],
+  "changeset": "tag-ink-bold",
+  "migration": null
+}

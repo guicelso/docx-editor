@@ -1,7 +1,7 @@
 // Which pieces publish a model range that their painted text does not map one to one.
 
 import { wordBoundaries } from './cjk-line-break.ts';
-import { contentControlTagChromePt } from './content-control-tags.ts';
+import { contentControlTagChromePt, contentControlTagTextWidthPt } from './content-control-tags.ts';
 import type { FieldAwarePiece } from './field-pieces.ts';
 import { pieceRoomOf, pieceRoomWidthPt } from './piece-names.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
@@ -63,4 +63,19 @@ export function pieceBoundaries(piece: FieldAwarePiece, ideographic: boolean): n
 export function pieceChromePt(piece: FieldAwarePiece, style: ResolvedRunStyle): number {
   if (piece.contentControlTag) return contentControlTagChromePt(style, piece.contentControlTag);
   return piece.pieceAtom ? pieceRoomWidthPt(pieceRoomOf(style, piece.pieceAtom.mark)) : 0;
+}
+
+/**
+ * The advance of a piece's text, as every place that measures it agrees with paint: a tag's bold
+ * parts in bold, everything else in the piece's style.
+ */
+export function pieceTextWidthPt(
+  piece: FieldAwarePiece,
+  text: string,
+  style: ResolvedRunStyle,
+  measure: (text: string, style: ResolvedRunStyle) => number
+): number {
+  return piece.contentControlTag
+    ? contentControlTagTextWidthPt(piece.contentControlTag, text, style, measure)
+    : measure(text, style);
 }

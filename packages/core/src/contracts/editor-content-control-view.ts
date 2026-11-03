@@ -57,6 +57,11 @@ export interface ContentControlTagInk extends PieceName {
   readonly variant?: 'chip' | 'text';
   /** A chip's mark, measured before its text as a {@link PieceAtom}'s is. A `text` label has none. */
   readonly mark?: string;
+  /**
+   * Draws a `text` label in bold, measured and painted so, for text the document prints in bold —
+   * alone or as a part of a sequence. A chip keeps the engine's weight.
+   */
+  readonly bold?: boolean;
 }
 
 /**

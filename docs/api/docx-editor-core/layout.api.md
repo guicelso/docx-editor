@@ -575,6 +575,7 @@ export type ContentControlTagLevel = 'inline' | 'block';
 // @public
 export interface ContentControlTagMark {
     readonly atom?: true;
+    readonly bold?: true;
     // (undocumented)
     readonly controlId: string;
     // (undocumented)
@@ -589,6 +590,7 @@ export interface ContentControlTagMark {
 
 // @public
 export interface ContentControlTagPart {
+    readonly bold?: true;
     // (undocumented)
     readonly length: number;
     readonly mark?: string;

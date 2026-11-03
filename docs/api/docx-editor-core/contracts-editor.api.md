@@ -174,6 +174,7 @@ export interface ContentControlTagEdgeOnly {
 
 // @public
 export interface ContentControlTagInk extends PieceName {
+    readonly bold?: boolean;
     readonly mark?: string;
     readonly text: string;
     readonly variant?: 'chip' | 'text';
