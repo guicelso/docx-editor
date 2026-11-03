@@ -525,6 +525,7 @@ export interface ContentControlBoundaryRecord {
     readonly placeholder: boolean;
     // (undocumented)
     readonly tag?: string;
+    readonly whole: boolean;
 }
 
 // @public

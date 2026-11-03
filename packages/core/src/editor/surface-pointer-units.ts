@@ -1,6 +1,6 @@
-// What one press selects as a UNIT: a content control showing its prompt, or one the host made an
-// atom, from the boundary geometry layout publishes. Split out of `surface-pointer.ts`, which owns
-// the gesture.
+// What a selection takes whole, from the boundary geometry layout publishes: a UNIT — a content
+// control showing its prompt, or one the host made an atom — and a frame the host takes whole.
+// `surface-pointer.ts` owns the gesture.
 
 import { contentControlAtPoint, type SemanticHit } from '../layout/semantic-hit-test.ts';
 import {
@@ -99,7 +99,15 @@ export function unitSelectionRange(
   layout: SemanticLayout,
   control: ContentControlBoundaryRecord
 ): PositionRange | null {
-  if (!isUnitControl(control) || control.fragments.length === 0) return null;
+  return isUnitControl(control) ? controlRangeOf(layout, control) : null;
+}
+
+/** A control's full addressable range, by the same geometry as {@link unitSelectionRange}. */
+function controlRangeOf(
+  layout: SemanticLayout,
+  control: ContentControlBoundaryRecord
+): PositionRange | null {
+  if (control.fragments.length === 0) return null;
 
   let from: SemanticPosition | null = null;
   let to: SemanticPosition | null = null;
@@ -109,7 +117,7 @@ export function unitSelectionRange(
     if (!to || comparePositions(layout, end, to) > 0) to = end;
   };
 
-  // Non-inline units select whole paragraphs — row/cell wrappers are structural units
+  // Non-inline controls select whole paragraphs — row/cell wrappers are structural units
   // the same way block wrappers are, so a mid-cell partial range must still absorb.
   const wholeParagraphs = control.level !== 'inline';
 
@@ -168,8 +176,8 @@ export function unitAtHit(
 }
 
 /**
- * Expand a selection so every unit control it touches is selected whole: a range over any unit,
- * and a caret inside a prompt.
+ * Expand a selection so every unit control it touches is selected whole — a range over any unit,
+ * and a caret inside a prompt — and so is every frame taken whole whose edge it crosses.
  *
  * Used by pointer drag / shift-click, and exported so keyboard extend paths can share the
  * same atomic rule without duplicating geometry walks.
@@ -178,48 +186,91 @@ export function absorbUnitControls(
   layout: SemanticLayout,
   selection: SemanticSelection
 ): SemanticSelection {
-  const controls = layout.contentControls ?? [];
+  const controls = (layout.contentControls ?? []).filter(
+    (control) => isUnitControl(control) || control.whole
+  );
   if (controls.length === 0) return selection;
 
-  let from =
-    comparePositions(layout, selection.anchor, selection.head) <= 0
-      ? selection.anchor
-      : selection.head;
-  let to =
-    comparePositions(layout, selection.anchor, selection.head) <= 0
-      ? selection.head
-      : selection.anchor;
+  const headIsEnd = comparePositions(layout, selection.anchor, selection.head) <= 0;
+  let taken: PositionRange = headIsEnd
+    ? { from: selection.anchor, to: selection.head }
+    : { from: selection.head, to: selection.anchor };
 
   let changed = true;
   while (changed) {
     changed = false;
     for (const control of controls) {
-      if (!isUnitControl(control)) continue;
-      const range = unitSelectionRange(layout, control);
+      const range = rangeTakenIn(layout, control, taken);
       if (!range) continue;
-      const collapsed = comparePositions(layout, from, to) === 0;
-      // A caret at an atom's edge stands beside it: only a prompt takes a caret in whole.
-      if (collapsed && !control.placeholder) continue;
-      const intersects = collapsed
-        ? comparePositions(layout, from, range.from) >= 0 &&
-          comparePositions(layout, from, range.to) < 0
-        : comparePositions(layout, from, range.to) < 0 &&
-          comparePositions(layout, to, range.from) > 0;
-      if (!intersects) continue;
-      if (comparePositions(layout, range.from, from) < 0) {
-        from = range.from;
-        changed = true;
-      }
-      if (comparePositions(layout, range.to, to) > 0) {
-        to = range.to;
-        changed = true;
-      }
+      const grown = spanOf(layout, taken, range);
+      changed ||= !sameRange(layout, grown, taken);
+      taken = grown;
     }
   }
 
-  // Preserve which end the user is dragging (head) relative to the original orientation.
-  const headIsEnd = comparePositions(layout, selection.anchor, selection.head) <= 0;
-  return headIsEnd ? { anchor: from, head: to } : { anchor: to, head: from };
+  return headIsEnd
+    ? { anchor: taken.from, head: taken.to }
+    : { anchor: taken.to, head: taken.from };
+}
+
+/** The range of a control a selection takes in whole, or null where it leaves the control alone. */
+function rangeTakenIn(
+  layout: SemanticLayout,
+  control: ContentControlBoundaryRecord,
+  selection: PositionRange
+): PositionRange | null {
+  const range = controlRangeOf(layout, control);
+  if (!range) return null;
+  const takesIn = isUnitControl(control)
+    ? touchesUnit(layout, control, range, selection)
+    : reachesFromOutside(layout, range, selection);
+  return takesIn ? range : null;
+}
+
+/** A range over a unit touches it anywhere; a caret only a prompt, which it stands inside. */
+function touchesUnit(
+  layout: SemanticLayout,
+  control: ContentControlBoundaryRecord,
+  range: PositionRange,
+  selection: PositionRange
+): boolean {
+  if (comparePositions(layout, selection.from, selection.to) !== 0) {
+    return overlaps(layout, range, selection);
+  }
+  return (
+    control.placeholder &&
+    comparePositions(layout, selection.from, range.from) >= 0 &&
+    comparePositions(layout, selection.from, range.to) < 0
+  );
+}
+
+/** A frame taken whole is taken in by a selection that overlaps it and does not stay inside it. */
+function reachesFromOutside(
+  layout: SemanticLayout,
+  range: PositionRange,
+  selection: PositionRange
+): boolean {
+  const inside =
+    comparePositions(layout, range.from, selection.from) <= 0 &&
+    comparePositions(layout, selection.to, range.to) <= 0;
+  return overlaps(layout, range, selection) && !inside;
+}
+
+function overlaps(layout: SemanticLayout, a: PositionRange, b: PositionRange): boolean {
+  return comparePositions(layout, b.from, a.to) < 0 && comparePositions(layout, b.to, a.from) > 0;
+}
+
+function spanOf(layout: SemanticLayout, a: PositionRange, b: PositionRange): PositionRange {
+  return {
+    from: comparePositions(layout, b.from, a.from) < 0 ? b.from : a.from,
+    to: comparePositions(layout, b.to, a.to) > 0 ? b.to : a.to,
+  };
+}
+
+function sameRange(layout: SemanticLayout, a: PositionRange, b: PositionRange): boolean {
+  return (
+    comparePositions(layout, a.from, b.from) === 0 && comparePositions(layout, a.to, b.to) === 0
+  );
 }
 
 /**
@@ -245,15 +296,27 @@ export function stepOverAtoms(
 }
 
 const atomIdsByLayout = new WeakMap<SemanticLayout, ReadonlySet<string>>();
+const wholeIdsByLayout = new WeakMap<SemanticLayout, ReadonlySet<string>>();
 
 /** The controls the host made atoms, once per layout. */
 export function atomControlIdsOf(layout: SemanticLayout): ReadonlySet<string> {
-  let ids = atomIdsByLayout.get(layout);
+  return controlIdsOnce(atomIdsByLayout, layout, (control) => control.atom);
+}
+
+/** The frames the host made pieces taken whole, once per layout. */
+export function wholeControlIdsOf(layout: SemanticLayout): ReadonlySet<string> {
+  return controlIdsOnce(wholeIdsByLayout, layout, (control) => control.whole);
+}
+
+function controlIdsOnce(
+  byLayout: WeakMap<SemanticLayout, ReadonlySet<string>>,
+  layout: SemanticLayout,
+  keeps: (control: ContentControlBoundaryRecord) => boolean
+): ReadonlySet<string> {
+  let ids = byLayout.get(layout);
   if (!ids) {
-    ids = new Set(
-      (layout.contentControls ?? []).filter((each) => each.atom).map((each) => each.id)
-    );
-    atomIdsByLayout.set(layout, ids);
+    ids = new Set((layout.contentControls ?? []).filter(keeps).map((each) => each.id));
+    byLayout.set(layout, ids);
   }
   return ids;
 }

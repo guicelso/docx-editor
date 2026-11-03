@@ -67,6 +67,11 @@ export interface ContentControlSurfaceState {
   /** Innermost control containing the caret — where tags meet, the one its slot is in — or null. */
   readonly activeControlId: string | null;
   /**
+   * The piece selected whole, or null: the control a key or a press selected, else the outermost
+   * atom or frame taken whole that the selection runs over exactly.
+   */
+  readonly selectedControlId: string | null;
+  /**
    * The slot the caret stands in where content-control edges meet, named by the edge on each side
    * of it (`null` for text), and where a write at the caret lands there — `null` where the offset
    * alone says it, inside a block control's tag. One offset is several places there, and the slot

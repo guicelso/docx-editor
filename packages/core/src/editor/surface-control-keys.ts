@@ -7,8 +7,9 @@
 // boundary the tags make visible. A control showing its prompt holds nothing to lose, so with
 // the tags drawn a key in it removes it at once. Without drawn tags a key at an edge keeps Word's
 // rule and takes one character. A control the host made an atom is one unit with or without tags:
-// a key at its outer edge selects it whole, as a press does, and the next key removes it. A wrapper
-// locked against deletion is refused by the store, as every removal is.
+// a key at its outer edge selects it whole, as a press does, and the next key removes it. A range
+// running exactly over an atom or a frame the host takes whole holds it so too. A wrapper locked
+// against deletion is refused by the store, as every removal is.
 
 import type {
   CaretSlot,
@@ -47,6 +48,8 @@ export interface ControlKeyDeps {
   readonly edgesAt: (position: SemanticPosition) => readonly CaretSlotNeighbour[];
   /** The controls the host made atoms, as layout published them. */
   readonly atomIds: () => ReadonlySet<string>;
+  /** The frames the host takes whole, as layout published them. */
+  readonly wholeIds: () => ReadonlySet<string>;
   readonly select: (selection: SemanticSelection) => void;
   /** Remove a control and its content, leaving the caret where it stood, in the slot kept. */
   readonly remove: (controlId: string, caret: SemanticPosition, keep: SlotKeep) => void;
@@ -57,7 +60,10 @@ export interface ControlKeys {
   press(direction: 'backward' | 'forward'): boolean;
   /** Remove the control the selection holds whole: true when there was one. */
   removeSelected(): boolean;
-  /** The control selected whole, while the selection still selects it. */
+  /**
+   * The control selected whole, while the selection still selects it: the one a key or a press
+   * selected, else the outermost atom or frame taken whole the selection covers exactly.
+   */
   selectedId(): string | null;
   /** Select a control whole, from one end of it to the other: an empty one too, at its offset. */
   selectWhole(controlId: string, selection: SemanticSelection): void;
@@ -138,21 +144,36 @@ export function createControlKeys(deps: ControlKeyDeps): ControlKeys {
   };
 
   const selectedNow = (): PlacedControl | null => {
-    if (!selected || !selectionsEqual(deps.selection(), selected.selection)) return atomSelected();
+    if (!selected || !selectionsEqual(deps.selection(), selected.selection)) return pieceCovered();
     return placedById(deps.selection().head.paragraphId, selected.controlId) ?? null;
   };
 
-  /** The atom whose content the selection is exactly: a press on an atom selects it so. */
-  const atomSelected = (): PlacedControl | null => {
+  /**
+   * The outermost atom or frame taken whole whose content the selection is exactly: a press on an
+   * atom selects it so. Covering it exactly, the selection ends in its first or last paragraph.
+   */
+  const pieceCovered = (): PlacedControl | null => {
     const atoms = deps.atomIds();
-    if (atoms.size === 0) return null;
-    if (isCollapsedSelection(deps.selection())) return null;
-    const { anchor, head } = deps.selection();
-    for (const controlId of atoms) {
-      const control = placedById(head.paragraphId, controlId);
-      if (control && coversExactly(control, anchor, head)) return control;
+    const wholes = deps.wholeIds();
+    if ((atoms.size === 0 && wholes.size === 0) || isCollapsedSelection(deps.selection())) {
+      return null;
     }
-    return null;
+    const { anchor, head } = deps.selection();
+    const covered = placedAround(head.paragraphId).find(
+      (control) =>
+        (atoms.has(control.controlId) || wholes.has(control.controlId)) &&
+        coversExactly(control, anchor, head)
+    );
+    return covered ?? null;
+  };
+
+  /** The controls holding a paragraph or inside it, outermost first: its block holders, then its own. */
+  const placedAround = (paragraphId: string): readonly PlacedControl[] => {
+    const part = deps.part(paragraphId);
+    const holders = enclosingContentControls(part, paragraphId).flatMap(
+      (holder) => blockControl(part, holder) ?? []
+    );
+    return [...holders, ...inlineControlsOf(paragraphId)];
   };
 
   /** The caret stays where the control stood, in the slot touching the edge before its opening. */

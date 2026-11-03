@@ -50,11 +50,10 @@ export function syncHoveredPieces(
 }
 
 /**
- * Mark the atom selected whole: the atom control the keys hold — a press on it, or a range that
- * runs from one end of it to the other, an empty one included — or one field unit, the press on a
- * field or a range that covers one and nothing else. The selection highlight is a tint under the
- * text; a host drawing the atom as a chip needs to say which chip is the subject of the toolbar
- * and of its own inspector.
+ * Mark the atom selected whole: the selected piece, when it is an atom — a frame's chrome says so,
+ * and its text carries no mark —, or one field unit, the press on a field or a range that covers
+ * one and nothing else. The selection highlight is a tint under the text; a host drawing the atom
+ * as a chip needs to say which chip is the subject of the toolbar and of its own inspector.
  */
 export function syncSelectedPiece(
   pagesLayer: HTMLElement,

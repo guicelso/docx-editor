@@ -264,7 +264,12 @@ import {
   createPointerController,
   type PointerController,
 } from './surface-pointer.ts';
-import { atomControlIdsOf, atomRangeOf, stepOverAtoms } from './surface-pointer-units.ts';
+import {
+  atomControlIdsOf,
+  atomRangeOf,
+  stepOverAtoms,
+  wholeControlIdsOf,
+} from './surface-pointer-units.ts';
 import { createReviewViewState } from './surface-review-view.ts';
 import { selectionsEqual } from './dom-selection.ts';
 import { createSurfaceSelectionSync } from './surface-selection-sync.ts';
@@ -974,6 +979,7 @@ export function mountPaginatedSurface(
     placement: () => caretSlots.placement(),
     edgesAt: controlEdgesAt,
     atomIds: () => atomControlIdsOf(currentLayout),
+    wholeIds: () => wholeControlIdsOf(currentLayout),
     select: (next) => setSelection(next),
     remove: (controlId, at, slot) =>
       commit(
@@ -2538,6 +2544,7 @@ export function mountPaginatedSurface(
         showAll: showAllContentControls,
         formFill: formFillMode,
         activeControlId: contentControlAtCaret()?.id ?? null,
+        selectedControlId: controlKeys.selectedId(),
         caretSlot: caretSlots.neighbours(),
       },
       contextTocId,

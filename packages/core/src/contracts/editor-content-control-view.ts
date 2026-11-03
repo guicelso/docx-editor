@@ -132,7 +132,18 @@ export interface ContentControlPromptDisplay {
  * selects it whole, a drag takes it whole, and a key with it selected removes the control. A `frame` keeps its content as
  * it is and publishes the names on the control's chrome. Either way the chrome carries the names.
  */
-export type ContentControlPiece = { readonly atom: PieceAtom } | { readonly frame: PieceName };
+export type ContentControlPiece =
+  | { readonly atom: PieceAtom }
+  | {
+      readonly frame: PieceName;
+      /**
+       * The reader takes the frame whole: a drag or a Shift+click crossing its edge extends over
+       * it, while one inside it stays free; a selection from one edge of it to the other is the
+       * selected piece, the outermost where such frames share both edges, published as
+       * `selectedControlId`. Ignored while the control shows its prompt.
+       */
+      readonly whole?: true;
+    };
 
 /**
  * The host's piece for every content control. @public

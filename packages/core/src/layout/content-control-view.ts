@@ -202,7 +202,7 @@ function pieceToken(piece: ContentControlPiece | null): string {
   if (piece === null) return '';
   return 'atom' in piece
     ? framedTokenJoin(['atom', atomToken(piece.atom)])
-    : framedTokenJoin(['frame', nameToken(piece.frame)]);
+    : framedTokenJoin(['frame', nameToken(piece.frame), piece.whole === true ? 'whole' : '']);
 }
 
 function atomToken(atom: PieceAtom | undefined): string {

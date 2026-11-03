@@ -943,6 +943,8 @@ export interface ContentControlBoundaryRecord {
   readonly bound: boolean;
   /** The host made it an atom: met as one unit, as a control showing its placeholder is. */
   readonly atom: boolean;
+  /** The host made it a frame taken whole: a selection crossing its edge extends over it. */
+  readonly whole: boolean;
   /** The host's names for the control, published on its chrome. */
   readonly name?: import('./piece-names.ts').PieceNameRecord;
   /** 0 for a top-level control; increments through nested wrappers under the shared nesting bound. */

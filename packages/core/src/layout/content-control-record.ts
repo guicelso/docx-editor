@@ -90,18 +90,19 @@ export function samePieceNames(
 }
 
 /**
- * The host's answer for a control: an atom or not, and its names. A control showing its
- * placeholder is already a unit — its prompt's — and no atom.
+ * The host's answer for a control: an atom, a frame taken whole, or neither, and its names. A
+ * control showing its placeholder is already a unit — its prompt's — and neither.
  */
 function hostPieceOf(
   control: OoxmlElement,
   showsPlaceholder: boolean,
   display: ContentControlPieceDisplay | undefined
-): { readonly atom: boolean; readonly name?: PieceNameRecord } {
+): { readonly atom: boolean; readonly whole: boolean; readonly name?: PieceNameRecord } {
   const answer = display?.pieceOf(contentControlSubjectOf(control)) ?? null;
   const name = pieceNameRecordOf(answer === null ? undefined : namesOf(answer));
   const atom = answer !== null && 'atom' in answer && !showsPlaceholder;
-  return { atom, ...(name === undefined ? {} : { name }) };
+  const whole = answer !== null && 'frame' in answer && answer.whole === true && !showsPlaceholder;
+  return { atom, whole, ...(name === undefined ? {} : { name }) };
 }
 
 function namesOf(piece: ContentControlPiece): PieceName {

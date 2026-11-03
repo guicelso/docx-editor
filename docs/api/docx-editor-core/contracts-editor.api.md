@@ -126,6 +126,7 @@ export type ContentControlPiece = {
     readonly atom: PieceAtom;
 } | {
     readonly frame: PieceName;
+    readonly whole?: true;
 };
 
 // @public

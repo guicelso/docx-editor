@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Only an atom or a control showing its prompt was taken whole by a drag, and only a press or a key at a tag selected a frame whole; the surface did not say which piece was selected.",
+  "after": "A frame the host marks `whole` is taken whole by a drag or a Shift+click crossing its edge, a selection covering it exactly selects it (the outermost of those sharing both edges), and the surface state publishes the selected piece.",
+  "reason": "Selection and the host's view only; nothing reaches the document, an operation or shared updates.",
+  "tests": ["packages/core/src/editor/__tests__/piece-whole-frame.test.ts"],
+  "changeset": "frame-taken-whole",
+  "migration": null
+}

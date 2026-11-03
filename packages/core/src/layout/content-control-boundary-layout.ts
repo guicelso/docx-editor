@@ -715,6 +715,7 @@ function sameBoundaryRecord(
     left.placeholder === right.placeholder &&
     left.bound === right.bound &&
     left.atom === right.atom &&
+    left.whole === right.whole &&
     samePieceNames(left.name, right.name) &&
     left.nestingDepth === right.nestingDepth &&
     left.level === right.level &&

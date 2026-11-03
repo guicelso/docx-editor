@@ -378,7 +378,7 @@
     {
       "files": ["packages/core/src/layout/semantic-records.ts"],
       "rules": {
-        "max-lines": ["error", { "max": 1100, "skipBlankLines": false, "skipComments": false }]
+        "max-lines": ["error", { "max": 1102, "skipBlankLines": false, "skipComments": false }]
       }
     },
     // semantic-layout.ts is the story loop: section flow and paragraph fragmentation advance
