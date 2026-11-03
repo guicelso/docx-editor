@@ -47,6 +47,11 @@ export type SlotKeep =
 /** Typed text stands on the caret's left: the caret touches what it typed. */
 export const AFTER_TYPED_TEXT: SlotKeep = { left: null };
 
+/** The text a plain press landed on, and the side of the caret it stands on. */
+export interface PressedText {
+  readonly pressedText: 'before' | 'after';
+}
+
 export interface CaretSlots {
   /** The drawn slot the caret stands in, or null where no tag stands at a collapsed caret. */
   current(): CaretSlot | null;
@@ -65,6 +70,8 @@ export interface CaretSlots {
   arrivedFromLeft(): void;
   /** The slot beside a tag, on the side named: a click on a drawn tag, or a host placing the caret. */
   chooseBeside(tag: SemanticHitTag): void;
+  /** A plain press: beside the tag it landed on, or touching the text it landed on. */
+  press(pressed: SemanticHitTag | PressedText): void;
   /** A selection move forgets a slot that is no longer where the caret stands. */
   forgetUnlessAt(next: SemanticSelection): void;
   /** An edit left the caret at `at`, in the slot keeping one side of the one it started from. */
@@ -166,6 +173,21 @@ export function createCaretSlots(deps: {
     deps.changed();
   };
 
+  const stand = (keep: SlotKeep): void => {
+    const head = collapsedHead();
+    if (!head) return;
+    held = { at: head, ...keep };
+    deps.changed();
+  };
+
+  const chooseBeside = (tag: SemanticHitTag): void => {
+    const head = collapsedHead();
+    const slot = (head ? slotsAt(head) : []).find((candidate) =>
+      sameCaretSlotNeighbour(tag.side === 'before' ? candidate.right : candidate.left, tag)
+    );
+    if (slot) choose(slot);
+  };
+
   return {
     current,
     placement() {
@@ -192,12 +214,11 @@ export function createCaretSlots(deps: {
       const [first] = drawnHere();
       if (first) choose(first);
     },
-    chooseBeside(tag) {
-      const head = collapsedHead();
-      const slot = (head ? slotsAt(head) : []).find((candidate) =>
-        sameCaretSlotNeighbour(tag.side === 'before' ? candidate.right : candidate.left, tag)
-      );
-      if (slot) choose(slot);
+    chooseBeside,
+    press(pressed) {
+      if ('pressedText' in pressed) {
+        stand(pressed.pressedText === 'before' ? AFTER_TYPED_TEXT : { right: null });
+      } else chooseBeside(pressed);
     },
     forgetUnlessAt(next) {
       if (held && !(isCollapsedSelection(next) && samePosition(next.head, held.at))) held = null;
@@ -205,12 +226,7 @@ export function createCaretSlots(deps: {
     hold(at, keep) {
       held = { at, ...keep };
     },
-    stand(keep) {
-      const head = collapsedHead();
-      if (!head) return;
-      held = { at: head, ...keep };
-      deps.changed();
-    },
+    stand,
     neighbours() {
       const slot = place();
       return slot && (slot.left || slot.right)

@@ -188,6 +188,14 @@ export interface BlockControlEdges {
 export function blockControlEdgesOf(part: OoxmlPart): ReadonlyMap<string, BlockControlEdges>;
 
 // @public
+export interface BlockControlPlace {
+    // (undocumented)
+    readonly offset: number;
+    // (undocumented)
+    readonly paragraphId: string;
+}
+
+// @public
 export type BlockPlace = {
     readonly before: string;
 } | {
@@ -4338,17 +4346,18 @@ export interface SourceCrop {
 }
 
 // @public
-export interface SplitContentControlOp {
-    // (undocumented)
+export type SplitContentControlOp = {
     readonly controlId: string;
-    // (undocumented)
-    readonly offset: number;
-    // (undocumented)
     readonly op: 'splitContentControl';
     readonly revision?: RevisionAttributionInput;
-    // (undocumented)
     readonly tag: string;
-}
+} & ({
+    readonly at?: undefined;
+    readonly offset: number;
+} | {
+    readonly at: BlockControlPlace;
+    readonly offset?: undefined;
+});
 
 // @public
 export function stableHash(value: unknown, ephemera?: ReadonlySet<string>): string;

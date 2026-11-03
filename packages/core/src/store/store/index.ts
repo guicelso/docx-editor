@@ -38,6 +38,7 @@ export type {
 export type { InsertParagraphOp } from './tree-op-insert-paragraph.ts';
 export type {
   JoinContentControlsOp,
+  BlockControlPlace,
   SplitContentControlOp,
 } from './tree-op-inline-control-structure.ts';
 export type { LiftContentControlOp } from './tree-op-control-lift.ts';

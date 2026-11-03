@@ -112,6 +112,12 @@ export interface SemanticHit {
    * half asks for the caret slot in front of the chip, the right half for the one behind it.
    */
   readonly contentControlTag?: SemanticHitTag;
+  /**
+   * Where the text under the point stands from the caret, in reading order, when the caret lands
+   * at an edge of it: `before` when the point resolved to the end of the pressed text, `after`
+   * when to its start. Where control edges meet there, a press keeps the caret with that text.
+   */
+  readonly pressedText?: 'before' | 'after';
   /** The field atom under the point: the field and its model range. */
   readonly field?: SemanticHitField;
 }
@@ -548,8 +554,27 @@ function resolveParagraph(
     contentControlId: null,
     drawing: resolved.drawing && resolved.withinSpan ? drawingHitIdentity(resolved.drawing) : null,
     ...tagAtX(line, point.x),
+    ...pressedTextAt(line, point.x, position),
     ...fieldAtX(line, point.x),
   };
+}
+
+/** The side of the caret the text under the x stands on, when the caret is at an edge of it. A tag is not text. */
+function pressedTextAt(
+  line: LineRecord,
+  x: number,
+  position: SemanticPosition
+): { pressedText?: 'before' | 'after' } {
+  const span = line.spans.find(
+    (candidate) =>
+      !candidate.contentControlTag &&
+      x >= candidate.box.x &&
+      x < candidate.box.x + candidate.box.width
+  );
+  if (!span || span.range.paragraphId !== position.paragraphId) return {};
+  if (span.range.end <= span.range.start) return {};
+  if (position.offset === span.range.end) return { pressedText: 'before' };
+  return position.offset === span.range.start ? { pressedText: 'after' } : {};
 }
 
 /**

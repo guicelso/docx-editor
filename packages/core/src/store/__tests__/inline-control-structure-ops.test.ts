@@ -1,6 +1,6 @@
-// An inline control is cut in two, or two are joined, without a character changing: the head keeps
-// the control's identity, the tail is a new control with the tag the caller names, and a join puts
-// the second control's content at the end of the first.
+// A control is cut in two — an inline one at an offset, a block one at a place in a paragraph — or two inline
+// ones are joined, without a character changing: the head keeps the control's identity, the tail is
+// a new control with the tag the caller names, and a join puts the second's content after the first's.
 
 import { describe, expect, test } from 'bun:test';
 import { contentControlPropertiesOf } from '../package/content-control-nodes.ts';
@@ -247,6 +247,121 @@ describe('splitContentControl', () => {
       targets: [{ nodeId: idOf(part, 'item:a'), structural: true }],
     });
     expect(refused(part, op)).toBe('locked');
+  });
+});
+
+describe('splitContentControl · a block control', () => {
+  const p = (text: string) => `<w:p>${run(text)}</w:p>`;
+  const listOf = (items: string) =>
+    readOoxmlPart(
+      `<w:document xmlns:w="${W}"><w:body>${inline('list', items)}<w:sectPr/></w:body></w:document>`,
+      { name: '/word/document.xml', contentType: 'app/xml' }
+    );
+  const bodyOf = (part: OoxmlPart): string => {
+    const walk = (nodes: readonly OoxmlNode[]): string =>
+      nodes
+        .map((node) => {
+          if (node.kind === 'textValue') return node.value;
+          if (node.kind === 'contentControlProperties') return '';
+          if (node.kind === 'contentControl') {
+            const content = node.children.find((child) => child.kind === 'contentControlContent');
+            return `${contentControlPropertiesOf(node).tag}[${walk(content && content.kind !== 'textValue' ? content.children : [])}]`;
+          }
+          return node.kind === 'paragraph' ? `(${walk(node.children)})` : walk(node.children);
+        })
+        .join('');
+    return walk(part.root.kind === 'textValue' ? [] : part.root.children);
+  };
+  const blockIdOf = (part: OoxmlPart, tag: string, index: number): string => {
+    const content = controlNamed(part, tag).children.find(
+      (child) => child.kind === 'contentControlContent'
+    );
+    const block = content && content.kind !== 'textValue' ? content.children[index] : undefined;
+    if (!block) throw new Error(`no block ${index} in ${tag}`);
+    return block.id;
+  };
+
+  const at = (part: OoxmlPart, index: number, offset: number) => ({
+    paragraphId: blockIdOf(part, 'item:a', index),
+    offset,
+  });
+  const split = (
+    items: string,
+    place: (part: OoxmlPart) => { paragraphId: string; offset: number }
+  ) => {
+    const read = listOf(inline('item:a', items, '<w:id w:val="7"/>'));
+    if (!read.ok) throw new Error(read.reason);
+    const head = idOf(read.part, 'item:a');
+    const written = applied(read.part, {
+      op: 'splitContentControl',
+      controlId: head,
+      at: place(read.part),
+      tag: 'item:b',
+    });
+    return { read: read.part, written, head };
+  };
+
+  test('at the start of a paragraph, the paragraph goes whole to a new control; the head keeps the control', () => {
+    const { read, written, head } = split(`${p('B1')}${p('B2')}${p('B3')}`, (part) =>
+      at(part, 1, 0)
+    );
+
+    expect(bodyOf(written)).toBe('list[item:a[(B1)]item:b[(B2)(B3)]]');
+    expect(idOf(written, 'item:a')).toBe(head);
+    expect(blockIdOf(written, 'item:b', 0)).toBe(blockIdOf(read, 'item:a', 1));
+    expect(contentControlPropertiesOf(controlNamed(written, 'item:a')).id).toBe(7);
+    expect(contentControlPropertiesOf(controlNamed(written, 'item:b')).id).toBe(8);
+  });
+
+  test('at the end of a paragraph, the blocks after it go, and it stays whole', () => {
+    const { written } = split(`${p('B1')}${p('B2')}`, (part) => at(part, 0, 2));
+
+    expect(bodyOf(written)).toBe('list[item:a[(B1)]item:b[(B2)]]');
+  });
+
+  test('inside a paragraph, the paragraph is cut, and its tail opens the new control', () => {
+    const { written } = split(`${p('que fica livre')}${p('B2')}`, (part) => at(part, 0, 4));
+
+    expect(bodyOf(written)).toBe('list[item:a[(que )]item:b[(fica livre)(B2)]]');
+  });
+
+  test('the very start and end, a paragraph it does not hold, a nested control, a prompt, an inline control and a revision are refused', () => {
+    const read = listOf(
+      `${inline('item:a', `${p('B1')}<w:p>${inline('nested', run('xyz'))}</w:p>`)}${prompt('item:p')}`
+    );
+    if (!read.ok) throw new Error(read.reason);
+    const controlId = idOf(read.part, 'item:a');
+    const inlinePart = documentOf(inline('item:i', run('abcd')));
+    const refusal = (place: { paragraphId: string; offset: number }, id = controlId) =>
+      refused(read.part, { op: 'splitContentControl', controlId: id, at: place, tag: 'b' });
+
+    expect(refusal(at(read.part, 0, 0))).toBe('invalid-range');
+    expect(refusal(at(read.part, 1, 3))).toBe('invalid-range');
+    expect(refusal({ paragraphId: idOf(read.part, 'item:p'), offset: 0 })).toBe('invalid-range');
+    expect(refusal(at(read.part, 1, 1))).toBe('indivisible-content');
+    expect(
+      refusal(
+        { paragraphId: blockIdOf(read.part, 'item:a', 0), offset: 1 },
+        idOf(read.part, 'item:p')
+      )
+    ).toBe('invalidArgs');
+    expect(
+      refused(read.part, {
+        op: 'splitContentControl',
+        controlId,
+        at: at(read.part, 0, 1),
+        tag: 'b',
+        revision: { author: 'QA', date: '2026-10-10T00:00:00Z' },
+      })
+    ).toBe('invalidArgs');
+    expect(
+      refused(inlinePart, {
+        op: 'splitContentControl',
+        controlId: idOf(inlinePart, 'item:i'),
+        at: { paragraphId: idOf(inlinePart, 'item:i'), offset: 1 },
+        tag: 'b',
+      })
+    ).toBe('unsupported');
   });
 });
 

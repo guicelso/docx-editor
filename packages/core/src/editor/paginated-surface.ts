@@ -6308,9 +6308,9 @@ export function mountPaginatedSurface(
         const record = contentControlsInLayout(editingLayout()).find(({ id }) => id === controlId);
         return contentControlTagPress({ control: { controlId, tag: record?.tag }, edge });
       },
-      setSelection: (next, tag) => {
+      setSelection: (next, pressed) => {
         setSelection(next, false, 'none');
-        if (tag) caretSlots.chooseBeside(tag);
+        if (pressed) caretSlots.press(pressed);
       },
       cellSelection: () => cellSelection,
       setCellSelection: (next) => setCellSelection(next),

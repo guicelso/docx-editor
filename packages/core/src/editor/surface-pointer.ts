@@ -31,6 +31,7 @@ import {
   type SemanticPosition,
   type SemanticSelection,
 } from '../layout/semantic-interaction.ts';
+import type { PressedText } from './surface-caret-slots.ts';
 import { wordRangeAt } from './surface-selection-ops.ts';
 import {
   absorbUnitControls,
@@ -96,10 +97,10 @@ export interface PointerHost {
   measurer(): TextMeasurer | undefined;
   selection(): SemanticSelection;
   /**
-   * `tag` names the content-control tag a plain click landed on, and its side: the caret slot
-   * the press chose at that tagged edge.
+   * `pressed` names what a plain click landed on where content-control edges meet: a tag and
+   * its side, or the text beside the caret — the caret slot the press chose there.
    */
-  setSelection(next: SemanticSelection, tag?: SemanticHitTag): void;
+  setSelection(next: SemanticSelection, pressed?: SemanticHitTag | PressedText): void;
   cellSelection(): CellSelection | null;
   setCellSelection(next: CellSelection | null): void;
   focus(): void;
@@ -920,7 +921,7 @@ export function createPointerController(
       publish(() =>
         host.setSelection(
           absorbUnitControls(layout, { anchor: anchorRange.from, head: anchorRange.to }),
-          granularity === 'character' ? hit.contentControlTag : undefined
+          granularity === 'character' ? pressedOf(hit) : undefined
         )
       );
     }
@@ -1058,4 +1059,10 @@ export function createPointerController(
       view?.removeEventListener('resize', onScroll);
     },
   };
+}
+
+/** A press on a tag chooses the slot beside it; on text, the slot touching that text. */
+function pressedOf(hit: SemanticHit): SemanticHitTag | PressedText | undefined {
+  if (hit.contentControlTag) return hit.contentControlTag;
+  return hit.pressedText ? { pressedText: hit.pressedText } : undefined;
 }

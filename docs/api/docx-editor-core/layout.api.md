@@ -3667,6 +3667,7 @@ export interface SemanticHit {
     readonly pageIndex: number;
     // (undocumented)
     readonly position: SemanticPosition;
+    readonly pressedText?: 'before' | 'after';
 }
 
 // @public

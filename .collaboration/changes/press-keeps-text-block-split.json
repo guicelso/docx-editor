@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A press on text at an offset where control edges meet put the caret in the slot touching the text on the right, so pressing the end of a control's last word left the caret outside the control. splitContentControl divided only an inline control.",
+  "after": "A press on text keeps the caret with the text it pressed. splitContentControl { controlId, at: { paragraphId, offset }, tag } divides a block control at a place strictly inside a paragraph it holds, cutting that paragraph when the place is inside it; the tail is a new control with the tag named and a fresh w:id.",
+  "reason": "The press changes only where the caret stands, which no peer sees. The block split reduces to a paragraph split and one children replacement in the element holding the control, both of which the journal already replicates; released participants receive the resulting shared state, never the new op shape.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-control-text-press.test.ts",
+    "packages/core/src/store/__tests__/inline-control-structure-ops.test.ts"
+  ],
+  "changeset": "press-keeps-text-block-split",
+  "migration": null
+}
