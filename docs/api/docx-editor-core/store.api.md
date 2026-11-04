@@ -1621,6 +1621,7 @@ export interface FragmentPasteInput {
     readonly offset: number;
     // (undocumented)
     readonly paragraphId: string;
+    readonly policy?: PastePolicy;
     readonly priorOps?: readonly TreeDocOp[];
 }
 
@@ -3552,6 +3553,30 @@ export function parseTocInstruction(raw: string): TocInstruction | null;
 export function partNameKey(partName: string): string;
 
 // @public
+export interface PastedBlocks {
+    // (undocumented)
+    readonly blocks: readonly OoxmlNode[];
+    // (undocumented)
+    readonly part: OoxmlPart;
+}
+
+// @public
+export interface PasteLanding {
+    // (undocumented)
+    readonly after: OoxmlPart;
+    // (undocumented)
+    readonly before: OoxmlPart;
+}
+
+// @public
+export interface PastePolicy {
+    // (undocumented)
+    readonly admit?: (landing: PasteLanding) => string | null;
+    // (undocumented)
+    readonly blocksOf?: (pasted: PastedBlocks) => readonly OoxmlNode[];
+}
+
+// @public
 export interface PersistencePort {
     // (undocumented)
     readonly kind: 'persistence';
@@ -5281,7 +5306,12 @@ export type TreeOpRejection = 'unknown-op' | 'unknown-paragraph' | 'not-a-paragr
 /** A clipboard fragment block is not a paragraph, table, or content control subtree. */
 | 'fragment-invalid-block'
 /** A clipboard fragment exceeds its block or node budget. */
-| 'fragment-resource-budget';
+| 'fragment-resource-budget'
+/**
+* A clipboard fragment lands in a sentence — inside an inline control — and holds a block a
+* sentence cannot take: a table. Paragraphs and block controls join into the sentence.
+*/
+| 'fragment-not-inline';
 
 // @public
 export type TreeOpResult = {

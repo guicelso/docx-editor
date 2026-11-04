@@ -165,6 +165,8 @@ export interface PaginatedSurfaceOptions {
   readonly editPolicy?: import('../contracts/editor-edit-policy.ts').EditPolicy;
   /** The host's say over what each local write publishes, asked at the store's commit. */
   readonly writeAdmission?: import('@docx-editor.dev/core/store').WriteAdmission;
+  /** The host's say over rich pastes: the blocks that land and what the paste publishes. */
+  readonly pastePolicy?: import('@docx-editor.dev/core/store').PastePolicy;
   /** Opens in this view when the document allows it; otherwise on sheets, with the reason. */
   readonly layoutView?: import('./surface-layout-view.ts').SurfaceLayoutView;
 }

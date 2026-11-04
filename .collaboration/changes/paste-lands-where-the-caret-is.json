@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A rich paste named a place only at a slot and only for a one-paragraph fragment, so a fragment with paragraphs, or any fragment at a caret mid-way through an inline control, was refused as indivisible content; a copy ending at a paragraph's end always carried its mark.",
+  "after": "A rich paste names the caret's place as typing does and lands inside an inline control as one sentence, a host paste policy may rewrite the blocks and refuse the result, a copy carries the last mark only with the whole paragraph, and a host may meet prompts with a caret.",
+  "reason": "The landing is resolved locally into the same transaction and published as its ordinary primitives; no operation, field or shared update format changes, and a peer replays the result unchanged.",
+  "tests": [
+    "packages/core/src/editor/__tests__/paste-into-a-sentence.test.ts",
+    "packages/core/src/store/__tests__/content-control-inline-destination.test.ts",
+    "packages/core/src/editor/__tests__/surface-pointer.test.ts"
+  ],
+  "changeset": "paste-lands-where-the-caret-is",
+  "migration": null
+}

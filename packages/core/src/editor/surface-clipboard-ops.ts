@@ -20,7 +20,14 @@ import { partOfNodeId } from './surface-scope.ts';
 // The VIEW, not the concrete binding session: `paginated-surface.ts` is the only file in
 // this lane allowed to name that one (`store/__tests__/prosemirror-isolation.test.ts`).
 import type { TreeApplyResult, TreeDocxSessionView } from '@docx-editor.dev/core/binding';
-import type { StoryScope, TreeDocOp } from '@docx-editor.dev/core/store';
+import type {
+  OoxmlParagraphNode,
+  PastePolicy,
+  StoryScope,
+  TreeDocOp,
+} from '@docx-editor.dev/core/store';
+import { findNode } from '../store/package/ooxml-edit.ts';
+import { placeIsSentence } from '../store/store/tree-op-fragment-sentence.ts';
 import {
   cellSelectionText,
   paragraphsInCells,
@@ -101,8 +108,13 @@ export interface SurfaceClipboardDeps {
     redoMark?: HistoryMark
   ): TreeApplyResult;
   caretMark(position: { paragraphId: string; offset: number }): HistoryMark;
-  /** Where content pasted at the collapsed caret lands, when its slot names the place. */
-  placement(): SlotPlacement | null;
+  /**
+   * Where content written at the selection lands, as typing names it: the caret's slot where
+   * control edges meet, else the inline control holding the selection, else null.
+   */
+  writePlace(): SlotPlacement | null;
+  /** The host's say over rich pastes. */
+  pastePolicy?(): PastePolicy | undefined;
   /** The side of the caret's slot an edit at the caret keeps. */
   keep(side: 'left' | 'right'): SlotKeep | undefined;
   commit(
@@ -142,7 +154,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     // which vetoes the whole transaction and makes the paste do nothing at all.
     const normalized = insertableText(text);
     const range = deps.orderedRange();
-    const lines = clampTextFormPaste(
+    const clamped = clampTextFormPaste(
       session,
       range.from,
       range.to,
@@ -166,12 +178,15 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     // Pasting at the range start put the new text in front of the struck words and left
     // the caret inside it, so the next keystroke landed mid-word.
     const target = plan.replaceAt ?? plan.collapseTo;
+    const place = deps.writePlace();
+    // The slot outside a block control's tag is a place between blocks, which no paste lands at.
+    if (place && 'block' in place) return;
+    // In a sentence a newline has no place: the lines join into one, as a fragment does.
+    const lines = inSentence(target, place) ? [oneLine(clamped)] : clamped;
     const joined = lines.join('');
     const ops: TreeDocOp[] = [...plan.ops];
-    // At a caret where control edges meet, the slot names the place, as it does for typing. The
-    // slot outside a block control's tag is a place between blocks, which no paste lands at.
-    const placement = plan.ops.length === 0 ? deps.placement() : null;
-    if (placement && 'block' in placement) return;
+    // At a caret where control edges meet, the slot names the place, as it does for typing.
+    const placement = plan.ops.length === 0 ? place : null;
     const insert: Extract<TreeDocOp, { op: 'insertText' }> = {
       op: 'insertText',
       paragraphId: target.paragraphId,
@@ -319,20 +334,22 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
   function pasteFragmentBytes(
     bytes: Uint8Array,
     lastMarkCovered: boolean
-  ): boolean | 'unsupported-content' {
+  ): boolean | 'unsupported-content' | 'refused' {
     if (deps.editingMode() !== 'edit') return false;
     if (deps.storyScope().kind !== 'body') return false;
     if (deps.cellSelection()) return false;
     deps.flushPendingInputAndLayout();
     const plan = deps.deleteSelectionPlan();
     const target = plan.replaceAt ?? plan.collapseTo;
-    const placement = plan.ops.length === 0 ? deps.placement() : null;
+    const placement = deps.writePlace();
     // A place between blocks takes no fragment, and no other flavour may land it inside a control.
     if (placement && 'block' in placement) return 'unsupported-content';
+    const policy = deps.pastePolicy?.();
     // The caret stays at the paste's start, in front of what was pasted.
     const kept = plan.ops.length === 0 ? deps.keep('left') : undefined;
     let landed = false;
     let unsupported = false;
+    let refused = false;
     deps.commit(
       () => {
         // The readiness gate the typing lane asks. A fragment paste reaches the store
@@ -358,11 +375,13 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
             lastMarkCovered,
             priorOps: plan.ops as unknown as TreeDocOp[],
             ...(placement ? { destination: placement } : {}),
+            ...(policy ? { policy } : {}),
             ...(actorId !== undefined ? { actorId } : {}),
           }
         );
         landed = result.ok;
         unsupported = !result.ok && result.detail === 'fragment-merge:unsupported-content';
+        refused = !result.ok && result.reason === 'write-refused';
         return {
           committed: result.ok,
           rejected: !result.ok,
@@ -373,7 +392,24 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
       () => collapsedAt(target),
       kept ? { slot: kept } : undefined
     );
-    return unsupported ? 'unsupported-content' : landed;
+    if (unsupported) return 'unsupported-content';
+    return refused ? 'refused' : landed;
+  }
+
+  /** Whether text written at `target` lands in a sentence: inside an inline control. */
+  function inSentence(
+    target: { readonly paragraphId: string; readonly offset: number },
+    place: SlotPlacement | null
+  ): boolean {
+    if (place === null || 'block' in place) return false;
+    const paragraph = findNode(
+      partOfNodeId(session, target.paragraphId) ?? session.part(),
+      target.paragraphId
+    );
+    return (
+      paragraph?.kind === 'paragraph' &&
+      placeIsSentence(paragraph as OoxmlParagraphNode, target.offset, place)
+    );
   }
 
   /** The paste router entry — fidelity order with continuous degrade to plain. */
@@ -395,6 +431,8 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
       },
       { html, text, forcePlain }
     );
+    // The host refused what the paste would publish; the commit already said why.
+    if (lane === 'refused') return false;
     if (lane === 'unsupported-content') {
       deps.commit(
         () =>
@@ -418,4 +456,13 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
       forcePlainPasteArmedAt = deps.now();
     },
   };
+}
+
+/** Pasted lines as one: each trimmed, the empty ones dropped, joined by a space. */
+function oneLine(lines: readonly string[]): string {
+  if (lines.length < 2) return lines[0] ?? '';
+  return lines
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join(' ');
 }

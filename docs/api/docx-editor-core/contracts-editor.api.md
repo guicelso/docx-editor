@@ -136,6 +136,7 @@ export interface ContentControlPieceDisplay {
 
 // @public
 export interface ContentControlPromptDisplay {
+    readonly press?: PromptPress;
     readonly promptOf: (control: ContentControlSubject) => string | null;
 }
 
@@ -1082,7 +1083,7 @@ export interface EditorHighlights {
 }
 
 // @public
-export interface EditorHostPolicies extends EditorContentControlView, EditorEditPolicy, EditorWriteAdmission {
+export interface EditorHostPolicies extends EditorContentControlView, EditorEditPolicy, EditorWriteAdmission, EditorPastePolicy {
 }
 
 // @public
@@ -1142,6 +1143,11 @@ export interface EditorNoteCommands {
         scope?: 'document' | 'section';
         sectionIndex?: number;
     };
+}
+
+// @public
+export interface EditorPastePolicy {
+    setPastePolicy(policy: PastePolicy | null): void;
 }
 
 // @public
@@ -1831,6 +1837,30 @@ export interface ParagraphTabStop {
 }
 
 // @public
+export interface PastedBlocks {
+    // (undocumented)
+    readonly blocks: readonly OoxmlNode[];
+    // (undocumented)
+    readonly part: OoxmlPart;
+}
+
+// @public
+export interface PasteLanding {
+    // (undocumented)
+    readonly after: OoxmlPart;
+    // (undocumented)
+    readonly before: OoxmlPart;
+}
+
+// @public
+export interface PastePolicy {
+    // (undocumented)
+    readonly admit?: (landing: PasteLanding) => string | null;
+    // (undocumented)
+    readonly blocksOf?: (pasted: PastedBlocks) => readonly OoxmlNode[];
+}
+
+// @public
 export interface PieceAtom extends PieceName {
     readonly mark?: string;
 }
@@ -1853,6 +1883,9 @@ export interface Point {
 
 // @public
 export type PreservedImageMime = 'image/tiff' | 'image/x-emf' | 'image/x-wmf';
+
+// @public
+export type PromptPress = 'select' | 'caret';
 
 // @public
 export interface Rect {

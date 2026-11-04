@@ -161,6 +161,7 @@ import {
   createCaretSlots,
   isCollapsedSelection,
   type SlotKeep,
+  type SlotPlacement,
 } from './surface-caret-slots.ts';
 import { createBlockPlaceWrites } from './surface-block-place-writes.ts';
 import { contentControlEdgesAt } from '../store/store/content-control-edges.ts';
@@ -214,6 +215,7 @@ import type {
   SurfaceEditingMode,
 } from './paginated-surface-contract.ts';
 import type { EditorHover, ExecResult, SelectionPin, ViewScope } from '../contracts/editor.ts';
+import type { PromptPress } from '../contracts/editor-content-control-view.ts';
 import type { TableCommandPlan } from './table-command-plan.ts';
 import {
   clampedToDocument,
@@ -939,6 +941,7 @@ export function mountPaginatedSurface(
   let fieldSelection = options.fieldSelection;
   let contentControlTagPress = options.contentControlTagPress;
   let editPolicy = options.editPolicy;
+  let pastePolicy = options.pastePolicy;
   const takesEdit = (intent: Parameters<NonNullable<typeof editPolicy>>[0]) =>
     editPolicy?.(intent) === 'handled';
 
@@ -2020,6 +2023,24 @@ export function mountPaginatedSurface(
   /** The content control the caret is in, or null: the slot where tags meet, else the offset. */
   function contentControlAtCaret(): ContentControlBoundaryRecord | null {
     return controlAtCaret();
+  }
+
+  /** How the host meets prompts: whole, as Word does, or with a caret at their start. */
+  function promptPress(): PromptPress {
+    return contentControlView?.prompts?.press ?? 'select';
+  }
+
+  /**
+   * Where a paste at the selection lands, as typing names it: the caret's slot where control edges
+   * meet, else the inline control the selection is in. The store reads a fragment landing inside
+   * a control as a sentence, so the place is named for a range too.
+   */
+  function writePlace(): SlotPlacement | null {
+    const slot = isCollapsedSelection(selection) ? caretSlots.placement() : null;
+    if (slot) return slot;
+    const owner = contentControlAtCaret();
+    const inside = owner?.level === 'inline' ? insertOwnerOf(owner) : undefined;
+    return inside === undefined ? null : { inside };
   }
 
   function contentLockedOrBound(control: ContentControlBoundaryRecord): string | null {
@@ -4441,7 +4462,8 @@ export function mountPaginatedSurface(
       consumePendingFormatOps,
       withoutPendingOnRejection,
       caretMark,
-      placement: () => caretSlots.placement(),
+      writePlace,
+      pastePolicy: () => pastePolicy,
       keep: (side) => caretSlots.keep(side),
       commit,
     });
@@ -4939,7 +4961,12 @@ export function mountPaginatedSurface(
       if (!extend) {
         moved = {
           ...moved,
-          position: stepOverAtoms(editingLayout(), moved.position, BACKWARD_MOVES.has(command)),
+          position: stepOverAtoms(
+            editingLayout(),
+            moved.position,
+            BACKWARD_MOVES.has(command),
+            promptPress()
+          ),
         };
       }
       desiredX = moved.desiredX;
@@ -4963,7 +4990,7 @@ export function mountPaginatedSurface(
       // until the view followed it. A plain move is collapsed, where `head` and `caret` mean
       // the same thing, EXCEPT when it lands on a unit and ABSORBS it: that is a range the
       // reader never dragged, so it is revealed by its start, where the next keystroke goes.
-      const next = extend ? target : absorbUnitControls(currentLayout, target);
+      const next = extend ? target : absorbUnitControls(currentLayout, target, promptPress());
       const absorbed = !extend && !selectionsEqual(next, target);
       const before = selection;
       setSelection(next, true, absorbed ? 'none' : 'head');
@@ -5506,6 +5533,9 @@ export function mountPaginatedSurface(
     },
     setEditPolicy(policy) {
       editPolicy = policy ?? undefined;
+    },
+    setPastePolicy(policy) {
+      pastePolicy = policy ?? undefined;
     },
     setWriteAdmission: layoutViews.setHostAdmission,
     setLayoutView(next) {
@@ -6305,6 +6335,7 @@ export function mountPaginatedSurface(
       // click sent its second press elsewhere — a blank footer band never opened.
       onHover: setHover,
       selectsField: (field) => fieldSelection?.(field) === true,
+      promptPress,
       selectContentControl: (controlId) => {
         const range = atomRangeOf(editingLayout(), controlId);
         if (range) controlKeys.selectWhole(controlId, { anchor: range.from, head: range.to });

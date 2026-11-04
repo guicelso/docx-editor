@@ -37,6 +37,13 @@ import {
 } from './tree-op-segments.ts';
 import { rejectContentEdit } from './tree-op-validate-controls.ts';
 import {
+  inlineChildrenOf,
+  placeIsSentence,
+  sentenceOf,
+  takesSentence,
+  withParentBindings,
+} from './tree-op-fragment-sentence.ts';
+import {
   inlineDestinationOf,
   inlineDestinationRefusal,
   inlineLandingAt,
@@ -91,7 +98,7 @@ export function validateInsertFragment(
     return 'offset-out-of-range';
   }
   if (splitsSurrogate(paragraph, op.offset)) return 'splits-surrogate-pair';
-  const named = op.inside !== undefined || op.beside !== undefined;
+  const named = landsAtNamedPlace(paragraph as OoxmlParagraphNode, op);
   if (!named && indivisibleAt(paragraph, op.offset)) return 'indivisible-content';
   if (!Array.isArray(op.blocks) || op.blocks.length === 0) return 'fragment-invalid-block';
   if (op.blocks.length > MAX_FRAGMENT_INSERT_BLOCKS) return 'fragment-resource-budget';
@@ -104,8 +111,8 @@ export function validateInsertFragment(
     if (refused) return refused;
   }
   if (named) {
-    // A named place takes inline content only: a paragraph mark has no place inside a control.
-    if (!landsInline(op)) return 'invalidArgs';
+    // A paragraph mark has no place inside a control: what lands there is read as a sentence.
+    if (!takesSentence(op.blocks)) return 'fragment-not-inline';
     return inlineDestinationRefusal(part, op.paragraphId, { start: op.offset, end: op.offset }, op);
   }
   return rejectContentEdit(part, paragraph as OoxmlParagraphNode, op.offset, op.offset);
@@ -116,6 +123,16 @@ export function landsInline(op: InsertFragmentOp): boolean {
   return (
     op.blocks.length === 1 && op.blocks[0]!.kind === 'paragraph' && op.lastMarkCovered !== true
   );
+}
+
+/**
+ * Whether the fragment lands at the place the op names. Inline content always does, and so does
+ * any fragment in a sentence; a fragment with paragraphs beside a control that stands in the
+ * paragraph itself lands as blocks at the offset, which divides the paragraph there.
+ */
+function landsAtNamedPlace(paragraph: OoxmlParagraphNode, op: InsertFragmentOp): boolean {
+  if (op.inside === undefined && op.beside === undefined) return false;
+  return landsInline(op) || placeIsSentence(paragraph, op.offset, op);
 }
 
 /**
@@ -188,22 +205,6 @@ export function withRequiredNamespaceBindings(
   return Object.freeze({ ...part, root }) as OoxmlPart;
 }
 
-/** Keep local bindings when a paste removes the node's original parent. */
-function withParentBindings(node: OoxmlNode, parent: OoxmlElement): OoxmlNode {
-  if (node.kind === 'textValue' || parent.namespaceBindings.length === 0) return node;
-  const ownPrefixes = new Set(node.namespaceBindings.map((binding) => binding.prefix));
-  const inherited = parent.namespaceBindings.filter((binding) => !ownPrefixes.has(binding.prefix));
-  if (inherited.length === 0) return node;
-  return { ...node, namespaceBindings: [...inherited, ...node.namespaceBindings] };
-}
-
-function inlineChildrenOf(paragraph: OoxmlElement): readonly OoxmlNode[] {
-  const pPr = paragraphPropertiesNodeOf(paragraph);
-  return paragraph.children
-    .filter((child) => child !== pPr)
-    .map((child) => withParentBindings(child, paragraph));
-}
-
 /**
  * A display equation (`m:oMathPara`) is a paragraph of its own. Merged beside existing
  * text, it becomes its inline equations, the same as Word pastes a display into a line.
@@ -268,15 +269,17 @@ export function applyInsertFragment(
   const first = blocks[0]!;
   const last = blocks[blocks.length - 1]!;
   const inlineOnly = landsInline(op);
-  const destination = inlineDestinationOf(op);
+  const destination = landsAtNamedPlace(host as OoxmlParagraphNode, op)
+    ? inlineDestinationOf(op)
+    : null;
 
   if (destination !== null) {
-    // A named place: the inline content goes straight into it. The paragraph split + join below
-    // would cut every control around the offset in two.
+    // A named place: the content goes straight into it, as one sentence. The paragraph split +
+    // join below would cut every control around the offset in two.
     const landed = inlineLandingAt(part, host.id, op.offset, destination, options);
     if (!landed.ok) return landed;
     const { landing } = landed;
-    const inline = inlineChildrenOf(first as OoxmlElement);
+    const inline = sentenceOf(blocks, nextId);
     const holderNode = findNode(landing.part, landing.holderId);
     if (!holderNode || holderNode.kind === 'textValue')
       return { ok: false, reason: 'tree-invariant' };

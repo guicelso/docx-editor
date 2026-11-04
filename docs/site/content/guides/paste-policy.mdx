@@ -1,0 +1,27 @@
+---
+title: 'Paste policy'
+description: 'Rewrite what a rich paste lands and refuse what it would publish.'
+category: 'Guides'
+seoTitle: 'Paste policy'
+---
+
+A paste policy lets your application take part in a rich paste: a paste of the editor's own copied content or of HTML from another application. Plain text is not asked.
+
+## Where a paste lands
+
+A paste lands where typing would: in the slot the caret stands in where control edges meet, otherwise in the inline control the selection is in. Inside an inline control a paragraph mark has no place, so the pasted content is read as one sentence: its paragraphs, its block controls and the lines of plain text join with a space. A table has no such reading, and is refused there.
+
+A copy carries the mark of its last paragraph only when it holds the whole paragraph. The end of a paragraph pasted in the middle of another one does not divide it.
+
+## Set a policy
+
+`blocksOf` receives the blocks the paste brings and the story part as it stands, and answers the blocks that land. Use it for data of your own that a copy must not share, such as an identity in a control's tag. `admit` receives the story part before and after the paste: return a reason to refuse it, or `null` to accept it.
+
+```ts
+editor.setPastePolicy({
+  blocksOf: ({ blocks, part }) => blocks.map((block) => withFreshIds(block, part)),
+  admit: ({ before, after }) => (breaksStructure(after) && !breaksStructure(before) ? 'This paste breaks the structure.' : null),
+});
+```
+
+A refused paste changes nothing, and no flavour of less fidelity retries it. The reason is in `snapshot().lastRejection`. The editor keeps the policy across `load`, `attach`, and `detach`. Pass `null` to remove it.

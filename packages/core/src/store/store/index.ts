@@ -83,6 +83,7 @@ export {
 } from './tree-package-store.ts';
 export type { RemotePackageAttribution } from './tree-package-remote.ts';
 export type { WriteAdmission } from './write-admission.ts';
+export type { PasteLanding, PastePolicy, PastedBlocks } from './paste-policy.ts';
 export {
   addPackageComment,
   deletePackageComments,

@@ -646,6 +646,8 @@ export interface PaginatedSurface {
   setEditPolicy(policy: import('../contracts/editor-edit-policy.ts').EditPolicy | null): void;
   /** The facade's channel for the host's write admission, asked after the view's own. */
   setWriteAdmission(admission: import('@docx-editor.dev/core/store').WriteAdmission | null): void;
+  /** The facade's channel for the host's policy over rich pastes. */
+  setPastePolicy(policy: import('@docx-editor.dev/core/store').PastePolicy | null): void;
   /**
    * Lay out on sheets or in Word's Web Layout. Refused, with the reason in `lastRejection`,
    * when the document holds what the web view does not lay out; the view in force then stays.

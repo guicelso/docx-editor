@@ -43,7 +43,7 @@ import {
 export { absorbUnitControls, unitSelectionRange } from './surface-pointer-units.ts';
 import type { LayoutBox, SemanticLayout, TextMeasurer } from '../layout/semantic-records.ts';
 import type { EditorHover, EditorHoverBox } from '../contracts/editor.ts';
-import type { FieldSubject } from '../contracts/editor-content-control-view.ts';
+import type { FieldSubject, PromptPress } from '../contracts/editor-content-control-view.ts';
 import { hoverOnPage, NO_HOVER } from './surface-hover.ts';
 import {
   findEmptyFurnitureBandAtSheetPoint,
@@ -167,6 +167,8 @@ export interface PointerHost {
   selectContentControl?(controlId: string): boolean;
   /** Whether a plain press on this field selects it whole; else the caret. */
   selectsField?(field: FieldSubject): boolean;
+  /** How a press meets a prompt: whole (the default), or with the caret at its start. */
+  promptPress?(): PromptPress;
   /** Whether the host takes a plain press on this view-only tag; else the caret goes beside it. */
   takesTagPress?(tag: SemanticHitTag): boolean;
 }
@@ -439,7 +441,7 @@ export function createPointerController(
     const raw = isBefore(layout, headRange.from, anchorRange.from)
       ? { anchor: anchorRange.to, head: headRange.from }
       : { anchor: anchorRange.from, head: headRange.to };
-    return absorbUnitControls(layout, raw);
+    return absorbUnitControls(layout, raw, host.promptPress?.());
   }
 
   // ---------------------------------------------------------------------------------
@@ -850,6 +852,16 @@ export function createPointerController(
           host.onContentControlWidget?.(unit.id, unit.controlType);
         }
       };
+      const prompt = unit.placeholder ? unitSelectionRange(layout, unit) : null;
+      if (prompt && host.promptPress?.() === 'caret') {
+        // The caret at the prompt's start, inside the control, where the first key replaces it;
+        // a drag from here still takes the prompt whole.
+        const at = prompt.from;
+        gesture = unitGesture(event, { from: at, to: at }, hit);
+        publish(() => host.setSelection({ anchor: at, head: at }, { pressedText: 'after' }));
+        openPromptWidget();
+        return;
+      }
       // Prefer the host's atomic select when wired (form-fill / selectContentControl); otherwise
       // expand from layout boundary geometry so a press on a unit never lands inside it.
       if (host.selectContentControl?.(unit.id)) {
@@ -920,7 +932,11 @@ export function createPointerController(
       };
       publish(() =>
         host.setSelection(
-          absorbUnitControls(layout, { anchor: anchorRange.from, head: anchorRange.to }),
+          absorbUnitControls(
+            layout,
+            { anchor: anchorRange.from, head: anchorRange.to },
+            host.promptPress?.()
+          ),
           granularity === 'character' ? pressedOf(hit) : undefined
         )
       );

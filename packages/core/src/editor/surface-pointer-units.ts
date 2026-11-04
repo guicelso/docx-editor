@@ -17,6 +17,7 @@ import type {
   SemanticLayout,
 } from '../layout/semantic-records.ts';
 import { MAX_TABLE_NESTING } from '../layout/semantic-table.ts';
+import type { PromptPress } from '../contracts/editor-content-control-view.ts';
 
 /** A model range a press selects, in document order. */
 export interface PositionRange {
@@ -177,14 +178,16 @@ export function unitAtHit(
 
 /**
  * Expand a selection so every unit control it touches is selected whole — a range over any unit,
- * and a caret inside a prompt — and so is every frame taken whole whose edge it crosses.
+ * and a caret inside a prompt the host does not meet with a caret — and so is every frame taken
+ * whole whose edge it crosses.
  *
  * Used by pointer drag / shift-click, and exported so keyboard extend paths can share the
  * same atomic rule without duplicating geometry walks.
  */
 export function absorbUnitControls(
   layout: SemanticLayout,
-  selection: SemanticSelection
+  selection: SemanticSelection,
+  prompts: PromptPress = 'select'
 ): SemanticSelection {
   const controls = (layout.contentControls ?? []).filter(
     (control) => isUnitControl(control) || control.whole
@@ -200,7 +203,7 @@ export function absorbUnitControls(
   while (changed) {
     changed = false;
     for (const control of controls) {
-      const range = rangeTakenIn(layout, control, taken);
+      const range = rangeTakenIn(layout, control, taken, prompts);
       if (!range) continue;
       const grown = spanOf(layout, taken, range);
       changed ||= !sameRange(layout, grown, taken);
@@ -217,28 +220,34 @@ export function absorbUnitControls(
 function rangeTakenIn(
   layout: SemanticLayout,
   control: ContentControlBoundaryRecord,
-  selection: PositionRange
+  selection: PositionRange,
+  prompts: PromptPress
 ): PositionRange | null {
   const range = controlRangeOf(layout, control);
   if (!range) return null;
   const takesIn = isUnitControl(control)
-    ? touchesUnit(layout, control, range, selection)
+    ? touchesUnit(layout, control, range, selection, prompts)
     : reachesFromOutside(layout, range, selection);
   return takesIn ? range : null;
 }
 
-/** A range over a unit touches it anywhere; a caret only a prompt, which it stands inside. */
+/**
+ * A range over a unit touches it anywhere; a caret only a prompt, which it stands inside, unless
+ * the host meets prompts with a caret.
+ */
 function touchesUnit(
   layout: SemanticLayout,
   control: ContentControlBoundaryRecord,
   range: PositionRange,
-  selection: PositionRange
+  selection: PositionRange,
+  prompts: PromptPress
 ): boolean {
   if (comparePositions(layout, selection.from, selection.to) !== 0) {
     return overlaps(layout, range, selection);
   }
   return (
     control.placeholder &&
+    prompts === 'select' &&
     comparePositions(layout, selection.from, range.from) >= 0 &&
     comparePositions(layout, selection.from, range.to) < 0
   );
@@ -276,15 +285,17 @@ function sameRange(layout: SemanticLayout, a: PositionRange, b: PositionRange): 
 /**
  * Where a caret move that lands INSIDE an atom goes: to the atom's edge on the side it was moving
  * to, so the caret steps over it in one step, as it does over a field. A prompt is absorbed
- * instead ({@link absorbUnitControls}): its text is replaced by the first key.
+ * instead ({@link absorbUnitControls}), its text replaced by the first key — or, met with a
+ * caret, stepped over as an atom is.
  */
 export function stepOverAtoms(
   layout: SemanticLayout,
   position: SemanticPosition,
-  backward: boolean
+  backward: boolean,
+  prompts: PromptPress = 'select'
 ): SemanticPosition {
   for (const control of layout.contentControls ?? []) {
-    if (!control.atom) continue;
+    if (!control.atom && !(prompts === 'caret' && control.placeholder)) continue;
     const range = unitSelectionRange(layout, control);
     if (!range) continue;
     const inside =

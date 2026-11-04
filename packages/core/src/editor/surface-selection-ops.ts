@@ -402,7 +402,11 @@ export function fragmentCoverageOf(
     endOffset: to.offset,
     coveredParagraphIds: [...covered],
     fullyCoveredBlockIds: fullyCoveredBlocksIn(part, covered, new Set(effectiveOrder)),
-    lastMarkCovered: to.offset === textOf(lastId).length,
+    // Word's smart paragraph selection: the last mark travels only with its whole paragraph. A
+    // range that starts mid-paragraph and stops at its end carries text, and pasting it
+    // mid-paragraph must not divide the paragraph it lands in.
+    lastMarkCovered:
+      to.offset === textOf(lastId).length && (firstIndex < lastIndex || from.offset === 0),
   };
 }
 

@@ -2236,6 +2236,7 @@ export interface PaginatedSurface {
     setParagraphFormat(update: SurfaceParagraphFormat): boolean;
     setParagraphProperties(entries: readonly ParagraphPropertyEdit[]): void;
     setParagraphProperty(localName: string, attributes?: Record<string, string | null>, options?: Pick<ParagraphPropertyEdit, 'mergeAttributes' | 'physicalAlignment' | 'paragraphDirection'>): void;
+    setPastePolicy(policy: PastePolicy | null): void;
     setRemoteCaretLabelHost(host: RemoteCaretLabelHost | null): void;
     setReviewActivationExclusions(kinds: readonly ReviewRevisionKind[] | null, options?: {
         readonly formattingKinds?: readonly string[];
@@ -2311,6 +2312,7 @@ export interface PaginatedSurfaceOptions {
     readonly onRequestTextFormField?: (session: TextFormFieldDialogSession) => boolean;
     // (undocumented)
     readonly onToggleParagraphMarks?: () => void;
+    readonly pastePolicy?: PastePolicy;
     readonly pointer?: 'engine' | 'native';
     readonly producer?: string;
     readonly reviewModel?: ReviewModuleContribution;

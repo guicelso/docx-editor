@@ -122,7 +122,17 @@ export interface ContentControlPromptDisplay {
    * control holding one paragraph.
    */
   readonly promptOf: (control: ContentControlSubject) => string | null;
+  /**
+   * How a plain press or a plain arrow meets a prompt. `select`, the default, takes it whole, as
+   * Word does; `caret` puts the caret at its start, where the first key replaces it, and the
+   * prompt shows until then, as a form field's placeholder does. A drag or a Shift+click over a
+   * prompt takes it whole either way.
+   */
+  readonly press?: PromptPress;
 }
+
+/** How a plain press or a plain arrow meets a prompt. @public */
+export type PromptPress = 'select' | 'caret';
 
 /**
  * What a host makes of one content control. @public

@@ -14,8 +14,14 @@ import { projectExternalHtml } from './clipboard-html-read.ts';
 export interface PasteRouteTarget {
   /** True when a fragment landing is even possible: body story, edit mode. */
   readonly richLaneOpen: boolean;
-  /** False permits fallback; unsupported-content refuses the complete paste. */
-  pasteFragment(bytes: Uint8Array, lastMarkCovered: boolean): boolean | 'unsupported-content';
+  /**
+   * False permits fallback; unsupported-content refuses the complete paste, and so does refused —
+   * the host's policy said no, and a flavour of less fidelity must not land what it refused.
+   */
+  pasteFragment(
+    bytes: Uint8Array,
+    lastMarkCovered: boolean
+  ): boolean | 'unsupported-content' | 'refused';
   insertPlainText(text: string): void;
 }
 
@@ -31,7 +37,8 @@ export type PasteRouteLane =
   | 'external-html'
   | 'plain'
   | 'none'
-  | 'unsupported-content';
+  | 'unsupported-content'
+  | 'refused';
 
 /** Route one paste payload; reports the lane that actually landed. */
 export function routePaste(target: PasteRouteTarget, input: PasteRouteInput): PasteRouteLane {
@@ -52,7 +59,7 @@ export function routePaste(target: PasteRouteTarget, input: PasteRouteInput): Pa
   }
   if (embedded) {
     const result = target.pasteFragment(embedded.bytes, embedded.lastMarkCovered);
-    if (result === 'unsupported-content') return 'unsupported-content';
+    if (result === 'unsupported-content' || result === 'refused') return result;
     if (result) return 'fragment';
   }
 
@@ -60,7 +67,7 @@ export function routePaste(target: PasteRouteTarget, input: PasteRouteInput): Pa
   if (projected.ok && projected.truncated && input.text.length > 0) return plain();
   if (projected.ok) {
     const result = target.pasteFragment(projected.fragmentBytes, projected.lastMarkCovered);
-    if (result === 'unsupported-content') return 'unsupported-content';
+    if (result === 'unsupported-content' || result === 'refused') return result;
     if (result) return 'external-html';
   }
 

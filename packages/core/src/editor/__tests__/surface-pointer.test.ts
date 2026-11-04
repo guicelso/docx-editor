@@ -16,6 +16,7 @@ import {
   type PaginatedSurface,
 } from '../paginated-surface.ts';
 import { absorbUnitControls } from '../surface-pointer.ts';
+import { stepOverAtoms } from '../surface-pointer-units.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -801,6 +802,34 @@ describe('showingPlcHdr placeholder selection is atomic', () => {
     press(mounted, x, y);
     // "aa" (2) + "Enter name" (10) → whole prompt [2, 12)
     expect(offsets(mounted.surface)).toEqual([2, 12]);
+    mounted.surface.destroy();
+  });
+
+  test('with prompts met by a caret, a click puts the caret at the prompt start', () => {
+    const mounted = mount(`<w:p>${run('aa')}${inlinePlc('Enter name')}${run('zz')}</w:p>`);
+    mounted.surface.setContentControlView({ prompts: { promptOf: () => null, press: 'caret' } });
+    const { x, y } = controlCenter(mounted.surface);
+    press(mounted, x, y);
+    expect(offsets(mounted.surface)).toEqual([2, 2]);
+    release(x, y);
+    // The first key replaces the prompt, inside its control.
+    mounted.surface.type('J');
+    expect(mounted.surface.session.bodyText()).toBe('aaJzz');
+    mounted.surface.destroy();
+  });
+
+  test('with prompts met by a caret, an arrow steps over the prompt and a caret stays one', () => {
+    const mounted = mount(`<w:p>${run('aa')}${inlinePlc('Enter name')}${run('zz')}</w:p>`);
+    const layout = mounted.surface.layout();
+    const paragraphId = mounted.surface.session.paragraphIds()[0]!;
+    const at = (offset: number) => ({ paragraphId, offset });
+    expect(stepOverAtoms(layout, at(5), false, 'caret').offset).toBe(12);
+    expect(stepOverAtoms(layout, at(5), true, 'caret').offset).toBe(2);
+    expect(stepOverAtoms(layout, at(5), false).offset).toBe(5);
+    const caret = absorbUnitControls(layout, { anchor: at(2), head: at(2) }, 'caret');
+    expect([caret.anchor.offset, caret.head.offset]).toEqual([2, 2]);
+    const range = absorbUnitControls(layout, { anchor: at(0), head: at(5) }, 'caret');
+    expect([range.anchor.offset, range.head.offset]).toEqual([0, 12]);
     mounted.surface.destroy();
   });
 

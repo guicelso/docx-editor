@@ -124,7 +124,8 @@ function fragmentOf(inner: string): OoxmlNode {
 function fragmentAt(
   offset: number,
   destination: Destination,
-  blocks = [fragmentOf(run('X'))]
+  blocks = [fragmentOf(run('X'))],
+  lastMarkCovered = false
 ): string {
   const part = documentOf();
   const op: TreeDocOp = {
@@ -132,6 +133,7 @@ function fragmentAt(
     paragraphId: storyBlocks(part)[0]!.id,
     offset,
     blocks,
+    lastMarkCovered,
     ...destinationOf(part, destination),
   };
   return bracketed(applied(part, op));
@@ -271,9 +273,45 @@ describe('an inline fragment, by destination', () => {
     );
   });
 
-  test('a fragment of more than one paragraph has no inline destination', () => {
-    expect(() =>
-      fragmentAt(5, { inside: 'B' }, [fragmentOf(run('X')), fragmentOf(run('Y'))])
-    ).toThrow('refused: invalidArgs');
+  test('inside a control, paragraphs join into one sentence with a space', () => {
+    const paragraphs = [fragmentOf(run('X')), fragmentOf(run('Y'))];
+    expect(fragmentAt(5, { inside: 'B' }, paragraphs)).toBe('CPF G{B{RX YG}E{CNH}} fim');
+    expect(fragmentAt(5, { inside: 'B' }, [fragmentOf(run('X'))], true)).toBe(
+      'CPF G{B{RXG}E{CNH}} fim'
+    );
+  });
+
+  test('a block control keeps its properties and takes its paragraphs inline', () => {
+    const block = blockOf(`<w:sdt><w:sdtPr><w:tag w:val="L"/></w:sdtPr><w:sdtContent>
+      <w:p>${run('A')}</w:p><w:p>${run('B')}</w:p></w:sdtContent></w:sdt>`);
+    expect(fragmentAt(5, { inside: 'B' }, [block])).toBe('CPF G{B{RL{A B}G}E{CNH}} fim');
+  });
+
+  test('a table has no sentence, and is refused inside a control', () => {
+    const table = blockOf(`<w:tbl><w:tr><w:tc><w:p>${run('T')}</w:p></w:tc></w:tr></w:tbl>`);
+    expect(() => fragmentAt(5, { inside: 'B' }, [table])).toThrow('refused: fragment-not-inline');
+  });
+
+  test('beside a control that stands in another, paragraphs join in that one', () => {
+    const paragraphs = [fragmentOf(run('X')), fragmentOf(run('Y'))];
+    expect(fragmentAt(6, { beside: { tag: 'B', side: 'after' } }, paragraphs)).toBe(
+      'CPF G{B{RG}X YE{CNH}} fim'
+    );
+  });
+
+  test('beside a control that stands in the paragraph, paragraphs land as blocks', () => {
+    const paragraphs = [fragmentOf(run('X')), fragmentOf(run('Y'))];
+    expect(fragmentAt(9, { beside: { tag: 'G', side: 'after' } }, paragraphs)).toBe(
+      'CPF G{B{RG}E{CNH}}X'
+    );
   });
 });
+
+function blockOf(xml: string): OoxmlNode {
+  const read = readOoxmlPart(xml.replace(/^<w:(\w+)/, `<w:$1 xmlns:w="${W}"`), {
+    name: '/fragment.xml',
+    contentType: 'application/xml',
+  });
+  if (!read.ok) throw new Error(read.reason);
+  return read.part.root;
+}

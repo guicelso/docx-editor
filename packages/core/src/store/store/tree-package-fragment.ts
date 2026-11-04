@@ -14,15 +14,15 @@ import {
 } from '../package/canonical-primitive-capture.ts';
 import { readOoxmlPackage, type OoxmlPackage } from '../package/ooxml-package.ts';
 import { mergeFragmentIntoPackage, type FragmentMergeResult } from './clipboard-fragment-merge.ts';
+import type { PastePolicy } from './paste-policy.ts';
 import {
-  landsInline,
   type InsertFragmentOp,
   MAX_FRAGMENT_DEPTH,
   MAX_FRAGMENT_INSERT_BLOCKS,
   MAX_FRAGMENT_NODES,
 } from './tree-op-fragment.ts';
 import type { InlineDestinationFields } from './tree-op-inline-destination.ts';
-import type { OoxmlNode } from '../package/ooxml-tree.ts';
+import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import type { PackageTransactResult, StoryScope, TreePackageStore } from './tree-package-store.ts';
 import type { TreeDocOp } from './tree-op-types.ts';
 
@@ -38,10 +38,13 @@ export interface FragmentPasteInput {
   /** Ops that clear the current selection first (the surface's deleteSelectionPlan). */
   readonly priorOps?: readonly TreeDocOp[];
   /**
-   * The inline place a one-paragraph fragment lands in, where control edges meet at `offset`.
-   * A fragment with more paragraphs has no inline place and lands at the offset.
+   * The place the caret names: inside the control it stands in, or beside a control where edges
+   * meet at `offset`. Inside a control the fragment is read as a sentence; beside a control that
+   * stands in the paragraph, a fragment with paragraphs lands as blocks at the offset.
    */
   readonly destination?: InlineDestinationFields;
+  /** The host's say over the blocks that land and over what the paste publishes. */
+  readonly policy?: PastePolicy;
   /**
    * Collaboration actor for the ids this paste mints.
    *
@@ -143,6 +146,8 @@ export function applyFragmentPaste(
   storyStore.graftPackage(() => store.currentPackage());
   let blockCount = 0;
   let refusalDetail = '';
+  // Written inside the transaction's callbacks, so read through a holder the compiler does not narrow.
+  const host: { refusal: string | null } = { refusal: null };
 
   return runObservedStoreTransaction(
     store,
@@ -157,29 +162,42 @@ export function applyFragmentPaste(
           // (the pre-transaction snapshot) and replacing the working package wholesale threw
           // those deletions away, so a rich paste over a selection kept the old content.
           let merged: FragmentMergeResult | null = null;
+          let landedStory: OoxmlPart | undefined;
           const packageApplied = ctx.applyPackage((current) => {
             merged = mergeFragmentIntoPackage(current, fragment, story.partName);
+            landedStory = (merged.ok ? merged.pkg : current).parts.get(story.partName);
             return merged.ok ? merged.pkg : current;
           });
           const landed = merged as FragmentMergeResult | null;
           if (!landed || !landed.ok) {
             refusalDetail = `fragment-merge:${landed ? landed.reason : 'no-merge'}`;
-            // Poison the transaction so nothing commits.
-            ctx.apply({ op: 'insertText', paragraphId: '\0fragment-abort', offset: 0, text: 'x' });
+            poison(ctx);
             return;
           }
-          if (!packageApplied) return;
-          blockCount = landed.blocks.length;
+          const before = landedStory as OoxmlPart | undefined;
+          if (!packageApplied || !before) return;
+          const blocks =
+            input.policy?.blocksOf?.({ blocks: landed.blocks, part: before }) ?? landed.blocks;
+          blockCount = blocks.length;
           const insert: InsertFragmentOp = {
             op: 'insertFragment',
             paragraphId: input.paragraphId,
             offset: input.offset,
-            blocks: landed.blocks,
+            blocks,
             lastMarkCovered: input.lastMarkCovered,
+            ...input.destination,
           };
-          ctx.apply(
-            input.destination && landsInline(insert) ? { ...insert, ...input.destination } : insert
-          );
+          if (!ctx.apply(insert)) return;
+          const admit = input.policy?.admit;
+          if (!admit) return;
+          const prior = before;
+          ctx.applyPackage((current) => {
+            const after = current.parts.get(prior.name);
+            const refusal = after ? admit({ before: prior, after }) : null;
+            if (refusal !== null) host.refusal = refusal;
+            return current;
+          });
+          if (host.refusal !== null) poison(ctx);
         },
         {
           story,
@@ -190,6 +208,9 @@ export function applyFragmentPaste(
         }
       );
 
+      if (host.refusal !== null) {
+        return { ok: false as const, reason: 'write-refused' as const, detail: host.refusal };
+      }
       if (refusalDetail.length > 0) {
         return { ok: false as const, reason: 'invalidArgs' as const, detail: refusalDetail };
       }
@@ -211,4 +232,9 @@ export function applyFragmentPaste(
     },
     (outcome) => packageTransactionPublished(outcome)
   );
+}
+
+/** Fail the transaction so nothing commits: an op addressed to a paragraph no part holds. */
+function poison(ctx: { apply(op: TreeDocOp): boolean }): void {
+  ctx.apply({ op: 'insertText', paragraphId: '\0fragment-abort', offset: 0, text: 'x' });
 }

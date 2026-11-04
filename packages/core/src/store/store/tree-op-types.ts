@@ -1259,7 +1259,12 @@ export type TreeOpRejection =
   /** A clipboard fragment block is not a paragraph, table, or content control subtree. */
   | 'fragment-invalid-block'
   /** A clipboard fragment exceeds its block or node budget. */
-  | 'fragment-resource-budget';
+  | 'fragment-resource-budget'
+  /**
+   * A clipboard fragment lands in a sentence — inside an inline control — and holds a block a
+   * sentence cannot take: a table. Paragraphs and block controls join into the sentence.
+   */
+  | 'fragment-not-inline';
 
 /** Whether an op applied, with the effect it produced or the reason it was refused. */
 export type TreeOpResult =
