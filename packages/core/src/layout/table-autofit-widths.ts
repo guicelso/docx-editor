@@ -26,6 +26,7 @@ import {
   STARTS_WITH_BREAKING_SPACE,
 } from './cjk-line-break.ts';
 import { pieceBoundaries, pieceChromePt, pieceTextWidthPt } from './layout-owned-piece.ts';
+import { opensAtTagSeam } from './content-control-tag-lines.ts';
 import { measureInlineDrawing, type InlineDrawingLayoutContext } from './drawing-layout.ts';
 import { createEquationLayouter } from './equation-layout.ts';
 import type { DocumentProperties } from '@docx-editor.dev/core/store';
@@ -405,8 +406,9 @@ export function paragraphContentWidthsPt(
   let layoutEquation: ReturnType<typeof createEquationLayouter> | undefined;
   // A dash that ends a run breaks only if the next run does not open with another dash.
   let dashPending = false;
-  for (const piece of pieces) {
+  for (const [index, piece] of pieces.entries()) {
     if (piece.style.hidden) continue;
+    if (opensAtTagSeam(pieces[index - 1], piece)) close();
     // A drawing that is not an inline atom (anchored, hidden, unresolved) takes no width in
     // the line, exactly as the line breaker skips its placeholder.
     if (piece.projected && !piece.inlineDrawing && !piece.equation && piece.text === '\uFFFC')

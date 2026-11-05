@@ -14,6 +14,7 @@
 import { PAGE_BREAK_CHAR } from '@docx-editor.dev/core/store';
 import type { FieldAwarePiece } from './field-projection.ts';
 import { lineOpenDecisionAt } from './cjk-line-break.ts';
+import { opensAtTagSeam } from './content-control-tag-lines.ts';
 import type { CjkParagraphBreaks } from './cjk-paragraph-breaks.ts';
 import { canHangCjkPunctuation } from './cjk-spacing.ts';
 import type { CjkParagraphTypography } from './cjk-typography.ts';
@@ -67,7 +68,7 @@ export function anchorLineStartsByModelOffset(input: {
     probeWidth = 0;
     probeLineIndex += 1;
   };
-  for (const piece of pieces) {
+  for (const [pieceIndex, piece] of pieces.entries()) {
     const equation = equationLayoutOf(piece);
     if (equation) {
       const width = equation.geometry.box.width;
@@ -112,8 +113,10 @@ export function anchorLineStartsByModelOffset(input: {
       }
       const modelStart = piece.start + consumed;
       const probeDecision =
-        input.cjkBreaks?.decision(piece, consumed) ??
-        lineOpenDecisionAt(probeLastEmitted, candidate, consumed > 0);
+        consumed === 0 && opensAtTagSeam(pieces[pieceIndex - 1], piece)
+          ? 'opens'
+          : (input.cjkBreaks?.decision(piece, consumed) ??
+            lineOpenDecisionAt(probeLastEmitted, candidate, consumed > 0));
       const opens = probeDecision === 'opens';
       if (opens) {
         probeWordStart = modelStart;

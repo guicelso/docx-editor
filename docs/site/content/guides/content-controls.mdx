@@ -154,6 +154,8 @@ A data-bound control rejects a direct write: its content comes from the Custom X
 
 A label with `variant: 'text'` reads as the line's own text, such as the number a host prints before a list item; `bold: true` draws it in bold, measured and painted so, alone or as a part of a `sequence`. A chip keeps the engine's weight.
 
+A label is one unit, but it is not a letter of the word beside it. A line can wrap before an open label and after a close label, as it does around an inline picture. The labels of nested controls stay together, and so does punctuation that cannot end or start a line, such as an opening bracket before an open label or a period after a close label. If labels are too wide for the line, together with the words they stay with, they share the room: each label wider than its share keeps the start of its longest part and ends in an ellipsis. Your hint or hover text can still name the control in full.
+
 A label can also be a link. `editor.setContentControlTagPress` is asked for a plain press on a label, in viewing too, with the control and the edge the layout's hit test found under the pointer. Returning `true` takes the press, and the caret does not move; returning `false` leaves the caret to land beside the label, as it does without a policy.
 
 Where labels meet, one offset is several caret places. A press on text keeps the caret with the text it pressed: the end of a control's last word is inside the control, and the start of the word after it is outside. The hit test publishes that side as `pressedText`. Home, End and a caret a host places land beside the text that follows.

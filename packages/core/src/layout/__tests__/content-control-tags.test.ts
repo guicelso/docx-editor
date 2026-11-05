@@ -117,11 +117,17 @@ describe('content-control tags', () => {
     const label = (text: string): ContentControlTagDisplay => ({
       labelsOf: () => ({ open: { text }, close: { text } }),
     });
-    for (const text of ['group-1 ▸', 'a\tb', `wide-${'x'.repeat(200)}`]) {
+    for (const text of ['group-1 ▸', 'a\tb']) {
       const chips = spansOf(layoutOf(label(text))).filter((span) => span.contentControlTag);
       expect(chips.map((span) => plain(span.text).trim())).toHaveLength(6);
       for (const chip of chips) expect(plain(chip.text).trim()).toBe(text);
     }
+    // A label no line can hold stays one chip, cut to fit with an ellipsis: none of it wraps.
+    const wide = spansOf(layoutOf(label(`wide-${'x'.repeat(200)}`))).filter(
+      (span) => span.contentControlTag
+    );
+    expect(wide).toHaveLength(6);
+    for (const chip of wide) expect(plain(chip.text).trim()).toMatch(/^wide-x+…$/u);
   });
 
   test('a chip measures its label plus the room around it, and the label carries no spacing characters', () => {

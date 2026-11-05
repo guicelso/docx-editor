@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A view-only content-control tag glued to the word beside it, so a chain of tags and text with no space between them made one unit, and a unit wider than the line stood past the margin.",
+  "after": "A line can open before an open tag and after a close tag, nested tags and line-bound punctuation stay together, and a tag too wide for its line keeps its start and ends in an ellipsis.",
+  "reason": "Tags are layout-owned view chrome over a zero-width model range. Only where lines break and what a tag paints change; no operation, field or shared update format changes, and a peer lays out the same document unchanged.",
+  "tests": ["packages/core/src/layout/__tests__/content-control-tag-lines.test.ts"],
+  "changeset": "tags-wrap-inside-the-margin",
+  "migration": null
+}

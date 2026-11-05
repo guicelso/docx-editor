@@ -43,6 +43,7 @@ import {
 import { DEFAULT_REVISION_DISPLAY_MODE, revisionsVisible } from './revision-projection.ts';
 import type { ParagraphLayoutCache } from './layout-cache.ts';
 import { cjkChopCutAllowedAt, lineOpenDecisionAt } from './cjk-line-break.ts';
+import { opensAtTagSeam, withContentControlTagsFitted } from './content-control-tag-lines.ts';
 import { cjkParagraphBreaks } from './cjk-paragraph-breaks.ts';
 import {
   createCjkOpticalFitter,
@@ -267,8 +268,14 @@ export function breakParagraph(
           : undefined
       )
     );
-  const pieces = compressCjkPieces(visiblePieces, typography, measurer, preserveColonAdvances);
-  const colonNaturalWidths = cjkColonNaturalWidths(pieces, visiblePieces, measurer);
+  // A tag no line of this paragraph can hold is cut to its narrowest line before anything measures it.
+  const fittedPieces = withContentControlTagsFitted(
+    visiblePieces,
+    available - Math.max(0, firstLineOffset),
+    measurer
+  );
+  const pieces = compressCjkPieces(fittedPieces, typography, measurer, preserveColonAdvances);
+  const colonNaturalWidths = cjkColonNaturalWidths(pieces, fittedPieces, measurer);
   const opticalParagraph =
     typography.settings?.compression !== undefined &&
     typography.settings.compression !== 'doNotCompress' &&
@@ -1269,9 +1276,12 @@ export function breakParagraph(
             ) + pieceChromePt(piece, faceStyle);
       exclusionProbe.setWidth(width);
       // A candidate may open a line only at a real break opportunity — the shared
-      // decision in `lineOpenDecisionAt`, which the anchor-line probe above consumes too.
+      // decisions in `opensAtTagSeam` and `lineOpenDecisionAt`, which the anchor-line probe
+      // above consumes too.
       const openDecision =
-        piece.noteSeparator || line.spans.at(-1)?.noteSeparator
+        piece.noteSeparator ||
+        line.spans.at(-1)?.noteSeparator ||
+        (consumed === 0 && opensAtTagSeam(pieces[pieceIndex - 1], piece))
           ? 'opens'
           : (cjkBreaks?.decision(piece, consumed) ??
             lineOpenDecisionAt(lastEmitted, candidate, consumed > 0));
